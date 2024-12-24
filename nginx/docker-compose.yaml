@@ -1,0 +1,15 @@
+name: nginx-inspect
+
+services:
+  nginx:
+    platform: linux/amd64
+    env_file:
+      - .env
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nginx-inspect-container
+    entrypoint:
+      - /usr/local/nginx/sbin/nginx
+    command:
+      - -V
