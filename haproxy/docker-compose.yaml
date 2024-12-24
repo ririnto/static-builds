@@ -1,0 +1,15 @@
+name: haproxy-inspect
+
+services:
+  haproxy:
+    platform: linux/amd64
+    env_file:
+      - .env
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: haproxy-inspect-container
+    entrypoint:
+      - /usr/local/haproxy/sbin/haproxy
+    command:
+      - -vv

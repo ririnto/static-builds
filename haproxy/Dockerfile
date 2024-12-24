@@ -1,9 +1,11 @@
+# syntax=docker/dockerfile:1.4
 ARG ALPINE_VERSION=3.18.9
 ARG HAPROXY_VERSION=3.0.7
 ARG UBI9_MICRO_VERSION=9.5-1734513256
 
-FROM alpine:${ALPINE_VERSION} AS haproxy-builder
+FROM alpine:${ALPINE_VERSION} AS builder
 ARG HAPROXY_VERSION
+WORKDIR /tmp
 RUN apk del --purge openssl
 RUN apk add --no-cache \
         build-base \
@@ -139,7 +141,7 @@ RUN --mount=type=bind,target=/tmp/mount \
         ZLIB_LIB=/lib \
         ZLIB_INC=/usr/include \
     && \
-    make install PREFIX=/usr/local && \
+    make install PREFIX=/usr/local/haproxy && \
     cd /tmp && \
     rm -rf haproxy-${HAPROXY_VERSION}.tar.gz haproxy-${HAPROXY_VERSION}
 RUN ldd_output=$(ldd /usr/local/sbin/haproxy 2>&1 || true) && echo "ldd output: $ldd_output" && \
@@ -155,7 +157,8 @@ RUN ldd_output=$(ldd /usr/local/sbin/haproxy 2>&1 || true) && echo "ldd output: 
         (echo "Error: Dynamic link found. This should be a static build!" && exit 1) \
     )
 
-FROM redhat/ubi9-micro:${UBI9_MICRO_VERSION} AS haproxy
-COPY --from=haproxy-builder /usr/local/sbin/haproxy /usr/local/sbin/haproxy
-RUN chmod +x /usr/local/sbin/haproxy
-ENTRYPOINT ["/usr/local/sbin/haproxy"]
+FROM redhat/ubi9-micro:${UBI9_MICRO_VERSION}
+COPY --from=builder /usr/local/haproxy /usr/local/haproxy
+RUN chmod +x /usr/local/haproxy/sbin/haproxy
+EXPOSE 80 443
+ENTRYPOINT ["/usr/local/haproxy/sbin/haproxy"]
