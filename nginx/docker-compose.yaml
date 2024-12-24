@@ -8,6 +8,11 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        ALPINE_VERSION: ${ALPINE_VERSION}
+        NGINX_VERSION: ${NGINX_VERSION}
+        NGINX_MODULE_VTS_VERSION: ${NGINX_MODULE_VTS_VERSION}
+        UBI9_MICRO_VERSION: ${UBI9_MICRO_VERSION}
     container_name: nginx-inspect-container
     entrypoint:
       - /usr/local/nginx/sbin/nginx

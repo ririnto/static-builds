@@ -8,6 +8,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        ALPINE_VERSION: ${ALPINE_VERSION}
+        HAPROXY_VERSION: ${HAPROXY_VERSION}
+        UBI9_MICRO_VERSION: ${UBI9_MICRO_VERSION}
     container_name: haproxy-inspect-container
     entrypoint:
       - /usr/local/haproxy/sbin/haproxy

@@ -8,8 +8,9 @@ FROM alpine:${ALPINE_VERSION} AS builder
 ARG NGINX_VERSION
 ARG NGINX_MODULE_VTS_VERSION
 WORKDIR /tmp
-RUN apk del --purge openssl && \
-    apk add --no-cache \
+RUN --mount=type=cache,target=/var/cache/apk \
+    apk del --purge openssl && \
+    apk add \
         build-base \
         geoip-dev \
         libatomic_ops-dev \
@@ -21,15 +22,15 @@ RUN apk del --purge openssl && \
         zlib-dev \
         zlib-static
 RUN --mount=type=bind,target=/tmp/mount \
-    if [ -f /tmp/mount/nginx-${NGINX_VERSION}.tar.gz ]; then cp /tmp/mount/nginx-${NGINX_VERSION}.tar.gz /tmp; \
-    else wget https://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz; fi
+    if [ -f "/tmp/mount/nginx-${NGINX_VERSION}.tar.gz" ]; then cp "/tmp/mount/nginx-${NGINX_VERSION}.tar.gz" /tmp; \
+    else wget "https://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz"; fi
 RUN --mount=type=bind,target=/tmp/mount \
-    if [ -f /tmp/mount/nginx-module-vts-${NGINX_MODULE_VTS_VERSION}.tar.gz ]; then cp /tmp/mount/nginx-module-vts-${NGINX_MODULE_VTS_VERSION}.tar.gz /tmp; \
-    else wget https://github.com/vozlt/nginx-module-vts/archive/refs/tags/v${NGINX_MODULE_VTS_VERSION}.tar.gz; fi
-RUN tar -zxvf nginx-${NGINX_VERSION}.tar.gz
-RUN tar -zxvf nginx-module-vts-${NGINX_MODULE_VTS_VERSION}.tar.gz
-WORKDIR /tmp/nginx-${NGINX_VERSION}
-RUN ./configure \
+    if [ -f "/tmp/mount/nginx-module-vts-${NGINX_MODULE_VTS_VERSION}.tar.gz" ]; then cp "/tmp/mount/nginx-module-vts-${NGINX_MODULE_VTS_VERSION}.tar.gz" /tmp; \
+    else wget "https://github.com/vozlt/nginx-module-vts/archive/refs/tags/v${NGINX_MODULE_VTS_VERSION}.tar.gz"; fi
+RUN tar -zxvf "nginx-${NGINX_VERSION}.tar.gz"
+RUN tar -zxvf "nginx-module-vts-${NGINX_MODULE_VTS_VERSION}.tar.gz"
+RUN cd "/tmp/nginx-${NGINX_VERSION}" && \
+    ./configure \
         # prints a help message.
         # --help \
         # defines a directory that will keep server files. This same directory will also be used for all relative paths set by configure (except for paths to libraries sources) and in the nginx.conf configuration file. It is set to the /usr/local/nginx directory by default.
@@ -238,7 +239,7 @@ RUN ./configure \
         # enables building the ngx_cpp_test_module module.
         --with-cpp_test_module \
         # enables an external module.
-        --add-module=../nginx-module-vts-${NGINX_MODULE_VTS_VERSION} \
+        --add-module="../nginx-module-vts-${NGINX_MODULE_VTS_VERSION}" \
         # enables an external dynamic module.
         # --add-dynamic-module=path \
         # enables dynamic modules compatibility.
@@ -282,19 +283,15 @@ RUN ./configure \
         # enables the debugging log.
         # --with-debug \
         && \
-    echo "Build Done"
-RUN make -j$(nproc)
-RUN make install
-WORKDIR /tmp
-RUN rm -rf nginx-${NGINX_VERSION} nginx-${NGINX_VERSION}.tar.gz
-RUN rm -rf nginx-module-vts-${NGINX_MODULE_VTS_VERSION} nginx-module-vts-${NGINX_MODULE_VTS_VERSION}.tar.gz
-RUN ldd_output=$(ldd /usr/local/nginx/sbin/nginx 2>&1 || true) && echo "ldd output: $ldd_output" && \
+    make "-j$(nproc)" && \
+    make install
+RUN ldd_output="$(ldd /usr/local/nginx/sbin/nginx 2>&1 || true)" && echo "ldd output: $ldd_output" && \
     ( \
         echo "$ldd_output" | grep -q "Not a valid dynamic program" && \
         echo "Static build verified: No shared libraries found" || \
         (echo "Error: Dynamic libraries found. This should be a static build!" && exit 1) \
     )
-RUN file_output=$(file /usr/local/nginx/sbin/nginx 2>&1 || true) && echo "file output: $file_output" && \
+RUN file_output="$(file /usr/local/nginx/sbin/nginx 2>&1 || true)" && echo "file output: $file_output" && \
     ( \
         echo "$file_output" | grep -q "statically linked" && \
         echo "Static build verified" || \

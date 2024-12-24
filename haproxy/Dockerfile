@@ -1,13 +1,14 @@
 # syntax=docker/dockerfile:1.4
-ARG ALPINE_VERSION=3.18.9
-ARG HAPROXY_VERSION=3.0.7
-ARG UBI9_MICRO_VERSION=9.5-1734513256
+ARG ALPINE_VERSION
+ARG HAPROXY_VERSION
+ARG UBI9_MICRO_VERSION
 
 FROM alpine:${ALPINE_VERSION} AS builder
 ARG HAPROXY_VERSION
 WORKDIR /tmp
-RUN apk del --purge openssl
-RUN apk add --no-cache \
+RUN --mount=type=cache,target=/var/cache/apk \
+    apk del --purge openssl && \
+    apk add \
         build-base \
         linux-headers \
         lua5.4-dev \
@@ -17,12 +18,11 @@ RUN apk add --no-cache \
         zlib-dev \
         zlib-static
 RUN --mount=type=bind,target=/tmp/mount \
-    if [[ -f /tmp/mount/haproxy-${HAPROXY_VERSION}.tar.gz ]]; then cp /tmp/mount/haproxy-${HAPROXY_VERSION}.tar.gz /tmp; \
-    else wget https://www.haproxy.org/download/3.0/src/haproxy-${HAPROXY_VERSION}.tar.gz; \
-    fi
-RUN tar -xzf haproxy-${HAPROXY_VERSION}.tar.gz
-WORKDIR /tmp/haproxy-${HAPROXY_VERSION}
-RUN make -j$(nproc) \
+    if [[ -f "/tmp/mount/haproxy-${HAPROXY_VERSION}.tar.gz" ]]; then cp "/tmp/mount/haproxy-${HAPROXY_VERSION}.tar.gz" /tmp; \
+    else wget "https://www.haproxy.org/download/3.0/src/haproxy-${HAPROXY_VERSION}.tar.gz"; fi
+RUN tar -xzvf "haproxy-${HAPROXY_VERSION}.tar.gz"
+RUN cd "/tmp/haproxy-${HAPROXY_VERSION}" && \
+    make "-j$(nproc)" \
         TARGET=linux-musl \
         LDFLAGS="-static -static-libgcc -static-libstdc++" \
         # enable epoll() on Linux 2.6. Automatic.
@@ -139,17 +139,15 @@ RUN make -j$(nproc) \
         LUA_INC=/usr/include/lua5.4 \
         # Use ZLIB_INC and ZLIB_LIB to force path to zlib.h and libz.{a,so} if needed.
         ZLIB_LIB=/lib \
-        ZLIB_INC=/usr/include
-RUN make install PREFIX=/usr/local/haproxy
-WORKDIR /tmp
-RUN rm -rf haproxy-${HAPROXY_VERSION}.tar.gz haproxy-${HAPROXY_VERSION}
-RUN ldd_output=$(ldd /usr/local/haproxy/sbin/haproxy 2>&1 || true) && echo "ldd output: $ldd_output" && \
+        ZLIB_INC=/usr/include && \
+    make install PREFIX=/usr/local/haproxy
+RUN ldd_output="$(ldd /usr/local/haproxy/sbin/haproxy 2>&1 || true)" && echo "ldd output: $ldd_output" && \
     ( \
         echo "$ldd_output" | grep -q "Not a valid dynamic program" && \
         echo "Static build verified: No shared libraries found" || \
         (echo "Error: Dynamic libraries found. This should be a static build!" && exit 1) \
     )
-RUN file_output=$(file /usr/local/haproxy/sbin/haproxy 2>&1 || true) && echo "file output: $file_output" && \
+RUN file_output="$(file /usr/local/haproxy/sbin/haproxy 2>&1 || true)" && echo "file output: $file_output" && \
     ( \
         echo "$file_output" | grep -q "statically linked" && \
         echo "Static build verified" || \
