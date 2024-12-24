@@ -1,0 +1,61 @@
+#!/usr/bin/env sh
+set -eu
+
+BUILDCTL_PROGRESS=""
+BUILDCTL_NO_CACHE=""
+TARGET=""
+
+# Parse arguments
+for arg in "$@"; do
+    case "$arg" in
+        --plain)
+            BUILDCTL_PROGRESS="plain"
+            ;;
+        --no-cache)
+            BUILDCTL_NO_CACHE="1"
+            ;;
+        -*)
+            echo "Unknown option: $arg"
+            exit 1
+            ;;
+        *)
+            if [ -z "$TARGET" ]; then
+                TARGET="$arg"
+            else
+                echo "Error: Multiple targets specified"
+                exit 1
+            fi
+            ;;
+    esac
+done
+
+if [ -z "$TARGET" ]; then
+    echo "Usage: $0 [options] <target>"
+    echo "       $0 <target> [options]"
+    echo "Options:"
+    echo "  --plain      Output docker build logs in plain text"
+    echo "  --no-cache   Build without using cache"
+    echo "Example:"
+    echo "  $0 nginx"
+    echo "  $0 --plain haproxy"
+    echo "  $0 apache-httpd --plain"
+    echo "  $0 --no-cache nginx"
+    exit 1
+fi
+
+if [ ! -d "${TARGET}" ]; then
+    echo "Error: Target directory '${TARGET}' not found"
+    exit 1
+fi
+
+if [ ! -f "${TARGET}/.env" ]; then
+    echo "Error: .env file not found in '${TARGET}'"
+    exit 1
+fi
+
+if [ ! -f "${TARGET}/Dockerfile" ]; then
+    echo "Error: Dockerfile not found in '${TARGET}'"
+    exit 1
+fi
+
+TARGET="${TARGET}" BUILDCTL_PROGRESS="${BUILDCTL_PROGRESS}" BUILDCTL_NO_CACHE="${BUILDCTL_NO_CACHE}" docker compose -f .github/docker-compose.yaml --project-directory . run --rm build
