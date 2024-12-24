@@ -22,13 +22,14 @@ RUN apk del --purge openssl && \
         zlib-static
 RUN --mount=type=bind,target=/tmp/mount \
     if [ -f /tmp/mount/nginx-${NGINX_VERSION}.tar.gz ]; then cp /tmp/mount/nginx-${NGINX_VERSION}.tar.gz /tmp; \
-    else wget https://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz; fi && \
+    else wget https://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz; fi
+RUN --mount=type=bind,target=/tmp/mount \
     if [ -f /tmp/mount/nginx-module-vts-${NGINX_MODULE_VTS_VERSION}.tar.gz ]; then cp /tmp/mount/nginx-module-vts-${NGINX_MODULE_VTS_VERSION}.tar.gz /tmp; \
-    else wget https://github.com/vozlt/nginx-module-vts/archive/refs/tags/v${NGINX_MODULE_VTS_VERSION}.tar.gz; fi && \
-    tar -zxvf nginx-${NGINX_VERSION}.tar.gz && \
-    tar -zxvf nginx-module-vts-${NGINX_MODULE_VTS_VERSION}.tar.gz && \
-    cd nginx-${NGINX_VERSION} && \
-    ./configure \
+    else wget https://github.com/vozlt/nginx-module-vts/archive/refs/tags/v${NGINX_MODULE_VTS_VERSION}.tar.gz; fi
+RUN tar -zxvf nginx-${NGINX_VERSION}.tar.gz
+RUN tar -zxvf nginx-module-vts-${NGINX_MODULE_VTS_VERSION}.tar.gz
+WORKDIR /tmp/nginx-${NGINX_VERSION}
+RUN ./configure \
         # prints a help message.
         # --help \
         # defines a directory that will keep server files. This same directory will also be used for all relative paths set by configure (except for paths to libraries sources) and in the nginx.conf configuration file. It is set to the /usr/local/nginx directory by default.
@@ -281,17 +282,19 @@ RUN --mount=type=bind,target=/tmp/mount \
         # enables the debugging log.
         # --with-debug \
         && \
-    make -j$(nproc) && \
-    make install && \
-    cd /tmp && \
-    rm -rf nginx-${NGINX_VERSION} nginx-${NGINX_VERSION}.tar.gz
+    echo "Build Done"
+RUN make -j$(nproc)
+RUN make install
+WORKDIR /tmp
+RUN rm -rf nginx-${NGINX_VERSION} nginx-${NGINX_VERSION}.tar.gz
+RUN rm -rf nginx-module-vts-${NGINX_MODULE_VTS_VERSION} nginx-module-vts-${NGINX_MODULE_VTS_VERSION}.tar.gz
 RUN ldd_output=$(ldd /usr/local/nginx/sbin/nginx 2>&1 || true) && echo "ldd output: $ldd_output" && \
     ( \
         echo "$ldd_output" | grep -q "Not a valid dynamic program" && \
         echo "Static build verified: No shared libraries found" || \
         (echo "Error: Dynamic libraries found. This should be a static build!" && exit 1) \
-    ) && \
-    file_output=$(file /usr/local/nginx/sbin/nginx 2>&1 || true) && echo "file output: $file_output" && \
+    )
+RUN file_output=$(file /usr/local/nginx/sbin/nginx 2>&1 || true) && echo "file output: $file_output" && \
     ( \
         echo "$file_output" | grep -q "statically linked" && \
         echo "Static build verified" || \
