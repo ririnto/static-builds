@@ -1,34 +1,42 @@
 # syntax=docker/dockerfile:1.4
-ARG ALPINE_VERSION=3.18.9
-ARG NGINX_VERSION=1.26.2
-ARG NGINX_MODULE_VTS_VERSION=0.2.2
-ARG UBI9_MICRO_VERSION=9.5-1734513256
+ARG ALPINE_VERSION
+ARG ALPINE_CURL_VERSION
+ARG NGINX_VERSION
+ARG NGINX_MODULE_VTS_VERSION
+ARG UBI9_MICRO_VERSION
+
+FROM alpine/curl:${ALPINE_CURL_VERSION} AS nginx-downloader
+ARG NGINX_VERSION
+WORKDIR /tmp
+RUN --mount=type=bind,target=/tmp/mount \
+    if [ -f "/tmp/mount/nginx-${NGINX_VERSION}.tar.gz" ]; then cat "/tmp/mount/nginx-${NGINX_VERSION}.tar.gz" | tar -zx; \
+    else curl -L "https://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz" | tar -zx; fi
+
+FROM alpine/curl:${ALPINE_CURL_VERSION} AS nginx-module-vts-downloader
+ARG NGINX_MODULE_VTS_VERSION
+WORKDIR /tmp
+RUN --mount=type=bind,target=/tmp/mount \
+    if [ -f "/tmp/mount/nginx-module-vts-${NGINX_MODULE_VTS_VERSION}.tar.gz" ]; then cat "/tmp/mount/nginx-module-vts-${NGINX_MODULE_VTS_VERSION}.tar.gz" | tar -zx; \
+    else curl -L "https://github.com/vozlt/nginx-module-vts/archive/refs/tags/v${NGINX_MODULE_VTS_VERSION}.tar.gz" | tar -zx; fi
 
 FROM alpine:${ALPINE_VERSION} AS builder
 ARG NGINX_VERSION
 ARG NGINX_MODULE_VTS_VERSION
 WORKDIR /tmp
 RUN --mount=type=cache,target=/var/cache/apk \
-    apk del --purge openssl && \
     apk add \
         build-base \
         geoip-dev \
         libatomic_ops-dev \
         libatomic_ops-static \
         linux-headers \
-        openssl1.1-compat-dev \
-        openssl1.1-compat-libs-static \
+        openssl-dev \
+        openssl-libs-static \
         pcre2-dev \
         zlib-dev \
         zlib-static
-RUN --mount=type=bind,target=/tmp/mount \
-    if [ -f "/tmp/mount/nginx-${NGINX_VERSION}.tar.gz" ]; then cp "/tmp/mount/nginx-${NGINX_VERSION}.tar.gz" /tmp; \
-    else wget "https://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz"; fi
-RUN --mount=type=bind,target=/tmp/mount \
-    if [ -f "/tmp/mount/nginx-module-vts-${NGINX_MODULE_VTS_VERSION}.tar.gz" ]; then cp "/tmp/mount/nginx-module-vts-${NGINX_MODULE_VTS_VERSION}.tar.gz" /tmp; \
-    else wget "https://github.com/vozlt/nginx-module-vts/archive/refs/tags/v${NGINX_MODULE_VTS_VERSION}.tar.gz"; fi
-RUN tar -zxvf "nginx-${NGINX_VERSION}.tar.gz"
-RUN tar -zxvf "nginx-module-vts-${NGINX_MODULE_VTS_VERSION}.tar.gz"
+COPY --from=nginx-downloader "/tmp/nginx-${NGINX_VERSION}" "/tmp/nginx-${NGINX_VERSION}"
+COPY --from=nginx-module-vts-downloader "/tmp/nginx-module-vts-${NGINX_MODULE_VTS_VERSION}" "/tmp/nginx-${NGINX_VERSION}/nginx-module-vts-${NGINX_MODULE_VTS_VERSION}"
 RUN cd "/tmp/nginx-${NGINX_VERSION}" && \
     ./configure \
         # prints a help message.
@@ -239,7 +247,7 @@ RUN cd "/tmp/nginx-${NGINX_VERSION}" && \
         # enables building the ngx_cpp_test_module module.
         --with-cpp_test_module \
         # enables an external module.
-        --add-module="../nginx-module-vts-${NGINX_MODULE_VTS_VERSION}" \
+        --add-module="nginx-module-vts-${NGINX_MODULE_VTS_VERSION}" \
         # enables an external dynamic module.
         # --add-dynamic-module=path \
         # enables dynamic modules compatibility.

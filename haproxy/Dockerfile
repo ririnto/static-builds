@@ -1,26 +1,30 @@
 # syntax=docker/dockerfile:1.4
 ARG ALPINE_VERSION
+ARG ALPINE_CURL_VERSION
 ARG HAPROXY_VERSION
 ARG UBI9_MICRO_VERSION
+
+FROM alpine/curl:${ALPINE_CURL_VERSION} AS downloader
+ARG HAPROXY_VERSION
+WORKDIR /tmp
+RUN --mount=type=bind,target=/tmp/mount \
+    if [[ -f "/tmp/mount/haproxy-${HAPROXY_VERSION}.tar.gz" ]]; then cat "/tmp/mount/haproxy-${HAPROXY_VERSION}.tar.gz" | tar -zx; \
+    else curl -L "https://www.haproxy.org/download/3.0/src/haproxy-${HAPROXY_VERSION}.tar.gz" | tar -zx; fi
 
 FROM alpine:${ALPINE_VERSION} AS builder
 ARG HAPROXY_VERSION
 WORKDIR /tmp
 RUN --mount=type=cache,target=/var/cache/apk \
-    apk del --purge openssl && \
     apk add \
         build-base \
         linux-headers \
         lua5.4-dev \
-        openssl1.1-compat-dev \
-        openssl1.1-compat-libs-static \
+        openssl-dev \
+        openssl-libs-static \
         pcre2-dev \
         zlib-dev \
         zlib-static
-RUN --mount=type=bind,target=/tmp/mount \
-    if [[ -f "/tmp/mount/haproxy-${HAPROXY_VERSION}.tar.gz" ]]; then cp "/tmp/mount/haproxy-${HAPROXY_VERSION}.tar.gz" /tmp; \
-    else wget "https://www.haproxy.org/download/3.0/src/haproxy-${HAPROXY_VERSION}.tar.gz"; fi
-RUN tar -xzvf "haproxy-${HAPROXY_VERSION}.tar.gz"
+COPY --from=downloader "/tmp/haproxy-${HAPROXY_VERSION}" "/tmp/haproxy-${HAPROXY_VERSION}"
 RUN cd "/tmp/haproxy-${HAPROXY_VERSION}" && \
     make "-j$(nproc)" \
         TARGET=linux-musl \
