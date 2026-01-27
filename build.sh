@@ -58,4 +58,7 @@ if [ ! -f "${TARGET}/Dockerfile" ]; then
     exit 1
 fi
 
+# Create cache directory if it doesn't exist (buildkit container may not have permission to create it)
+mkdir -p "${TARGET}/.cache"
+
 TARGET="${TARGET}" BUILDCTL_PROGRESS="${BUILDCTL_PROGRESS}" BUILDCTL_NO_CACHE="${BUILDCTL_NO_CACHE}" docker compose -f .github/docker-compose.yaml --project-directory . run --rm build
