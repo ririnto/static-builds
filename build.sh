@@ -58,4 +58,13 @@ if [ ! -f "${TARGET}/Dockerfile" ]; then
     exit 1
 fi
 
+# Create cache directory if it doesn't exist (buildkit container may not have permission to create it)
+mkdir -p "${TARGET}/.cache"
+
+# Download source files if pre-download.sh exists
+if [ -f "${TARGET}/pre-download.sh" ]; then
+    echo "Downloading source files for ${TARGET}..."
+    sh "${TARGET}/pre-download.sh"
+fi
+
 TARGET="${TARGET}" BUILDCTL_PROGRESS="${BUILDCTL_PROGRESS}" BUILDCTL_NO_CACHE="${BUILDCTL_NO_CACHE}" docker compose -f .github/docker-compose.yaml --project-directory . run --rm build
