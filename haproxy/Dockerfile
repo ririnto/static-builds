@@ -1,11 +1,10 @@
-# syntax=docker/dockerfile:1.4
 ARG ALPINE_VERSION
-ARG HAPROXY_VERSION
 ARG UBI9_MICRO_VERSION
 
 
 FROM alpine:${ALPINE_VERSION} AS build
 ARG HAPROXY_VERSION
+ARG TARGET_PREFIX=/usr/local/haproxy
 
 WORKDIR /build
 RUN --mount=type=cache,target=/var/cache/apk \
@@ -30,7 +29,7 @@ RUN make "-j$(nproc)" \
     USE_PCRE2=1 \
     USE_PCRE2_JIT=1 \
     USE_POLL=1 \
-    USE_THREAD=1 \
+    USE_THREAD=0 \
     # USE_STATIC_PCRE \
     # USE_STATIC_PCRE2 \
     USE_TPROXY=1 \
@@ -118,7 +117,7 @@ RUN make "-j$(nproc)" \
     ;
 RUN make install \
     # DESTDIR \
-    PREFIX=/usr/local/haproxy \
+    PREFIX=${TARGET_PREFIX} \
     # SBINDIR \
     # MANDIR \
     # DOCDIR \
@@ -126,28 +125,29 @@ RUN make install \
 
 
 FROM redhat/ubi9-minimal:${UBI9_MICRO_VERSION} AS verify
+ARG TARGET_PREFIX=/usr/local/haproxy
 
 RUN --mount=type=cache,target=/var/cache/dnf \
     microdnf -y install file binutils strace
-COPY --from=build /usr/local/haproxy /usr/local/haproxy
+COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
 RUN set -eu; \
     echo "=== ELF Header ==="; \
-    readelf -h /usr/local/haproxy/sbin/haproxy | egrep 'Type:|Machine:'; \
+    readelf -h ${TARGET_PREFIX}/sbin/haproxy | egrep 'Type:|Machine:'; \
     echo "=== Program Headers ==="; \
-    readelf -l /usr/local/haproxy/sbin/haproxy | egrep 'INTERP|DYNAMIC' || true; \
+    readelf -l ${TARGET_PREFIX}/sbin/haproxy | egrep 'INTERP|DYNAMIC' || true; \
     echo "=== Dynamic Section ==="; \
-    readelf -d /usr/local/haproxy/sbin/haproxy || true; \
-    file_output="$(file /usr/local/haproxy/sbin/haproxy 2>&1 || true)"; \
-    ldd_output="$(ldd /usr/local/haproxy/sbin/haproxy 2>&1 || true)"; \
+    readelf -d ${TARGET_PREFIX}/sbin/haproxy || true; \
+    file_output="$(file ${TARGET_PREFIX}/sbin/haproxy 2>&1 || true)"; \
+    ldd_output="$(ldd ${TARGET_PREFIX}/sbin/haproxy 2>&1 || true)"; \
     echo "=== file output ==="; echo "$file_output"; \
     echo "=== ldd output ==="; echo "$ldd_output"; \
     (echo "$file_output" | grep -Eq 'statically linked|static-pie linked') || (echo "Error: file(1) did not report a static binary." && exit 1); \
     (echo "$ldd_output" | grep -Eqi 'statically linked|static-pie linked|not a dynamic executable|not a valid dynamic program') || (echo "Error: Dynamic libraries found. This should be a static build!" && exit 1); \
-    strace /usr/local/haproxy/sbin/haproxy -vv
+    strace ${TARGET_PREFIX}/sbin/haproxy -vv
 
 
 FROM scratch
 
-COPY --from=verify /usr/local/haproxy .
+COPY --from=verify ${TARGET_PREFIX} .
 EXPOSE 80 443
 ENTRYPOINT ["./sbin/haproxy"]
