@@ -1,0 +1,56 @@
+name: Build Static Binary
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Target service to build'
+        required: true
+        type: choice
+        options:
+          - nginx
+          - haproxy
+          - apache-httpd
+          - coredns
+          - dnsmasq
+          - vector
+      no_cache:
+        description: 'Build without cache'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Cache buildkit
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/${{ inputs.target }}/.cache
+          key: buildkit-${{ inputs.target }}-${{ hashFiles(format('{0}/Dockerfile', inputs.target), format('{0}/.env', inputs.target)) }}
+          restore-keys: |
+            buildkit-${{ inputs.target }}-
+
+      - name: Build ${{ inputs.target }}
+        run: |
+          chmod +x ./build.sh
+          if [ "${{ inputs.no_cache }}" = "true" ]; then
+            ./build.sh --no-cache ${{ inputs.target }}
+          else
+            ./build.sh ${{ inputs.target }}
+          fi
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.target }}-static-build
+          path: ${{ inputs.target }}/output/
+          if-no-files-found: warn
+          retention-days: 30
