@@ -142,7 +142,8 @@ RUN set -eu; \
     echo "=== file output ==="; echo "$file_output"; \
     echo "=== ldd output ==="; echo "$ldd_output"; \
     (echo "$file_output" | grep -Eq 'statically linked|static-pie linked') || (echo "Error: file(1) did not report a static binary." && exit 1); \
-    (echo "$ldd_output" | grep -Eqi 'statically linked|static-pie linked|not a dynamic executable|not a valid dynamic program') || (echo "Error: Dynamic libraries found. This should be a static build!" && exit 1);
+    (echo "$ldd_output" | grep -Eqi 'statically linked|static-pie linked|not a dynamic executable|not a valid dynamic program') || (echo "Error: Dynamic libraries found. This should be a static build!" && exit 1); \
+    strace /usr/local/haproxy/sbin/haproxy -vv
 
 
 FROM scratch
