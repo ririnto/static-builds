@@ -1,8 +1,4 @@
-# syntax=docker/dockerfile:1.4
 ARG ALPINE_VERSION
-ARG HTTPD_VERSION
-ARG APR_VERSION
-ARG APR_UTIL_VERSION
 ARG UBI9_MICRO_VERSION
 
 
@@ -10,6 +6,7 @@ FROM alpine:${ALPINE_VERSION} AS build
 ARG HTTPD_VERSION
 ARG APR_VERSION
 ARG APR_UTIL_VERSION
+ARG TARGET_PREFIX=/usr/local/apache2
 
 WORKDIR /tmp
 RUN --mount=type=cache,target=/var/cache/apk \
@@ -46,7 +43,7 @@ RUN ./configure \
     # --config-cache \
     # --no-create \
     # --srcdir=DIR \
-    --prefix=/usr/local/apache2 \
+    --prefix=${TARGET_PREFIX} \
     # --exec-prefix=EPREFIX \
     # --bindir=DIR \
     # --sbindir=DIR \
@@ -291,30 +288,32 @@ RUN make install
 
 
 FROM redhat/ubi9-minimal:${UBI9_MICRO_VERSION} AS verify
+ARG TARGET_PREFIX=/usr/local/apache2
 
 RUN --mount=type=cache,target=/var/cache/dnf \
     microdnf -y install file binutils strace
-COPY --from=build /usr/local/apache2 /usr/local/apache2
+COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
 RUN set -eu; \
     echo "=== ELF Header ==="; \
-    readelf -h /usr/local/apache2/bin/httpd | egrep 'Type:|Machine:'; \
+    readelf -h ${TARGET_PREFIX}/bin/httpd | egrep 'Type:|Machine:'; \
     echo "=== Program Headers ==="; \
-    readelf -l /usr/local/apache2/bin/httpd | egrep 'INTERP|DYNAMIC' || true; \
+    readelf -l ${TARGET_PREFIX}/bin/httpd | egrep 'INTERP|DYNAMIC' || true; \
     echo "=== Dynamic Section ==="; \
-    readelf -d /usr/local/apache2/bin/httpd || true; \
-    file_output="$(file /usr/local/apache2/bin/httpd 2>&1 || true)"; \
-    ldd_output="$(ldd /usr/local/apache2/bin/httpd 2>&1 || true)"; \
+    readelf -d ${TARGET_PREFIX}/bin/httpd || true; \
+    file_output="$(file ${TARGET_PREFIX}/bin/httpd 2>&1 || true)"; \
+    ldd_output="$(ldd ${TARGET_PREFIX}/bin/httpd 2>&1 || true)"; \
     echo "=== file output ==="; echo "$file_output"; \
     echo "=== ldd output ==="; echo "$ldd_output"; \
     (echo "$file_output" | grep -Eq 'statically linked|static-pie linked') || (echo "Error: file(1) did not report a static binary." && exit 1); \
     (echo "$ldd_output" | grep -Eqi 'statically linked|static-pie linked|not a dynamic executable|not a valid dynamic program') || (echo "Error: Dynamic libraries found. This should be a static build!" && exit 1); \
-    strace /usr/local/apache2/bin/httpd -V && \
-    echo "=== Static Modules (-l) ===" && /usr/local/apache2/bin/httpd -l && \
-    echo "=== Loaded Modules (-M) ===" && /usr/local/apache2/bin/httpd -M
+    strace ${TARGET_PREFIX}/bin/httpd -V && \
+    echo "=== Static Modules (-l) ===" && ${TARGET_PREFIX}/bin/httpd -l && \
+    echo "=== Loaded Modules (-M) ===" && ${TARGET_PREFIX}/bin/httpd -M
 
 
 FROM scratch
 
-COPY --from=verify /usr/local/apache2 /usr/local/apache2
+COPY --from=verify ${TARGET_PREFIX} .
 EXPOSE 80 443
-ENTRYPOINT ["/usr/local/apache2/bin/httpd"]
+ENTRYPOINT ["./bin/httpd"]
+CMD ["-D", "FOREGROUND"]
