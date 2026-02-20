@@ -43,6 +43,14 @@ if [ -z "$TARGET" ]; then
     exit 1
 fi
 
+case "$TARGET" in
+    *[!A-Za-z0-9._-]*)
+        echo "Error: Invalid target '${TARGET}'"
+        echo "Allowed characters: letters, numbers, dot, underscore, hyphen"
+        exit 1
+        ;;
+esac
+
 if [ ! -d "${TARGET}" ]; then
     echo "Error: Target directory '${TARGET}' not found"
     exit 1
@@ -60,6 +68,7 @@ fi
 
 # Create cache directory if it doesn't exist (buildkit container may not have permission to create it)
 mkdir -p "${TARGET}/.cache"
+mkdir -p "${TARGET}/output"
 
 # Download source files if pre-download.sh exists
 if [ -f "${TARGET}/pre-download.sh" ]; then

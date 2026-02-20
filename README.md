@@ -4,11 +4,11 @@ Build statically-linked binaries using Docker multi-stage builds for portable, m
 
 ## Features
 
-- **Static Linking** - Produce fully statically-linked binaries using musl libc
-- **Multi-stage Builds** - Leverage Docker BuildKit for efficient, cacheable builds
-- **Minimal Images** - Target Red Hat UBI9 Micro or similar minimal runtime images
-- **Extensible** - Add new build targets by following a simple directory structure
-- **Reproducible** - Version-controlled configurations via `.env` files
+- Static Linking - Produce fully statically-linked binaries using musl libc
+- Multi-stage Builds - Leverage Docker BuildKit for efficient, cacheable builds
+- Minimal Images - Target Red Hat UBI9 Micro or similar minimal runtime images
+- Extensible - Add new build targets by following a simple directory structure
+- Reproducible - Version-controlled configurations via `.env` files
 
 ## Prerequisites
 
@@ -18,15 +18,30 @@ Build statically-linked binaries using Docker multi-stage builds for portable, m
 ## Usage
 
 ```bash
-./build.sh <target>
+make build TARGET=<target>
 ```
+
+### Makefile Commands
+
+```bash
+make help
+make list-targets
+make build TARGET=nginx
+make build-plain TARGET=haproxy
+make build-no-cache TARGET=apache-httpd
+make build-plain-no-cache TARGET=nginx
+make build-all
+make build-all-no-cache
+```
+
+Build artifacts are written to `<target>/output/`.
 
 ### Example Targets
 
 ```bash
-./build.sh nginx
-./build.sh haproxy
-./build.sh apache-httpd
+make nginx
+make haproxy
+make apache-httpd
 ```
 
 ## Project Structure
@@ -42,7 +57,8 @@ Build statically-linked binaries using Docker multi-stage builds for portable, m
 └── <target>/             # Build target directory
     ├── .env              # Version configuration
     ├── Dockerfile        # Multi-stage build definition
-    └── pre-download.sh   # Source download script (optional)
+    ├── pre-download.sh   # Source download script (optional)
+    └── output/           # Built artifacts output directory
 ```
 
 ## Adding a New Target
@@ -63,9 +79,26 @@ Build statically-linked binaries using Docker multi-stage builds for portable, m
 
 ## How It Works
 
-1. The `build.sh` script validates the target directory and required files
+1. The `Makefile` invokes `build.sh`, which validates the target directory and required files
 2. Docker Compose launches a BuildKit container
 3. BuildKit executes the multi-stage Dockerfile
-4. Built artifacts are output to the target directory
+4. Built artifacts are output to the target `output/` directory
 
 Build caching is automatically handled via the `.cache/` directory.
+
+## CI Behavior
+
+- Archive upload always includes the full `<target>/output/` directory as a workflow artifact.
+- Release upload is optional and uploads only one selected binary per target.
+- To enable release upload in GitHub Actions, set `release=true` and use one of:
+  - `release_tag`: explicit full tag (for example, `httpd-2.4.66.1`)
+  - `release_suffix`: custom last segment; CI composes `<name>-<version>.<suffix>`
+
+Selected release binaries:
+
+- `nginx`: `<target>/output/sbin/nginx`
+- `haproxy`: `<target>/output/sbin/haproxy`
+- `apache-httpd`: `<target>/output/bin/httpd`
+- `coredns`: `<target>/output/coredns`
+- `dnsmasq`: `<target>/output/sbin/dnsmasq`
+- `vector`: `<target>/output/bin/vector`
