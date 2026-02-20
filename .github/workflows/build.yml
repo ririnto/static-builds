@@ -19,6 +19,19 @@ on:
         required: false
         type: boolean
         default: false
+      release:
+        description: 'Upload selected binary to GitHub Release'
+        required: false
+        type: boolean
+        default: false
+      release_tag:
+        description: 'Release tag to create/update (required when release=true)'
+        required: false
+        type: string
+      release_suffix:
+        description: 'Optional custom suffix appended to <name>-<version>.<suffix>'
+        required: false
+        type: string
 
 jobs:
   build:
@@ -40,11 +53,10 @@ jobs:
 
       - name: Build ${{ inputs.target }}
         run: |
-          chmod +x ./build.sh
           if [ "${{ inputs.no_cache }}" = "true" ]; then
-            ./build.sh --no-cache ${{ inputs.target }}
+            make build-no-cache TARGET=${{ inputs.target }}
           else
-            ./build.sh ${{ inputs.target }}
+            make build TARGET=${{ inputs.target }}
           fi
 
       - name: Upload build artifacts
@@ -54,3 +66,83 @@ jobs:
           path: ${{ inputs.target }}/output/
           if-no-files-found: warn
           retention-days: 30
+
+      - name: Select release binary
+        if: ${{ inputs.release }}
+        run: |
+          case "${{ inputs.target }}" in
+            nginx)
+              echo "RELEASE_ASSET=${{ inputs.target }}/output/sbin/nginx" >> "$GITHUB_ENV"
+              echo "RELEASE_PREFIX=nginx" >> "$GITHUB_ENV"
+              echo "RELEASE_VERSION=$(grep '^NGINX_VERSION=' "${{ inputs.target }}/.env" | cut -d'=' -f2)" >> "$GITHUB_ENV"
+              ;;
+            haproxy)
+              echo "RELEASE_ASSET=${{ inputs.target }}/output/sbin/haproxy" >> "$GITHUB_ENV"
+              echo "RELEASE_PREFIX=haproxy" >> "$GITHUB_ENV"
+              echo "RELEASE_VERSION=$(grep '^HAPROXY_VERSION=' "${{ inputs.target }}/.env" | cut -d'=' -f2)" >> "$GITHUB_ENV"
+              ;;
+            apache-httpd)
+              echo "RELEASE_ASSET=${{ inputs.target }}/output/bin/httpd" >> "$GITHUB_ENV"
+              echo "RELEASE_PREFIX=httpd" >> "$GITHUB_ENV"
+              echo "RELEASE_VERSION=$(grep '^HTTPD_VERSION=' "${{ inputs.target }}/.env" | cut -d'=' -f2)" >> "$GITHUB_ENV"
+              ;;
+            coredns)
+              echo "RELEASE_ASSET=${{ inputs.target }}/output/coredns" >> "$GITHUB_ENV"
+              echo "RELEASE_PREFIX=coredns" >> "$GITHUB_ENV"
+              echo "RELEASE_VERSION=$(grep '^COREDNS_VERSION=' "${{ inputs.target }}/.env" | cut -d'=' -f2)" >> "$GITHUB_ENV"
+              ;;
+            dnsmasq)
+              echo "RELEASE_ASSET=${{ inputs.target }}/output/sbin/dnsmasq" >> "$GITHUB_ENV"
+              echo "RELEASE_PREFIX=dnsmasq" >> "$GITHUB_ENV"
+              echo "RELEASE_VERSION=$(grep '^DNSMASQ_VERSION=' "${{ inputs.target }}/.env" | cut -d'=' -f2)" >> "$GITHUB_ENV"
+              ;;
+            vector)
+              echo "RELEASE_ASSET=${{ inputs.target }}/output/bin/vector" >> "$GITHUB_ENV"
+              echo "RELEASE_PREFIX=vector" >> "$GITHUB_ENV"
+              echo "RELEASE_VERSION=$(grep '^VECTOR_VERSION=' "${{ inputs.target }}/.env" | cut -d'=' -f2)" >> "$GITHUB_ENV"
+              ;;
+            *)
+              echo "Unsupported target: ${{ inputs.target }}"
+              exit 1
+              ;;
+          esac
+
+      - name: Publish selected binary to Release
+        if: ${{ inputs.release }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          RELEASE_TAG="${{ inputs.release_tag }}"
+          RELEASE_SUFFIX="${{ inputs.release_suffix }}"
+
+          if [ -z "${RELEASE_TAG}" ]; then
+            if [ -z "${RELEASE_SUFFIX}" ]; then
+              echo "Error: set release_tag or release_suffix when release=true"
+              exit 1
+            fi
+
+            case "${RELEASE_SUFFIX}" in
+              *[!A-Za-z0-9._-]*)
+                echo "Error: Invalid release_suffix '${RELEASE_SUFFIX}'"
+                echo "Allowed characters: letters, numbers, dot, underscore, hyphen"
+                exit 1
+                ;;
+            esac
+
+            RELEASE_TAG="${RELEASE_PREFIX}-${RELEASE_VERSION}.${RELEASE_SUFFIX}"
+          fi
+
+          RELEASE_NAME="${RELEASE_TAG}"
+
+          if [ ! -f "${RELEASE_ASSET}" ]; then
+            echo "Error: Release asset not found at ${RELEASE_ASSET}"
+            exit 1
+          fi
+
+          if ! gh release view "${RELEASE_TAG}" >/dev/null 2>&1; then
+            gh release create "${RELEASE_TAG}" \
+              --title "${RELEASE_TAG}" \
+              --notes "Automated static binary release asset upload."
+          fi
+
+          gh release upload "${RELEASE_TAG}" "${RELEASE_ASSET}#${RELEASE_NAME}" --clobber
