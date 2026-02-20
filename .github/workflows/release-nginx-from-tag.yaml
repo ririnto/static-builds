@@ -1,0 +1,20 @@
+name: Release Nginx From Tag
+
+on:
+  push:
+    tags:
+      - 'nginx-*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    uses: ./.github/workflows/template-release.yaml
+    with:
+      target: nginx
+      tag: ${{ github.ref_name }}
+      release_asset: nginx/output/sbin/nginx
+      upload_release: true
+      no_cache: false
+    secrets: inherit

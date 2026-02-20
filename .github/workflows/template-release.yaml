@@ -1,0 +1,85 @@
+name: Release Template
+
+on:
+  workflow_call:
+    inputs:
+      target:
+        description: Build target directory name
+        required: true
+        type: string
+      tag:
+        description: Release tag name
+        required: true
+        type: string
+      release_asset:
+        description: Relative path to selected binary inside repository workspace
+        required: true
+        type: string
+      upload_release:
+        description: Upload selected binary to GitHub Release
+        required: false
+        default: true
+        type: boolean
+      no_cache:
+        description: Build without cache
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Cache buildkit
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/${{ inputs.target }}/.cache
+          key: buildkit-${{ inputs.target }}-${{ hashFiles(format('{0}/Dockerfile', inputs.target), format('{0}/.env', inputs.target)) }}
+          restore-keys: |
+            buildkit-${{ inputs.target }}-
+
+      - name: Build target
+        run: |
+          if [ "${{ inputs.no_cache }}" = "true" ]; then
+            make build-no-cache TARGET=${{ inputs.target }}
+          else
+            make build TARGET=${{ inputs.target }}
+          fi
+
+      - name: Upload full build output artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.target }}-static-build
+          path: ${{ inputs.target }}/output/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish selected binary to release
+        if: ${{ inputs.upload_release }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ inputs.tag }}"
+          RELEASE_ASSET="${{ inputs.release_asset }}"
+
+          if [ ! -f "${RELEASE_ASSET}" ]; then
+            echo "Error: Release asset not found at ${RELEASE_ASSET}"
+            exit 1
+          fi
+
+          if ! gh release view "${TAG}" >/dev/null 2>&1; then
+            gh release create "${TAG}" \
+              --title "${TAG}" \
+              --notes "Automated static binary release from tag ${TAG}."
+          fi
+
+          gh release upload "${TAG}" "${RELEASE_ASSET}#${TAG}" --clobber

@@ -93,9 +93,15 @@ Build caching is automatically handled via the `.cache/` directory.
 - To enable release upload in GitHub Actions, set `release=true` and use one of:
   - `release_tag`: explicit full tag (for example, `httpd-2.4.66.1`)
   - `release_suffix`: custom last segment; CI composes `<name>-<version>.<suffix>`
-- Tag push release is supported in `.github/workflows/release-from-tag.yaml`.
-  - Push tag patterns: `nginx-*`, `haproxy-*`, `httpd-*`, `coredns-*`, `dnsmasq-*`, `vector-*`
-  - CI builds the mapped target, uploads full `output/` as artifact, and uploads one selected binary to the matching release tag.
+- Tag push release uses per-target caller workflows:
+  - `.github/workflows/release-nginx-from-tag.yaml`
+  - `.github/workflows/release-haproxy-from-tag.yaml`
+  - `.github/workflows/release-httpd-from-tag.yaml`
+  - `.github/workflows/release-coredns-from-tag.yaml`
+  - `.github/workflows/release-dnsmasq-from-tag.yaml`
+  - `.github/workflows/release-vector-from-tag.yaml`
+- Each caller is bound to one tag pattern (`nginx-*`, `haproxy-*`, `httpd-*`, `coredns-*`, `dnsmasq-*`, `vector-*`) and calls reusable template `.github/workflows/template-release.yaml`.
+- Template builds mapped target, uploads full `output/` as artifact, and uploads one selected binary to the matching release tag.
 
 Selected release binaries:
 
