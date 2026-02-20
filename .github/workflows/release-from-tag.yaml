@@ -1,0 +1,97 @@
+name: Release From Tag
+
+on:
+  push:
+    tags:
+      - 'nginx-*'
+      - 'haproxy-*'
+      - 'httpd-*'
+      - 'coredns-*'
+      - 'dnsmasq-*'
+      - 'vector-*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Detect target from tag
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+
+          case "${TAG}" in
+            nginx-*)
+              echo "TARGET=nginx" >> "$GITHUB_ENV"
+              echo "RELEASE_ASSET=nginx/output/sbin/nginx" >> "$GITHUB_ENV"
+              ;;
+            haproxy-*)
+              echo "TARGET=haproxy" >> "$GITHUB_ENV"
+              echo "RELEASE_ASSET=haproxy/output/sbin/haproxy" >> "$GITHUB_ENV"
+              ;;
+            httpd-*)
+              echo "TARGET=apache-httpd" >> "$GITHUB_ENV"
+              echo "RELEASE_ASSET=apache-httpd/output/bin/httpd" >> "$GITHUB_ENV"
+              ;;
+            coredns-*)
+              echo "TARGET=coredns" >> "$GITHUB_ENV"
+              echo "RELEASE_ASSET=coredns/output/coredns" >> "$GITHUB_ENV"
+              ;;
+            dnsmasq-*)
+              echo "TARGET=dnsmasq" >> "$GITHUB_ENV"
+              echo "RELEASE_ASSET=dnsmasq/output/sbin/dnsmasq" >> "$GITHUB_ENV"
+              ;;
+            vector-*)
+              echo "TARGET=vector" >> "$GITHUB_ENV"
+              echo "RELEASE_ASSET=vector/output/bin/vector" >> "$GITHUB_ENV"
+              ;;
+            *)
+              echo "Unsupported tag: ${TAG}"
+              exit 1
+              ;;
+          esac
+
+      - name: Cache buildkit
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/${{ env.TARGET }}/.cache
+          key: buildkit-${{ env.TARGET }}-${{ hashFiles(format('{0}/Dockerfile', env.TARGET), format('{0}/.env', env.TARGET)) }}
+          restore-keys: |
+            buildkit-${{ env.TARGET }}-
+
+      - name: Build target from tag
+        run: make build TARGET=${{ env.TARGET }}
+
+      - name: Upload full build output artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.TARGET }}-static-build
+          path: ${{ env.TARGET }}/output/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish selected binary to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+
+          if [ ! -f "${RELEASE_ASSET}" ]; then
+            echo "Error: Release asset not found at ${RELEASE_ASSET}"
+            exit 1
+          fi
+
+          if ! gh release view "${TAG}" >/dev/null 2>&1; then
+            gh release create "${TAG}" \
+              --title "${TAG}" \
+              --notes "Automated static binary release from tag ${TAG}."
+          fi
+
+          gh release upload "${TAG}" "${RELEASE_ASSET}#${TAG}" --clobber
