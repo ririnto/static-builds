@@ -93,6 +93,9 @@ Build caching is automatically handled via the `.cache/` directory.
 - To enable release upload in GitHub Actions, set `release=true` and use one of:
   - `release_tag`: explicit full tag (for example, `httpd-2.4.66.1`)
   - `release_suffix`: custom last segment; CI composes `<name>-<version>.<suffix>`
+- Tag push release is supported in `.github/workflows/release-from-tag.yaml`.
+  - Push tag patterns: `nginx-*`, `haproxy-*`, `httpd-*`, `coredns-*`, `dnsmasq-*`, `vector-*`
+  - CI builds the mapped target, uploads full `output/` as artifact, and uploads one selected binary to the matching release tag.
 
 Selected release binaries:
 
