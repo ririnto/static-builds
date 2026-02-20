@@ -10,12 +10,15 @@ while IFS='=' read -r key value || [ -n "$key" ]; do
 done < .env
 
 CACHE_DIR="./.cache"
+OUTPUT_DIR="./output"
 
 CACHE_ARGS=""
 if [ -z "${BUILDCTL_NO_CACHE:-}" ] && [ -d "${CACHE_DIR}" ]; then
     CACHE_ARGS="--import-cache type=local,src=${CACHE_DIR}"
 fi
 CACHE_ARGS="${CACHE_ARGS} --export-cache type=local,dest=${CACHE_DIR},mode=max"
+
+mkdir -p "${OUTPUT_DIR}"
 
 PROGRESS_ARGS=""
 if [ -n "${BUILDCTL_PROGRESS:-}" ]; then
@@ -30,4 +33,4 @@ exec /bin/sh -c "buildctl-daemonless.sh build \
     --local=dockerfile=. \
     ${BUILD_ARGS} \
     ${CACHE_ARGS} \
-    --output=type=local,dest=."
+    --output=type=local,dest=${OUTPUT_DIR}"
