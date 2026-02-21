@@ -5,7 +5,9 @@ ARG TARGET_PREFIX=/home/nobody
 
 FROM alpine:${ALPINE_VERSION} AS build
 ARG NGINX_VERSION
-ARG NGINX_MODULE_VTS_VERSION
+ARG NGINX_VTS_MODULE_VERSION
+ARG NGINX_LUA_MODULE_VERSION
+ARG NGINX_LUA_RESTY_UPSTREAM_HEALTHCHECK_MODULE_VERSION
 ARG TARGET_PREFIX
 
 WORKDIR /build
@@ -15,6 +17,7 @@ RUN --mount=type=cache,target=/var/cache/apk \
         libatomic_ops-dev \
         libatomic_ops-static \
         linux-headers \
+        luajit-dev \
         openssl-dev \
         openssl-libs-static \
         pcre2-dev \
@@ -22,9 +25,11 @@ RUN --mount=type=cache,target=/var/cache/apk \
         zlib-dev \
         zlib-static
 ADD "src/nginx-${NGINX_VERSION}.tar.gz" /build/
-ADD "src/nginx-module-vts-${NGINX_MODULE_VTS_VERSION}.tar.gz" "/build/nginx-${NGINX_VERSION}/"
+ADD "src/nginx-module-vts-${NGINX_VTS_MODULE_VERSION}.tar.gz" "/build/nginx-${NGINX_VERSION}/"
+ADD "src/lua-nginx-module-${NGINX_LUA_MODULE_VERSION}.tar.gz" "/build/nginx-${NGINX_VERSION}/"
+ADD "src/lua-resty-upstream-healthcheck-${NGINX_LUA_RESTY_UPSTREAM_HEALTHCHECK_MODULE_VERSION}.tar.gz" "/build/"
 WORKDIR "/build/nginx-${NGINX_VERSION}"
-RUN ./configure \
+RUN LUAJIT_LIB="/usr/lib" LUAJIT_INC="/usr/include/luajit-2.1" ./configure \
     # --help \
     --prefix=${TARGET_PREFIX} \
     # --sbin-path=PATH \
@@ -136,7 +141,8 @@ RUN ./configure \
     # --with-google_perftools_module \
     # --with-cpp_test_module \
     # --add-module=PATH \
-    --add-module="nginx-module-vts-${NGINX_MODULE_VTS_VERSION}" \
+    --add-module="nginx-module-vts-${NGINX_VTS_MODULE_VERSION}" \
+    --add-module="lua-nginx-module-${NGINX_LUA_MODULE_VERSION}" \
     # --add-dynamic-module=PATH \
     # --with-compat \
     # --with-cc=PATH \
@@ -161,6 +167,9 @@ RUN ./configure \
     ;
 RUN make "-j$(nproc)"
 RUN make install
+RUN install -D \
+    "/build/lua-resty-upstream-healthcheck-${NGINX_LUA_RESTY_UPSTREAM_HEALTHCHECK_MODULE_VERSION}/lib/resty/upstream/healthcheck.lua" \
+    "${TARGET_PREFIX}/lib/lua/resty/upstream/healthcheck.lua"
 
 
 FROM redhat/ubi9-minimal:${UBI9_MICRO_VERSION} AS verify
