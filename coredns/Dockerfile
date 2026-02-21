@@ -1,10 +1,11 @@
 ARG GOLANG_IMAGE_TAG
 ARG UBI9_MICRO_VERSION
+ARG TARGET_PREFIX=/home/nobody
 
 
 FROM golang:${GOLANG_IMAGE_TAG} AS build
 ARG COREDNS_VERSION
-ARG TARGET_PREFIX=/usr/local/coredns
+ARG TARGET_PREFIX
 
 WORKDIR /build
 RUN --mount=type=cache,target=/var/cache/apk \
@@ -20,7 +21,7 @@ RUN make coredns \
 
 FROM redhat/ubi9-minimal:${UBI9_MICRO_VERSION} AS verify
 ARG COREDNS_VERSION
-ARG TARGET_PREFIX=/usr/local/coredns
+ARG TARGET_PREFIX
 
 RUN --mount=type=cache,target=/var/cache/dnf \
     microdnf -y install file binutils strace
@@ -43,6 +44,8 @@ RUN set -eu; \
 
 
 FROM scratch
+
+ARG TARGET_PREFIX
 
 COPY --from=verify ${TARGET_PREFIX} .
 EXPOSE 53 53/udp
