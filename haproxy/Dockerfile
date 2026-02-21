@@ -1,10 +1,11 @@
 ARG ALPINE_VERSION
 ARG UBI9_MICRO_VERSION
+ARG TARGET_PREFIX=/home/nobody
 
 
 FROM alpine:${ALPINE_VERSION} AS build
 ARG HAPROXY_VERSION
-ARG TARGET_PREFIX=/usr/local/haproxy
+ARG TARGET_PREFIX
 
 WORKDIR /build
 RUN --mount=type=cache,target=/var/cache/apk \
@@ -125,7 +126,7 @@ RUN make install \
 
 
 FROM redhat/ubi9-minimal:${UBI9_MICRO_VERSION} AS verify
-ARG TARGET_PREFIX=/usr/local/haproxy
+ARG TARGET_PREFIX
 
 RUN --mount=type=cache,target=/var/cache/dnf \
     microdnf -y install file binutils strace
@@ -147,6 +148,11 @@ RUN set -eu; \
 
 
 FROM scratch
+
+ARG TARGET_PREFIX
+ARG WORKHOME=/home/nobody
+
+ENV HOME=${WORKHOME}
 
 COPY --from=verify ${TARGET_PREFIX} .
 EXPOSE 80 443
