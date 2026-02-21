@@ -1,0 +1,33 @@
+[submodule "third-party/nginx"]
+	path = third-party/nginx
+	url = https://github.com/nginx/nginx.git
+[submodule "third-party/haproxy"]
+	path = third-party/haproxy
+	url = https://github.com/haproxy/haproxy.git
+[submodule "third-party/apache-httpd"]
+	path = third-party/apache-httpd
+	url = https://github.com/apache/httpd.git
+[submodule "third-party/coredns"]
+	path = third-party/coredns
+	url = https://github.com/coredns/coredns.git
+[submodule "third-party/dnsmasq"]
+	path = third-party/dnsmasq
+	url = https://thekelleys.org.uk/git/dnsmasq.git
+[submodule "third-party/vector"]
+	path = third-party/vector
+	url = https://github.com/vectordotdev/vector.git
+[submodule "third-party/apache-apr"]
+	path = third-party/apache-apr
+	url = https://github.com/apache/apr.git
+[submodule "third-party/apache-apr-util"]
+	path = third-party/apache-apr-util
+	url = https://github.com/apache/apr-util.git
+[submodule "third-party/nginx-vts-module"]
+	path = third-party/nginx-vts-module
+	url = https://github.com/vozlt/nginx-module-vts.git
+[submodule "third-party/lua-resty-upstream-healthcheck"]
+	path = third-party/lua-resty-upstream-healthcheck
+	url = https://github.com/openresty/lua-resty-upstream-healthcheck.git
+[submodule "third-party/lua-nginx-module"]
+	path = third-party/lua-nginx-module
+	url = https://github.com/openresty/lua-nginx-module.git
