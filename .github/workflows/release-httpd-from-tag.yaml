@@ -18,5 +18,4 @@ jobs:
         apache-httpd/bin/httpd
         apache-httpd/bin/rotatelogs
       upload_release: true
-      no_cache: false
     secrets: inherit

@@ -14,8 +14,7 @@ jobs:
     with:
       target: vector
       tag: ${{ github.ref_name }}
-      release_files: |
+      release_files: |-
         vector/bin/vector
       upload_release: true
-      no_cache: false
     secrets: inherit

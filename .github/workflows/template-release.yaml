@@ -20,11 +20,6 @@ on:
         required: false
         default: true
         type: boolean
-      no_cache:
-        description: Build without cache
-        required: false
-        default: false
-        type: boolean
 
 permissions:
   contents: write
@@ -42,18 +37,13 @@ jobs:
       - name: Cache buildkit
         uses: actions/cache@v4
         with:
-          path: ${{ github.workspace }}/${{ inputs.target }}/.cache
+          path: ${{ github.workspace }}/.cache/${{ inputs.target }}
           key: buildkit-${{ inputs.target }}-${{ hashFiles(format('{0}/Dockerfile', inputs.target), format('{0}/.env', inputs.target)) }}
-          restore-keys: |
+          restore-keys: |-
             buildkit-${{ inputs.target }}-
 
       - name: Build target
-        run: |
-          if [ "${{ inputs.no_cache }}" = "true" ]; then
-            make build-no-cache TARGET=${{ inputs.target }}
-          else
-            make build TARGET=${{ inputs.target }}
-          fi
+        run: make build ${{ inputs.target }}
 
       - name: Upload selected release files artifact
         uses: actions/upload-artifact@v4
@@ -65,7 +55,7 @@ jobs:
 
       - name: Create release package
         if: ${{ inputs.upload_release }}
-        run: |
+        run: |-
           TAG="${{ inputs.tag }}"
           PACKAGE_NAME="${TAG}.tgz"
           TAR_NAME="${TAG}.tar"
@@ -105,7 +95,7 @@ jobs:
         if: ${{ inputs.upload_release }}
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
+        run: |-
           TAG="${{ inputs.tag }}"
           PACKAGE_NAME="${TAG}.tgz"
           

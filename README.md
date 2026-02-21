@@ -18,7 +18,7 @@ Build statically-linked binaries using Docker multi-stage builds for portable, m
 ## Usage
 
 ```bash
-make build TARGET=<target>
+make build <target>
 ```
 
 ### Makefile Commands
@@ -26,34 +26,25 @@ make build TARGET=<target>
 ```bash
 make help
 make list-targets
-make build TARGET=nginx
-make build-all
+make build nginx
 ```
 
 Build artifacts are written directly under `<target>/`.
-
-### Example Targets
-
-```bash
-make nginx
-make haproxy
-make apache-httpd
-```
 
 ## Project Structure
 
 ```text
 .
 ├── build.sh              # Main build entry point
+├── download.sh           # Download dispatcher (routes to module download.sh)
 ├── .github/
 │   ├── docker-compose.yaml
 │   └── scripts/
-│       ├── build.sh      # BuildKit execution script
-│       └── download.sh   # Source download utilities
+│       └── common.sh     # Shared common functions
 └── <target>/             # Build target directory
     ├── .env              # Version configuration
     ├── Dockerfile        # Multi-stage build definition
-    ├── pre-download.sh   # Source download script (optional)
+    ├── download.sh       # Source download script (optional)
     └── ...               # Built artifacts (for example `sbin/`, `bin/`)
 ```
 
@@ -68,7 +59,7 @@ make apache-httpd
    ```
 
 3. Add a `Dockerfile` with your multi-stage build configuration
-4. Optionally add `pre-download.sh` for source downloads
+4. Optionally add `download.sh` for source downloads
 
 > [!TIP]
 > Check existing targets (`nginx/`, `haproxy/`, `apache-httpd/`) for reference implementations.

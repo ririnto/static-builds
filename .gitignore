@@ -33,4 +33,5 @@ tmp/
 */src
 
 .omc/*
+.omx/*
 .sisyphus/*
