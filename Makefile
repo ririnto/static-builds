@@ -12,7 +12,7 @@ help:
 	@printf '%s\n' "  make build-all"
 	@printf '%s\n' "  make build-all-no-cache"
 	@printf '%s\n' "  make <target>"
-	@printf '%s\n' "  Output: <target>/output/"
+	@printf '%s\n' "  Output: <target>/"
 	@printf '%s\n' ""
 	@printf '%s\n' "Targets: $(TARGETS)"
 

@@ -68,8 +68,7 @@ fi
 
 # Create cache directory if it doesn't exist (buildkit container may not have permission to create it)
 mkdir -p "${TARGET}/.cache"
-mkdir -p "${TARGET}/output"
-chmod 0777 "${TARGET}/.cache" "${TARGET}/output"
+chmod 0777 "${TARGET}" "${TARGET}/.cache"
 
 # Download source files if pre-download.sh exists
 if [ -f "${TARGET}/pre-download.sh" ]; then
