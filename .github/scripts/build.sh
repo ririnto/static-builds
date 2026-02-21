@@ -10,15 +10,13 @@ while IFS='=' read -r key value || [ -n "$key" ]; do
 done < .env
 
 CACHE_DIR="./.cache"
-OUTPUT_DIR="./output"
+OUTPUT_DIR="."
 
 CACHE_ARGS=""
 if [ -z "${BUILDCTL_NO_CACHE:-}" ] && [ -d "${CACHE_DIR}" ]; then
     CACHE_ARGS="--import-cache type=local,src=${CACHE_DIR}"
 fi
 CACHE_ARGS="${CACHE_ARGS} --export-cache type=local,dest=${CACHE_DIR},mode=max"
-
-mkdir -p "${OUTPUT_DIR}"
 
 PROGRESS_ARGS=""
 if [ -n "${BUILDCTL_PROGRESS:-}" ]; then
