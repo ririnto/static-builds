@@ -1,6 +1,8 @@
 #!/usr/bin/env sh
 set -eu
 
+WORKDIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+
 if [ "$#" -lt 1 ]; then
     echo "Usage: $0 <target> [buildctl args...]"
     echo "Example:"
@@ -12,7 +14,7 @@ fi
 TARGET="$1"
 shift
 
-case "$TARGET" in
+case "${TARGET}" in
     *[!A-Za-z0-9._-]*)
         echo "Error: Invalid target '${TARGET}'"
         echo "Allowed characters: letters, numbers, dot, underscore, hyphen"
@@ -20,29 +22,33 @@ case "$TARGET" in
         ;;
 esac
 
-if [ ! -d "${TARGET}" ]; then
+if [ ! -d "${WORKDIR}/${TARGET}" ]; then
     echo "Error: Target directory '${TARGET}' not found"
     exit 1
 fi
 
-if [ ! -f "${TARGET}/.env" ]; then
+if [ ! -f "${WORKDIR}/${TARGET}/.env" ]; then
     echo "Error: .env file not found in '${TARGET}'"
     exit 1
 fi
 
-if [ ! -f "${TARGET}/Dockerfile" ]; then
+if [ ! -f "${WORKDIR}/${TARGET}/Dockerfile" ]; then
     echo "Error: Dockerfile not found in '${TARGET}'"
     exit 1
 fi
 
-# Create cache directory if it doesn't exist (buildkit container may not have permission to create it)
-mkdir -p "${TARGET}/.cache"
-chmod 0777 "${TARGET}" "${TARGET}/.cache"
+mkdir -p "${WORKDIR}/${TARGET}/.cache"
+chmod -R 0777 "${WORKDIR}/${TARGET}/.cache"
 
-# Download source files if pre-download.sh exists
-if [ -f "${TARGET}/pre-download.sh" ]; then
-    echo "Downloading source files for ${TARGET}..."
-    sh "${TARGET}/pre-download.sh"
+if [ "${CI:-}" = "true" ] || [ "${GITHUB_ACTIONS:-}" = "true" ]; then
+    BUILD_OUTPUT_DEST="."
+else
+    BUILD_OUTPUT_DEST="${BUILD_OUTPUT_DEST:-./out}"
 fi
 
-TARGET="${TARGET}" docker compose -f .github/docker-compose.yaml --project-directory . run --rm build "$@"
+if [ "$#" -gt 0 ]; then
+    echo "Error: Additional buildctl args are not supported in compose mode"
+    exit 1
+fi
+
+TARGET="${TARGET}" BUILD_OUTPUT_DEST="${BUILD_OUTPUT_DEST}" exec docker compose -f "${WORKDIR}/.github/docker-compose.yaml" --project-directory "${WORKDIR}" run --rm build

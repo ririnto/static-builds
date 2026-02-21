@@ -1,13 +1,13 @@
 TARGETS := nginx haproxy apache-httpd coredns dnsmasq vector
 BUILD_SCRIPT := $(CURDIR)/build.sh
+BUILD_TARGET := $(word 2,$(MAKECMDGOALS))
 
-.PHONY: help list-targets check-target build build-all $(TARGETS)
+.PHONY: help list-targets check-target download build
 
 help:
 	@printf '%s\n' "Usage:"
-	@printf '%s\n' "  make build TARGET=<target>"
-	@printf '%s\n' "  make build-all"
-	@printf '%s\n' "  make <target>"
+	@printf '%s\n' "  make build <target>"
+	@printf '%s\n' "  make download <target>"
 	@printf '%s\n' "  Output: <target>/"
 	@printf '%s\n' ""
 	@printf '%s\n' "Targets: $(TARGETS)"
@@ -16,44 +16,28 @@ list-targets:
 	@printf '%s\n' "$(TARGETS)"
 
 check-target:
-	@if [ -z "$(TARGET)" ]; then \
-		printf '%s\n' "Error: TARGET is required"; \
-		printf '%s\n' "Example: make build TARGET=nginx"; \
+	@if [ -z "$(BUILD_TARGET)" ]; then \
+		printf '%s\n' "Error: target is required"; \
+		printf '%s\n' "Example: make build nginx"; \
 		exit 1; \
 	fi; \
 	case " $(TARGETS) " in \
-	*" $(TARGET) "*) ;; \
+	*" $(BUILD_TARGET) "*) ;; \
 	*) \
-		printf '%s\n' "Error: Invalid TARGET '$(TARGET)'"; \
+		printf '%s\n' "Error: invalid target '$(BUILD_TARGET)'"; \
 		printf '%s\n' "Allowed: $(TARGETS)"; \
 		exit 1; \
 	;; \
 	esac
 
 build: check-target
-	"$(BUILD_SCRIPT)" "$(TARGET)"
+	@$(MAKE) --no-print-directory download "$(BUILD_TARGET)"
+	"$(BUILD_SCRIPT)" "$(BUILD_TARGET)"
 
-build-all:
-	@set -e; \
-	for target in $(TARGETS); do \
-		printf '%s\n' "=== Building $$target ==="; \
-		"$(BUILD_SCRIPT)" "$$target"; \
-	done
+download: check-target
+	@printf '%s\n' "Downloading source files for $(BUILD_TARGET)..."; \
+	"$(CURDIR)/download.sh" "$(BUILD_TARGET)"
 
-nginx:
-	"$(BUILD_SCRIPT)" nginx
 
-haproxy:
-	"$(BUILD_SCRIPT)" haproxy
-
-apache-httpd:
-	"$(BUILD_SCRIPT)" apache-httpd
-
-coredns:
-	"$(BUILD_SCRIPT)" coredns
-
-dnsmasq:
-	"$(BUILD_SCRIPT)" dnsmasq
-
-vector:
-	"$(BUILD_SCRIPT)" vector
+%:
+	@:
