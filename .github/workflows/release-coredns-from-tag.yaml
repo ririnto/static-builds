@@ -14,7 +14,8 @@ jobs:
     with:
       target: coredns
       tag: ${{ github.ref_name }}
-      release_asset: coredns/output/coredns
+      release_files: |
+        coredns/output/coredns
       upload_release: true
       no_cache: false
     secrets: inherit

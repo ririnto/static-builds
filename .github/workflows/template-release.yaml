@@ -11,8 +11,8 @@ on:
         description: Release tag name
         required: true
         type: string
-      release_asset:
-        description: Relative path to selected binary inside repository workspace
+      release_files:
+        description: Newline-separated relative paths to files to include in release package
         required: true
         type: string
       upload_release:
@@ -63,66 +63,48 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-      - name: Generate checksums for output directory
+      - name: Create release package
         if: ${{ inputs.upload_release }}
         run: |
-          TARGET="${{ inputs.target }}"
           TAG="${{ inputs.tag }}"
-          OUTPUT_DIR="${TARGET}/output"
-          CHECKSUM_FILE="${TARGET}-${TAG}.sha256"
-          
-          if [ ! -d "${OUTPUT_DIR}" ]; then
-            echo "Error: Output directory not found at ${OUTPUT_DIR}"
-            exit 1
-          fi
-          
-          # Generate checksums for all files in output directory
-          (cd "${OUTPUT_DIR}" && find . -type f -exec sha256sum {} + | sed 's|^\./||' > "${CHECKSUM_FILE}")
-          
-          # Move checksum file to workspace root for upload
-          mv "${OUTPUT_DIR}/${CHECKSUM_FILE}" "${CHECKSUM_FILE}"
+          PACKAGE_NAME="${TAG}.tgz"
+          RELEASE_LIST_FILE="release-files.txt"
 
-      - name: Create tar.gz archive of output directory
-        if: ${{ inputs.upload_release }}
-        run: |
-          TARGET="${{ inputs.target }}"
-          TAG="${{ inputs.tag }}"
-          OUTPUT_DIR="${TARGET}/output"
-          ARCHIVE_NAME="${TARGET}-${TAG}.tar.gz"
-          
-          if [ ! -d "${OUTPUT_DIR}" ]; then
-            echo "Error: Output directory not found at ${OUTPUT_DIR}"
+          : > "${RELEASE_LIST_FILE}"
+
+          while IFS= read -r release_file; do
+            if [ -z "${release_file}" ]; then
+              continue
+            fi
+
+            if [ ! -f "${release_file}" ]; then
+              echo "Error: Release file not found at ${release_file}"
+              exit 1
+            fi
+
+            printf '%s\n' "${release_file}" >> "${RELEASE_LIST_FILE}"
+          done << 'EOF'
+          ${{ inputs.release_files }}
+          EOF
+
+          if [ ! -s "${RELEASE_LIST_FILE}" ]; then
+            echo "Error: No release files provided"
             exit 1
           fi
-          
-          # Create tar.gz archive
-          tar -czf "${ARCHIVE_NAME}" -C "${TARGET}" output
+
+          tar -czf "${PACKAGE_NAME}" -T "${RELEASE_LIST_FILE}"
 
       - name: Publish assets to release
         if: ${{ inputs.upload_release }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          TARGET="${{ inputs.target }}"
           TAG="${{ inputs.tag }}"
-          RELEASE_ASSET="${{ inputs.release_asset }}"
-          BINARY_NAME="${TARGET}-${TAG}"
-          ARCHIVE_NAME="${TARGET}-${TAG}.tar.gz"
-          CHECKSUM_NAME="${TARGET}-${TAG}.sha256"
+          PACKAGE_NAME="${TAG}.tgz"
           
           # Verify all assets exist
-          if [ ! -f "${RELEASE_ASSET}" ]; then
-            echo "Error: Release asset not found at ${RELEASE_ASSET}"
-            exit 1
-          fi
-          
-          if [ ! -f "${ARCHIVE_NAME}" ]; then
-            echo "Error: Archive not found at ${ARCHIVE_NAME}"
-            exit 1
-          fi
-          
-          if [ ! -f "${CHECKSUM_NAME}" ]; then
-            echo "Error: Checksum file not found at ${CHECKSUM_NAME}"
+          if [ ! -f "${PACKAGE_NAME}" ]; then
+            echo "Error: Release package not found at ${PACKAGE_NAME}"
             exit 1
           fi
           
@@ -133,7 +115,4 @@ jobs:
               --notes "Automated static binary release from tag ${TAG}."
           fi
           
-          # Upload all assets with proper names
-          gh release upload "${TAG}" "${RELEASE_ASSET}#${BINARY_NAME}" --clobber
-          gh release upload "${TAG}" "${ARCHIVE_NAME}" --clobber
-          gh release upload "${TAG}" "${CHECKSUM_NAME}" --clobber
+          gh release upload "${TAG}" "${PACKAGE_NAME}" --clobber
