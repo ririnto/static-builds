@@ -14,8 +14,9 @@ jobs:
     with:
       target: apache-httpd
       tag: ${{ github.ref_name }}
-      release_files: |
+      release_files: |-
         apache-httpd/bin/httpd
+        apache-httpd/bin/rotatelogs
       upload_release: true
       no_cache: false
     secrets: inherit

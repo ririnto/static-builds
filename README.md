@@ -112,6 +112,36 @@ Selected release binaries:
 - `dnsmasq`: `<target>/sbin/dnsmasq`
 - `vector`: `<target>/bin/vector`
 
+## Logging Strategy
+
+**Note:** `apache-httpd` releases include both `bin/httpd` and `bin/rotatelogs` for piped logging support.
+
+### Piped logging with rotatelogs
+
+The `rotatelogs` utility is included in apache-httpd releases and can be used for log rotation:
+
+1. **External rotatelogs:** Use a system-installed `rotatelogs` or provide it separately
+2. **Alternative rotation tools:** Use `logrotate`, `multilog`, or other log rotation solutions
+3. **Application-level logging:** Configure applications to write directly to files managed by external rotation
+
+### Container-native logging alternatives
+
+For containerized deployments, leverage Docker's native logging drivers:
+
+```bash
+# Example: Use Docker's built-in log rotation
+docker run --log-driver json-file --log-opt max-size=10m --log-opt max-file=3 <image>
+
+# Or use external logging drivers
+docker run --log-driver fluentd --log-opt fluentd-address=fluentd:24224 <image>
+```
+
+Docker automatically handles log rotation and can forward logs to external systems like ELK, Splunk, or cloud logging services.
+
+### For full details
+
+See the ADR document at `.sisyphus/plans/rotatelogs-packaging-decision.md` for the complete decision rationale and implementation guidance.
+
 ### Running haproxy binary image
 
 ```bash
