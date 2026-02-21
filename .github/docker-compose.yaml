@@ -6,8 +6,6 @@ services:
       - apparmor=unconfined
     environment:
       - BUILDKITD_FLAGS=--oci-worker-no-process-sandbox
-      - BUILDCTL_PROGRESS=${BUILDCTL_PROGRESS:-}
-      - BUILDCTL_NO_CACHE=${BUILDCTL_NO_CACHE:-}
     volumes:
       - ./${TARGET}:/workspace
       - ./.github/scripts:/scripts:ro

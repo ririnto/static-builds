@@ -27,11 +27,7 @@ make build TARGET=<target>
 make help
 make list-targets
 make build TARGET=nginx
-make build-plain TARGET=haproxy
-make build-no-cache TARGET=apache-httpd
-make build-plain-no-cache TARGET=nginx
 make build-all
-make build-all-no-cache
 ```
 
 Build artifacts are written directly under `<target>/`.
