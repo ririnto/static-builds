@@ -34,7 +34,7 @@ make build-all
 make build-all-no-cache
 ```
 
-Build artifacts are written to `<target>/output/`.
+Build artifacts are written directly under `<target>/`.
 
 ### Example Targets
 
@@ -58,7 +58,7 @@ make apache-httpd
     ├── .env              # Version configuration
     ├── Dockerfile        # Multi-stage build definition
     ├── pre-download.sh   # Source download script (optional)
-    └── output/           # Built artifacts output directory
+    └── ...               # Built artifacts (for example `sbin/`, `bin/`)
 ```
 
 ## Adding a New Target
@@ -82,13 +82,13 @@ make apache-httpd
 1. The `Makefile` invokes `build.sh`, which validates the target directory and required files
 2. Docker Compose launches a BuildKit container
 3. BuildKit executes the multi-stage Dockerfile
-4. Built artifacts are output to the target `output/` directory
+4. Built artifacts are output directly into the target directory
 
 Build caching is automatically handled via the `.cache/` directory.
 
 ## CI Behavior
 
-- Archive upload always includes the full `<target>/output/` directory as a workflow artifact.
+- Archive upload includes selected release files as a workflow artifact.
 - Release upload is optional and packages selected release files into one `.tgz` per tag.
 - To enable release upload in GitHub Actions, set `release=true` and use one of:
   - `release_tag`: explicit full tag (for example, `httpd-2.4.66.1`)
@@ -101,16 +101,16 @@ Build caching is automatically handled via the `.cache/` directory.
   - `.github/workflows/release-dnsmasq-from-tag.yaml`
   - `.github/workflows/release-vector-from-tag.yaml`
 - Each caller is bound to one tag pattern (`nginx-*`, `haproxy-*`, `httpd-*`, `coredns-*`, `dnsmasq-*`, `vector-*`) and calls reusable template `.github/workflows/template-release.yaml`.
-- Template builds mapped target, uploads full `output/` as artifact, then uploads `${tag}.tgz` that contains selected release files.
+- Template builds mapped target, uploads selected files as artifact, then uploads `${tag}.tgz` that contains selected release files.
 
 Selected release binaries:
 
-- `nginx`: `<target>/output/sbin/nginx`
-- `haproxy`: `<target>/output/sbin/haproxy`
-- `apache-httpd`: `<target>/output/bin/httpd`
-- `coredns`: `<target>/output/coredns`
-- `dnsmasq`: `<target>/output/sbin/dnsmasq`
-- `vector`: `<target>/output/bin/vector`
+- `nginx`: `<target>/sbin/nginx`
+- `haproxy`: `<target>/sbin/haproxy`
+- `apache-httpd`: `<target>/bin/httpd`
+- `coredns`: `<target>/coredns`
+- `dnsmasq`: `<target>/sbin/dnsmasq`
+- `vector`: `<target>/bin/vector`
 
 ### Running haproxy binary image
 

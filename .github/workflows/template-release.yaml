@@ -55,11 +55,11 @@ jobs:
             make build TARGET=${{ inputs.target }}
           fi
 
-      - name: Upload full build output artifact
+      - name: Upload selected release files artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.target }}-static-build
-          path: ${{ inputs.target }}/output/
+          path: ${{ inputs.release_files }}
           if-no-files-found: error
           retention-days: 30
 
@@ -68,9 +68,11 @@ jobs:
         run: |
           TAG="${{ inputs.tag }}"
           PACKAGE_NAME="${TAG}.tgz"
-          RELEASE_LIST_FILE="release-files.txt"
+          TAR_NAME="${TAG}.tar"
+          ADDED_COUNT=0
 
-          : > "${RELEASE_LIST_FILE}"
+          rm -f "${PACKAGE_NAME}" "${TAR_NAME}" "${TAR_NAME}.gz"
+          tar -cf "${TAR_NAME}" --files-from /dev/null
 
           while IFS= read -r release_file; do
             if [ -z "${release_file}" ]; then
@@ -82,17 +84,22 @@ jobs:
               exit 1
             fi
 
-            printf '%s\n' "${release_file}" >> "${RELEASE_LIST_FILE}"
+            RELEASE_DIR="$(dirname "${release_file}")"
+            RELEASE_BASE="$(basename "${release_file}")"
+
+            tar -rf "${TAR_NAME}" -C "${RELEASE_DIR}" "${RELEASE_BASE}"
+            ADDED_COUNT=$((ADDED_COUNT + 1))
           done << 'EOF'
           ${{ inputs.release_files }}
           EOF
 
-          if [ ! -s "${RELEASE_LIST_FILE}" ]; then
+          if [ "${ADDED_COUNT}" -eq 0 ]; then
             echo "Error: No release files provided"
             exit 1
           fi
 
-          tar -czf "${PACKAGE_NAME}" -T "${RELEASE_LIST_FILE}"
+          gzip -n -f "${TAR_NAME}"
+          mv "${TAR_NAME}.gz" "${PACKAGE_NAME}"
 
       - name: Publish assets to release
         if: ${{ inputs.upload_release }}
