@@ -150,9 +150,6 @@ RUN set -eu; \
 FROM scratch
 
 ARG TARGET_PREFIX
-ARG WORKHOME=/home/nobody
-
-ENV HOME=${WORKHOME}
 
 COPY --from=verify ${TARGET_PREFIX} .
 EXPOSE 80 443
