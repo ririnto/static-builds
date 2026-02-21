@@ -114,12 +114,8 @@ Selected release binaries:
 
 ### Running haproxy binary image
 
-- Default runtime home is `/home/nobody` (`HOME=/home/nobody`).
-- You can inject a different home path from outside at runtime.
-
 ```bash
 docker run --rm \
-  -e HOME=/workhome \
   -v "$(pwd)/haproxy.cfg:/etc/haproxy/haproxy.cfg:ro" \
   <image> -c -f /etc/haproxy/haproxy.cfg
 ```
