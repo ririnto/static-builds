@@ -42,6 +42,7 @@ chmod -R 0777 "${WORKDIR}/${TARGET}/.cache"
 
 if [ "${CI:-}" = "true" ] || [ "${GITHUB_ACTIONS:-}" = "true" ]; then
     BUILD_OUTPUT_DEST="."
+    chmod 0777 "${WORKDIR}/${TARGET}"
 else
     BUILD_OUTPUT_DEST="${BUILD_OUTPUT_DEST:-./out}"
 fi
