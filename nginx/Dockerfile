@@ -7,7 +7,7 @@ FROM alpine:${ALPINE_VERSION} AS build
 ARG NGINX_VERSION
 ARG NGINX_VTS_MODULE_VERSION
 ARG NGINX_LUA_MODULE_VERSION
-ARG NGINX_LUA_RESTY_UPSTREAM_HEALTHCHECK_MODULE_VERSION
+JP|ARG NGINX_LUA_UPSTREAM_MODULE_VERSION
 ARG TARGET_PREFIX
 
 WORKDIR /build
@@ -17,6 +17,7 @@ RUN --mount=type=cache,target=/var/cache/apk \
         libatomic_ops-dev \
         libatomic_ops-static \
         linux-headers \
+        luajit \
         luajit-dev \
         openssl-dev \
         openssl-libs-static \
@@ -27,7 +28,13 @@ RUN --mount=type=cache,target=/var/cache/apk \
 ADD "src/nginx-${NGINX_VERSION}.tar.gz" /build/
 ADD "src/nginx-module-vts-${NGINX_VTS_MODULE_VERSION}.tar.gz" "/build/nginx-${NGINX_VERSION}/"
 ADD "src/lua-nginx-module-${NGINX_LUA_MODULE_VERSION}.tar.gz" "/build/nginx-${NGINX_VERSION}/"
+JP|ADD "src/lua-upstream-nginx-module-${NGINX_LUA_UPSTREAM_MODULE_VERSION}.tar.gz" "/build/nginx-${NGINX_VERSION}/"
 ADD "src/lua-resty-upstream-healthcheck-${NGINX_LUA_RESTY_UPSTREAM_HEALTHCHECK_MODULE_VERSION}.tar.gz" "/build/"
+RUN --mount=type=cache,target=/var/cache/apk \
+    cp "/build/lua-resty-upstream-healthcheck-${NGINX_LUA_RESTY_UPSTREAM_HEALTHCHECK_MODULE_VERSION}/lib/resty/upstream/healthcheck.lua" \
+       /build/resty_upstream_healthcheck.lua && \
+    luajit -bg /build/resty_upstream_healthcheck.lua /build/resty_upstream_healthcheck.o && \
+    test -s /build/resty_upstream_healthcheck.o
 WORKDIR "/build/nginx-${NGINX_VERSION}"
 RUN LUAJIT_LIB="/usr/lib" LUAJIT_INC="/usr/include/luajit-2.1" ./configure \
     # --help \
@@ -143,6 +150,7 @@ RUN LUAJIT_LIB="/usr/lib" LUAJIT_INC="/usr/include/luajit-2.1" ./configure \
     # --add-module=PATH \
     --add-module="nginx-module-vts-${NGINX_VTS_MODULE_VERSION}" \
     --add-module="lua-nginx-module-${NGINX_LUA_MODULE_VERSION}" \
+VP|    --add-module="lua-upstream-nginx-module-${NGINX_LUA_UPSTREAM_MODULE_VERSION}"
     # --add-dynamic-module=PATH \
     # --with-compat \
     # --with-cc=PATH \
