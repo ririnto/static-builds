@@ -22,6 +22,17 @@ static-builds/
 ├── dnsmasq/
 ├── vector/
 └── third-party/          # Git submodules (empty by default)
+    ├── apache-apr/          # Apache Portable Runtime
+    ├── apache-apr-util/     # Apache Portable Runtime Utilities
+    ├── apache-httpd/       # Apache HTTPD source
+    ├── coredns/             # CoreDNS DNS server
+    ├── dnsmasq/             # DNS forwarder/ DHCP server
+    ├── haproxy/             # HAProxy load balancer
+    ├── lua-nginx-module/    # Nginx Lua module
+    ├── lua-resty-upstream-healthcheck/ # Lua upstream healthcheck
+    ├── nginx-vts-module/    # Nginx Virtual Traffic Statistics
+    ├── nginx/               # Nginx source
+    └── vector/              # Vector observability pipeline
 ```
 
 ## WHERE TO LOOK
@@ -65,3 +76,22 @@ make download nginx
 - Build caching via .cache/ directory
 - Uses moby/buildkit:rootless container
 - third-party/ submodules need `git submodule update --init`
+
+## THIRD-PARTY MODULES
+
+The third-party/ directory contains external sources as git submodules:
+
+- apache-apr: Apache Portable Runtime for Apache HTTPD
+- apache-apr-util: APR utilities for Apache HTTPD
+- apache-httpd: Apache HTTPD source code
+- coredns: CoreDNS DNS server and plugin system
+- dnsmasq: Lightweight DNS forwarder and DHCP server
+- haproxy: High availability TCP/HTTP load balancer
+- lua-nginx-module: Nginx Lua scripting engine
+- lua-resty-upstream-healthcheck: Lua upstream healthcheck library
+- nginx-vts-module: Nginx virtual traffic statistics module
+- nginx: Nginx web server source code
+- vector: High-performance observability pipeline
+
+> [!IMPORTANT]
+> These third-party modules are external dependencies and MUST NOT be modified. They are used as-is for reference only. Changes to these components SHOULD be made in their respective upstream repositories, not in this project.
