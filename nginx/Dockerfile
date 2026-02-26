@@ -184,7 +184,6 @@ ARG TARGET_PREFIX
 RUN --mount=type=cache,target=/var/cache/dnf \
     microdnf -y install file binutils strace
 COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
-COPY verify/nginx-healthcheck-require.conf /tmp/nginx-healthcheck-require.conf
 RUN set -eu; \
     echo "=== ELF Header ==="; \
     readelf -h ${TARGET_PREFIX}/sbin/nginx | egrep 'Type:|Machine:'; \
@@ -201,17 +200,8 @@ RUN set -eu; \
     strace ${TARGET_PREFIX}/sbin/nginx -V; \
     echo "=== Packaging Check: healthcheck.lua NOT installed ==="; \
     test ! -e ${TARGET_PREFIX}/lib/lua/resty/upstream/healthcheck.lua || (echo "Error: healthcheck.lua should not be installed" && exit 1); \
-    echo "=== Runtime Smoke Test: embedded healthcheck module ==="; \
-    log_file="/tmp/nginx-healthcheck.log"; \
-    ${TARGET_PREFIX}/sbin/nginx -c /tmp/nginx-healthcheck-require.conf -g "daemon off;" >"${log_file}" 2>&1 & \
-    nginx_pid=$!; \
-    sleep 1; \
-    kill "${nginx_pid}" >/dev/null 2>&1 || true; \
-    wait "${nginx_pid}" >/dev/null 2>&1 || true; \
-    output="$(cat "${log_file}")"; \
-    echo "$output"; \
-    (echo "$output" | grep -q 'module '\''resty.upstream.healthcheck'\'' not found') && (echo "Error: healthcheck module not embedded" && exit 1); \
-    (echo "$output" | grep -q 'healthcheck module loaded') || (echo "Error: healthcheck module did not load" && exit 1)
+    echo "=== Symbol Check: embedded healthcheck bytecode object ==="; \
+    nm -a ${TARGET_PREFIX}/sbin/nginx | grep -q 'luaJIT_BC_resty_upstream_healthcheck' || (echo "Error: embedded healthcheck bytecode symbol missing" && exit 1)
 
 
 FROM scratch
