@@ -7,7 +7,8 @@ FROM alpine:${ALPINE_VERSION} AS build
 ARG NGINX_VERSION
 ARG NGINX_VTS_MODULE_VERSION
 ARG NGINX_LUA_MODULE_VERSION
-JP|ARG NGINX_LUA_UPSTREAM_MODULE_VERSION
+ARG NGINX_LUA_UPSTREAM_MODULE_VERSION
+ARG NGINX_LUA_RESTY_UPSTREAM_HEALTHCHECK_MODULE_VERSION
 ARG TARGET_PREFIX
 
 WORKDIR /build
@@ -28,7 +29,7 @@ RUN --mount=type=cache,target=/var/cache/apk \
 ADD "src/nginx-${NGINX_VERSION}.tar.gz" /build/
 ADD "src/nginx-module-vts-${NGINX_VTS_MODULE_VERSION}.tar.gz" "/build/nginx-${NGINX_VERSION}/"
 ADD "src/lua-nginx-module-${NGINX_LUA_MODULE_VERSION}.tar.gz" "/build/nginx-${NGINX_VERSION}/"
-JP|ADD "src/lua-upstream-nginx-module-${NGINX_LUA_UPSTREAM_MODULE_VERSION}.tar.gz" "/build/nginx-${NGINX_VERSION}/"
+ADD "src/lua-upstream-nginx-module-${NGINX_LUA_UPSTREAM_MODULE_VERSION}.tar.gz" "/build/nginx-${NGINX_VERSION}/"
 ADD "src/lua-resty-upstream-healthcheck-${NGINX_LUA_RESTY_UPSTREAM_HEALTHCHECK_MODULE_VERSION}.tar.gz" "/build/"
 RUN --mount=type=cache,target=/var/cache/apk \
     cp "/build/lua-resty-upstream-healthcheck-${NGINX_LUA_RESTY_UPSTREAM_HEALTHCHECK_MODULE_VERSION}/lib/resty/upstream/healthcheck.lua" \
@@ -150,13 +151,13 @@ RUN LUAJIT_LIB="/usr/lib" LUAJIT_INC="/usr/include/luajit-2.1" ./configure \
     # --add-module=PATH \
     --add-module="nginx-module-vts-${NGINX_VTS_MODULE_VERSION}" \
     --add-module="lua-nginx-module-${NGINX_LUA_MODULE_VERSION}" \
-VP|    --add-module="lua-upstream-nginx-module-${NGINX_LUA_UPSTREAM_MODULE_VERSION}"
+    --add-module="lua-upstream-nginx-module-${NGINX_LUA_UPSTREAM_MODULE_VERSION}"\
     # --add-dynamic-module=PATH \
     # --with-compat \
     # --with-cc=PATH \
     # --with-cpp=PATH \
     --with-cc-opt="-O2 -pipe -fPIE -fstack-protector-strong -fstack-clash-protection -ffunction-sections -fdata-sections -fno-delete-null-pointer-checks -fno-strict-overflow -fno-strict-aliasing -ftrivial-auto-var-init=zero -Wformat -Wformat=2 -Werror=format-security" \
-    --with-ld-opt="-static -static-pie -static-libgcc -Wl,-z,relro -Wl,-z,now -Wl,-z,noexecstack -Wl,-z,separate-code -Wl,--as-needed -Wl,--gc-sections" \
+    --with-ld-opt="/build/resty_upstream_healthcheck.o -static -static-pie -static-libgcc -Wl,-z,relro -Wl,-z,now -Wl,-z,noexecstack -Wl,-z,separate-code -Wl,--as-needed -Wl,--gc-sections" \
     # --with-cpu-opt=CPU \
     # --without-pcre \
     # --with-pcre \
@@ -175,9 +176,6 @@ VP|    --add-module="lua-upstream-nginx-module-${NGINX_LUA_UPSTREAM_MODULE_VERSI
     ;
 RUN make "-j$(nproc)"
 RUN make install
-RUN install -D \
-    "/build/lua-resty-upstream-healthcheck-${NGINX_LUA_RESTY_UPSTREAM_HEALTHCHECK_MODULE_VERSION}/lib/resty/upstream/healthcheck.lua" \
-    "${TARGET_PREFIX}/lib/lua/resty/upstream/healthcheck.lua"
 
 
 FROM redhat/ubi9-minimal:${UBI9_MICRO_VERSION} AS verify
@@ -186,6 +184,7 @@ ARG TARGET_PREFIX
 RUN --mount=type=cache,target=/var/cache/dnf \
     microdnf -y install file binutils strace
 COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
+COPY verify/nginx-healthcheck-require.conf /tmp/nginx-healthcheck-require.conf
 RUN set -eu; \
     echo "=== ELF Header ==="; \
     readelf -h ${TARGET_PREFIX}/sbin/nginx | egrep 'Type:|Machine:'; \
@@ -199,7 +198,14 @@ RUN set -eu; \
     echo "=== ldd output ==="; echo "$ldd_output"; \
     (echo "$file_output" | grep -Eq 'statically linked|static-pie linked') || (echo "Error: file(1) did not report a static binary." && exit 1); \
     (echo "$ldd_output" | grep -Eqi 'statically linked|static-pie linked|not a dynamic executable|not a valid dynamic program') || (echo "Error: Dynamic libraries found. This should be a static build!" && exit 1); \
-    strace ${TARGET_PREFIX}/sbin/nginx -V
+    strace ${TARGET_PREFIX}/sbin/nginx -V; \
+    echo "=== Packaging Check: healthcheck.lua NOT installed ==="; \
+    test ! -e ${TARGET_PREFIX}/lib/lua/resty/upstream/healthcheck.lua || (echo "Error: healthcheck.lua should not be installed" && exit 1); \
+    echo "=== Runtime Smoke Test: embedded healthcheck module ==="; \
+    output="$(${TARGET_PREFIX}/sbin/nginx -t -c /tmp/nginx-healthcheck-require.conf 2>&1)"; \
+    echo "$output"; \
+    (echo "$output" | grep -q 'module '\''resty.upstream.healthcheck'\'' not found') && (echo "Error: healthcheck module not embedded" && exit 1); \
+    (echo "$output" | grep -q 'healthcheck module loaded') || (echo "Error: healthcheck module did not load" && exit 1)
 
 
 FROM scratch
