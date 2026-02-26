@@ -43,6 +43,8 @@ RUN --mount=type=cache,target=/var/cache/apk \
     luajit -bg /build/resty_upstream_healthcheck.lua /build/resty_upstream_healthcheck.o && \
     test -s /build/resty_upstream_healthcheck.o
 WORKDIR "/build/nginx-${NGINX_VERSION}"
+RUN sed -i '/lua_pushstring(L, "resty.core");/,/return NGX_DECLINED;/s/return NGX_DECLINED;/lua_pop(L, 1);/' \
+    "lua-nginx-module-${NGINX_LUA_MODULE_VERSION}/src/ngx_http_lua_util.c"
 RUN LUAJIT_LIB="/usr/lib" LUAJIT_INC="/usr/include/luajit-2.1" ./configure \
     # --help \
     --prefix=${TARGET_PREFIX} \
