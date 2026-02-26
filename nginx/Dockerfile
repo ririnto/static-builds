@@ -9,6 +9,8 @@ ARG NGINX_VTS_MODULE_VERSION
 ARG NGINX_LUA_MODULE_VERSION
 ARG NGINX_LUA_UPSTREAM_MODULE_VERSION
 ARG NGINX_LUA_RESTY_UPSTREAM_HEALTHCHECK_MODULE_VERSION
+ARG NGINX_LUA_RESTY_CORE_VERSION
+ARG NGINX_LUA_RESTY_LRUCACHE_VERSION
 ARG TARGET_PREFIX
 
 WORKDIR /build
@@ -31,11 +33,25 @@ ADD "src/nginx-module-vts-${NGINX_VTS_MODULE_VERSION}.tar.gz" "/build/nginx-${NG
 ADD "src/lua-nginx-module-${NGINX_LUA_MODULE_VERSION}.tar.gz" "/build/nginx-${NGINX_VERSION}/"
 ADD "src/lua-upstream-nginx-module-${NGINX_LUA_UPSTREAM_MODULE_VERSION}.tar.gz" "/build/nginx-${NGINX_VERSION}/"
 ADD "src/lua-resty-upstream-healthcheck-${NGINX_LUA_RESTY_UPSTREAM_HEALTHCHECK_MODULE_VERSION}.tar.gz" "/build/"
+ADD "src/lua-resty-core-${NGINX_LUA_RESTY_CORE_VERSION}.tar.gz" "/build/"
+ADD "src/lua-resty-lrucache-${NGINX_LUA_RESTY_LRUCACHE_VERSION}.tar.gz" "/build/"
 RUN --mount=type=cache,target=/var/cache/apk \
-    cp "/build/lua-resty-upstream-healthcheck-${NGINX_LUA_RESTY_UPSTREAM_HEALTHCHECK_MODULE_VERSION}/lib/resty/upstream/healthcheck.lua" \
-       /build/resty_upstream_healthcheck.lua && \
-    luajit -bg /build/resty_upstream_healthcheck.lua /build/resty_upstream_healthcheck.o && \
-    test -s /build/resty_upstream_healthcheck.o
+    mkdir -p /build/lua-embed && \
+    for src_dir in \
+        "/build/lua-resty-upstream-healthcheck-${NGINX_LUA_RESTY_UPSTREAM_HEALTHCHECK_MODULE_VERSION}/lib" \
+        "/build/lua-resty-core-${NGINX_LUA_RESTY_CORE_VERSION}/lib" \
+        "/build/lua-resty-lrucache-${NGINX_LUA_RESTY_LRUCACHE_VERSION}/lib"; do \
+        find "${src_dir}" -type f -name '*.lua' | while read -r lua_file; do \
+            rel_path="${lua_file#${src_dir}/}"; \
+            flat_name="$(echo "${rel_path}" | tr '/' '_')"; \
+            obj_name="${flat_name%.lua}.o"; \
+            cp "${lua_file}" "/build/lua-embed/${flat_name}"; \
+            luajit -bg "/build/lua-embed/${flat_name}" "/build/lua-embed/${obj_name}"; \
+            test -s "/build/lua-embed/${obj_name}"; \
+        done; \
+    done && \
+    ls /build/lua-embed/*.o | tr '\n' ' ' > /build/lua-embed-ld-opt.txt && \
+    test -s /build/lua-embed-ld-opt.txt
 WORKDIR "/build/nginx-${NGINX_VERSION}"
 RUN LUAJIT_LIB="/usr/lib" LUAJIT_INC="/usr/include/luajit-2.1" ./configure \
     # --help \
@@ -151,13 +167,13 @@ RUN LUAJIT_LIB="/usr/lib" LUAJIT_INC="/usr/include/luajit-2.1" ./configure \
     # --add-module=PATH \
     --add-module="nginx-module-vts-${NGINX_VTS_MODULE_VERSION}" \
     --add-module="lua-nginx-module-${NGINX_LUA_MODULE_VERSION}" \
-    --add-module="lua-upstream-nginx-module-${NGINX_LUA_UPSTREAM_MODULE_VERSION}"\
+    --add-module="lua-upstream-nginx-module-${NGINX_LUA_UPSTREAM_MODULE_VERSION}" \
     # --add-dynamic-module=PATH \
     # --with-compat \
     # --with-cc=PATH \
     # --with-cpp=PATH \
     --with-cc-opt="-O2 -pipe -fPIE -fstack-protector-strong -fstack-clash-protection -ffunction-sections -fdata-sections -fno-delete-null-pointer-checks -fno-strict-overflow -fno-strict-aliasing -ftrivial-auto-var-init=zero -Wformat -Wformat=2 -Werror=format-security" \
-    --with-ld-opt="/build/resty_upstream_healthcheck.o -static -static-pie -static-libgcc -Wl,-z,relro -Wl,-z,now -Wl,-z,noexecstack -Wl,-z,separate-code -Wl,--as-needed -Wl,--gc-sections" \
+    --with-ld-opt="$(cat /build/lua-embed-ld-opt.txt) -static -static-pie -static-libgcc -Wl,-z,relro -Wl,-z,now -Wl,-z,noexecstack -Wl,-z,separate-code -Wl,--as-needed -Wl,--gc-sections" \
     # --with-cpu-opt=CPU \
     # --without-pcre \
     # --with-pcre \
@@ -184,6 +200,7 @@ ARG TARGET_PREFIX
 RUN --mount=type=cache,target=/var/cache/dnf \
     microdnf -y install file binutils strace
 COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
+COPY verify/nginx-healthcheck-require.conf /tmp/nginx-healthcheck-require.conf
 RUN set -eu; \
     echo "=== ELF Header ==="; \
     readelf -h ${TARGET_PREFIX}/sbin/nginx | egrep 'Type:|Machine:'; \
@@ -198,10 +215,20 @@ RUN set -eu; \
     (echo "$file_output" | grep -Eq 'statically linked|static-pie linked') || (echo "Error: file(1) did not report a static binary." && exit 1); \
     (echo "$ldd_output" | grep -Eqi 'statically linked|static-pie linked|not a dynamic executable|not a valid dynamic program') || (echo "Error: Dynamic libraries found. This should be a static build!" && exit 1); \
     strace ${TARGET_PREFIX}/sbin/nginx -V; \
-    echo "=== Packaging Check: healthcheck.lua NOT installed ==="; \
-    test ! -e ${TARGET_PREFIX}/lib/lua/resty/upstream/healthcheck.lua || (echo "Error: healthcheck.lua should not be installed" && exit 1); \
-    echo "=== Symbol Check: embedded healthcheck bytecode object ==="; \
-    nm -a ${TARGET_PREFIX}/sbin/nginx | grep -q 'luaJIT_BC_resty_upstream_healthcheck' || (echo "Error: embedded healthcheck bytecode symbol missing" && exit 1)
+    echo "=== Packaging Check: no lua runtime files installed ==="; \
+    test ! -d ${TARGET_PREFIX}/lib/lua || (echo "Error: lib/lua directory should not exist in fully static build" && exit 1); \
+    echo "=== Runtime Smoke Test: embedded resty modules ==="; \
+    log_file="/tmp/nginx-healthcheck.log"; \
+    ${TARGET_PREFIX}/sbin/nginx -c /tmp/nginx-healthcheck-require.conf -g "daemon off;" >"${log_file}" 2>&1 & \
+    nginx_pid=$!; \
+    sleep 1; \
+    kill "${nginx_pid}" >/dev/null 2>&1 || true; \
+    wait "${nginx_pid}" >/dev/null 2>&1 || true; \
+    output="$(cat "${log_file}")"; \
+    echo "$output"; \
+    (echo "$output" | grep -q 'module '\''resty.upstream.healthcheck'\'' not found') && (echo "Error: healthcheck module not embedded" && exit 1); \
+    (echo "$output" | grep -q 'module '\''resty.core'\'' not found') && (echo "Error: resty.core module not embedded" && exit 1); \
+    (echo "$output" | grep -q 'healthcheck module loaded') || (echo "Error: healthcheck module did not load" && exit 1)
 
 
 FROM scratch
