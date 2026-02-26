@@ -66,6 +66,10 @@ static-builds/
 ## UNIQUE STYLES
 
 - Tag-triggered release: `nginx-1.25.0` → builds + uploads artifact
+- Release tags MUST follow `<target>-<official_version>.<x>`.
+  - `official_version`: version from target `.env` (for example `NGINX_VERSION`, `HTTPD_VERSION`, `HAPROXY_VERSION`)
+  - `x`: release revision suffix starting at `0` and incrementing (`.0`, `.1`, `.2`, ...)
+  - examples: `nginx-1.28.2.18`, `httpd-2.4.66.5`, `haproxy-3.2.13.0`
 - Per-target caller workflows + reusable template pattern
 - Artifacts: `<target>/sbin/nginx`, `sbin/haproxy`, `bin/httpd`, etc.
 
