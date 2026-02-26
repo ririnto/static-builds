@@ -207,6 +207,7 @@ RUN set -eu; \
     echo "=== Packaging Check: no lua runtime files installed ==="; \
     test ! -d ${TARGET_PREFIX}/lib/lua || (echo "Error: lib/lua directory should not exist" && exit 1); \
     echo "=== Symbol Check: embedded healthcheck object ==="; \
+    nm -a ${TARGET_PREFIX}/sbin/nginx | grep 'luaJIT_BC_.*healthcheck' || true; \
     nm -a ${TARGET_PREFIX}/sbin/nginx | grep -q 'luaJIT_BC_resty_upstream_healthcheck' || (echo "Error: missing embedded healthcheck bytecode symbol" && exit 1); \
     echo "=== Runtime Smoke Test: embedded resty modules ==="; \
     log_file="/tmp/nginx-healthcheck.log"; \
