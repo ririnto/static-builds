@@ -6,9 +6,7 @@ ARG TARGET_PREFIX=/home/nobody
 FROM alpine:${ALPINE_VERSION} AS build
 ARG NGINX_VERSION
 ARG NGINX_VTS_MODULE_VERSION
-ARG NGINX_DEVEL_KIT_VERSION
 ARG NGINX_LUA_MODULE_VERSION
-ARG OPENRESTY_LUAJIT2_VERSION
 ARG NGINX_LUA_UPSTREAM_MODULE_VERSION
 ARG NGINX_LUA_RESTY_UPSTREAM_HEALTHCHECK_MODULE_VERSION
 ARG TARGET_PREFIX
@@ -20,6 +18,8 @@ RUN --mount=type=cache,target=/var/cache/apk \
         libatomic_ops-dev \
         libatomic_ops-static \
         linux-headers \
+        luajit \
+        luajit-dev \
         openssl-dev \
         openssl-libs-static \
         pcre2-dev \
@@ -28,23 +28,20 @@ RUN --mount=type=cache,target=/var/cache/apk \
         zlib-static
 ADD "src/nginx-${NGINX_VERSION}.tar.gz" /build/
 ADD "src/nginx-module-vts-${NGINX_VTS_MODULE_VERSION}.tar.gz" "/build/nginx-${NGINX_VERSION}/"
-ADD "src/ngx_devel_kit-${NGINX_DEVEL_KIT_VERSION}.tar.gz" "/build/nginx-${NGINX_VERSION}/"
 ADD "src/lua-nginx-module-${NGINX_LUA_MODULE_VERSION}.tar.gz" "/build/nginx-${NGINX_VERSION}/"
-ADD "ngx_lua_healthcheck_preload_module" "/build/nginx-${NGINX_VERSION}/ngx_lua_healthcheck_preload_module"
-ADD "src/luajit2-${OPENRESTY_LUAJIT2_VERSION}.tar.gz" /build/
+ADD "ngx_http_lua_hc_embed_module.c" "/build/nginx-${NGINX_VERSION}/ngx_http_lua_hc_embed_module/ngx_http_lua_hc_embed_module.c"
+ADD "ngx_http_lua_hc_embed_module.config" "/build/nginx-${NGINX_VERSION}/ngx_http_lua_hc_embed_module/config"
 ADD "src/lua-upstream-nginx-module-${NGINX_LUA_UPSTREAM_MODULE_VERSION}.tar.gz" "/build/nginx-${NGINX_VERSION}/"
 ADD "src/lua-resty-upstream-healthcheck-${NGINX_LUA_RESTY_UPSTREAM_HEALTHCHECK_MODULE_VERSION}.tar.gz" "/build/"
 RUN --mount=type=cache,target=/var/cache/apk \
-    make -C "/build/luajit2-${OPENRESTY_LUAJIT2_VERSION}" XCFLAGS='-fPIC' PREFIX='/opt/luajit' && \
-    make -C "/build/luajit2-${OPENRESTY_LUAJIT2_VERSION}" install PREFIX='/opt/luajit' && \
     cp "/build/lua-resty-upstream-healthcheck-${NGINX_LUA_RESTY_UPSTREAM_HEALTHCHECK_MODULE_VERSION}/lib/resty/upstream/healthcheck.lua" \
        /build/resty_upstream_healthcheck.lua && \
-    /opt/luajit/bin/luajit -bg /build/resty_upstream_healthcheck.lua /build/resty_upstream_healthcheck.o && \
+    luajit -bg /build/resty_upstream_healthcheck.lua /build/resty_upstream_healthcheck.o && \
     test -s /build/resty_upstream_healthcheck.o
 WORKDIR "/build/nginx-${NGINX_VERSION}"
 RUN sed -i '/lua_pushstring(L, "resty.core");/,/return NGX_DECLINED;/s/return NGX_DECLINED;/lua_pop(L, 1);/' \
     "lua-nginx-module-${NGINX_LUA_MODULE_VERSION}/src/ngx_http_lua_util.c"
-RUN LUAJIT_LIB='/opt/luajit/lib' LUAJIT_INC='/opt/luajit/include/luajit-2.1' ./configure \
+RUN LUAJIT_LIB='/usr/lib' LUAJIT_INC='/usr/include/luajit-2.1' ./configure \
     # --help \
     --prefix=${TARGET_PREFIX} \
     # --sbin-path=PATH \
@@ -157,10 +154,9 @@ RUN LUAJIT_LIB='/opt/luajit/lib' LUAJIT_INC='/opt/luajit/include/luajit-2.1' ./c
     # --with-cpp_test_module \
     # --add-module=PATH \
     --add-module="nginx-module-vts-${NGINX_VTS_MODULE_VERSION}" \
-    --add-module="ngx_devel_kit-${NGINX_DEVEL_KIT_VERSION}" \
     --add-module="lua-nginx-module-${NGINX_LUA_MODULE_VERSION}" \
     --add-module="lua-upstream-nginx-module-${NGINX_LUA_UPSTREAM_MODULE_VERSION}" \
-    --add-module="ngx_lua_healthcheck_preload_module" \
+    --add-module="ngx_http_lua_hc_embed_module" \
     # --add-dynamic-module=PATH \
     # --with-compat \
     # --with-cc=PATH \
@@ -193,7 +189,7 @@ ARG TARGET_PREFIX
 RUN --mount=type=cache,target=/var/cache/dnf \
     microdnf -y install file binutils strace
 COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
-COPY verify/nginx-healthcheck-require.conf /tmp/nginx-healthcheck-require.conf
+COPY upstream-healthcheck.conf /tmp/upstream-healthcheck.conf
 RUN set -eu; \
     echo "=== ELF Header ==="; \
     readelf -h ${TARGET_PREFIX}/sbin/nginx | egrep 'Type:|Machine:'; \
@@ -215,7 +211,7 @@ RUN set -eu; \
     nm -a ${TARGET_PREFIX}/sbin/nginx | grep -q 'luaJIT_BC_resty_upstream_healthcheck' || (echo "Error: missing embedded healthcheck bytecode symbol" && exit 1); \
     echo "=== Runtime Smoke Test: embedded resty modules ==="; \
     log_file="/tmp/nginx-healthcheck.log"; \
-    ${TARGET_PREFIX}/sbin/nginx -c /tmp/nginx-healthcheck-require.conf -g "daemon off;" >"${log_file}" 2>&1 & \
+    ${TARGET_PREFIX}/sbin/nginx -c /tmp/upstream-healthcheck.conf -g "daemon off;" >"${log_file}" 2>&1 & \
     nginx_pid=$!; \
     sleep 1; \
     kill "${nginx_pid}" >/dev/null 2>&1 || true; \

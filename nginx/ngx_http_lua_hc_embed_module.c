@@ -7,32 +7,27 @@
 
 #include "ngx_http_lua_api.h"
 
-
+/** Embedded LuaJIT bytecode symbol generated from resty/upstream/healthcheck.lua. */
 extern const char luaJIT_BC_resty_upstream_healthcheck[];
 
+static ngx_int_t ngx_http_lua_hc_embed_init(ngx_conf_t *cf);
+static int ngx_http_lua_hc_embed_loader(lua_State *L);
 
-static ngx_int_t ngx_http_lua_healthcheck_preload(ngx_conf_t *cf);
-static int ngx_http_lua_healthcheck_loader(lua_State *L);
-
-
-static ngx_http_module_t ngx_http_lua_healthcheck_preload_module_ctx = {
-    ngx_http_lua_healthcheck_preload,
-    NULL,
-
+static ngx_http_module_t ngx_http_lua_hc_embed_module_ctx = {
+    ngx_http_lua_hc_embed_init,
     NULL,
     NULL,
-
     NULL,
     NULL,
-
+    NULL,
     NULL,
     NULL
 };
 
-
-ngx_module_t ngx_http_lua_healthcheck_preload_module = {
+/** NGINX module definition for embedded lua-resty-upstream-healthcheck preload support. */
+ngx_module_t ngx_http_lua_hc_embed_module = {
     NGX_MODULE_V1,
-    &ngx_http_lua_healthcheck_preload_module_ctx,
+    &ngx_http_lua_hc_embed_module_ctx,
     NULL,
     NGX_HTTP_MODULE,
     NULL,
@@ -45,17 +40,15 @@ ngx_module_t ngx_http_lua_healthcheck_preload_module = {
     NGX_MODULE_V1_PADDING
 };
 
-
 static ngx_int_t
-ngx_http_lua_healthcheck_preload(ngx_conf_t *cf)
+ngx_http_lua_hc_embed_init(ngx_conf_t *cf)
 {
     return ngx_http_lua_add_package_preload(cf, "resty.upstream.healthcheck",
-                                            ngx_http_lua_healthcheck_loader);
+                                            ngx_http_lua_hc_embed_loader);
 }
 
-
 static int
-ngx_http_lua_healthcheck_loader(lua_State *L)
+ngx_http_lua_hc_embed_loader(lua_State *L)
 {
     if (luaL_loadbuffer(L,
                         luaJIT_BC_resty_upstream_healthcheck,
