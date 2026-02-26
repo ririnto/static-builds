@@ -10,8 +10,6 @@ ARG NGINX_DEVEL_KIT_VERSION
 ARG NGINX_LUA_MODULE_VERSION
 ARG NGINX_LUA_UPSTREAM_MODULE_VERSION
 ARG NGINX_LUA_RESTY_UPSTREAM_HEALTHCHECK_MODULE_VERSION
-ARG NGINX_LUA_RESTY_CORE_VERSION
-ARG NGINX_LUA_RESTY_LRUCACHE_VERSION
 ARG TARGET_PREFIX
 
 WORKDIR /build
@@ -35,12 +33,10 @@ ADD "src/ngx_devel_kit-${NGINX_DEVEL_KIT_VERSION}.tar.gz" "/build/nginx-${NGINX_
 ADD "src/lua-nginx-module-${NGINX_LUA_MODULE_VERSION}.tar.gz" "/build/nginx-${NGINX_VERSION}/"
 ADD "src/lua-upstream-nginx-module-${NGINX_LUA_UPSTREAM_MODULE_VERSION}.tar.gz" "/build/nginx-${NGINX_VERSION}/"
 ADD "src/lua-resty-upstream-healthcheck-${NGINX_LUA_RESTY_UPSTREAM_HEALTHCHECK_MODULE_VERSION}.tar.gz" "/build/"
-ADD "src/lua-resty-core-${NGINX_LUA_RESTY_CORE_VERSION}.tar.gz" "/build/"
-ADD "src/lua-resty-lrucache-${NGINX_LUA_RESTY_LRUCACHE_VERSION}.tar.gz" "/build/"
 RUN --mount=type=cache,target=/var/cache/apk \
     cp "/build/lua-resty-upstream-healthcheck-${NGINX_LUA_RESTY_UPSTREAM_HEALTHCHECK_MODULE_VERSION}/lib/resty/upstream/healthcheck.lua" \
        /build/resty_upstream_healthcheck.lua && \
-    luajit -bg /build/resty_upstream_healthcheck.lua /build/resty_upstream_healthcheck.o && \
+    cd /build && luajit -bg resty_upstream_healthcheck.lua resty_upstream_healthcheck.o && \
     test -s /build/resty_upstream_healthcheck.o
 WORKDIR "/build/nginx-${NGINX_VERSION}"
 RUN sed -i '/lua_pushstring(L, "resty.core");/,/return NGX_DECLINED;/s/return NGX_DECLINED;/lua_pop(L, 1);/' \
@@ -185,12 +181,6 @@ RUN LUAJIT_LIB="/usr/lib" LUAJIT_INC="/usr/include/luajit-2.1" ./configure \
     ;
 RUN make "-j$(nproc)"
 RUN make install
-RUN set -eu; \
-    for src_dir in \
-        "/build/lua-resty-core-${NGINX_LUA_RESTY_CORE_VERSION}/lib" \
-        "/build/lua-resty-lrucache-${NGINX_LUA_RESTY_LRUCACHE_VERSION}/lib"; do \
-        (cd "${src_dir}" && find . -type f -name '*.lua' -exec install -D "{}" "${TARGET_PREFIX}/lib/lua/{}" \;); \
-    done
 
 
 FROM redhat/ubi9-minimal:${UBI9_MICRO_VERSION} AS verify
@@ -214,8 +204,8 @@ RUN set -eu; \
     (echo "$file_output" | grep -Eq 'statically linked|static-pie linked') || (echo "Error: file(1) did not report a static binary." && exit 1); \
     (echo "$ldd_output" | grep -Eqi 'statically linked|static-pie linked|not a dynamic executable|not a valid dynamic program') || (echo "Error: Dynamic libraries found. This should be a static build!" && exit 1); \
     strace ${TARGET_PREFIX}/sbin/nginx -V; \
-    echo "=== Packaging Check: healthcheck.lua NOT installed ==="; \
-    test ! -e ${TARGET_PREFIX}/lib/lua/resty/upstream/healthcheck.lua || (echo "Error: healthcheck.lua should not be installed" && exit 1); \
+    echo "=== Packaging Check: no lua runtime files installed ==="; \
+    test ! -d ${TARGET_PREFIX}/lib/lua || (echo "Error: lib/lua directory should not exist" && exit 1); \
     echo "=== Runtime Smoke Test: embedded resty modules ==="; \
     log_file="/tmp/nginx-healthcheck.log"; \
     ${TARGET_PREFIX}/sbin/nginx -c /tmp/nginx-healthcheck-require.conf -g "daemon off;" >"${log_file}" 2>&1 & \
