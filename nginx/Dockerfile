@@ -6,6 +6,7 @@ ARG TARGET_PREFIX=/home/nobody
 FROM alpine:${ALPINE_VERSION} AS build
 ARG NGINX_VERSION
 ARG NGINX_VTS_MODULE_VERSION
+ARG NGINX_DEVEL_KIT_VERSION
 ARG NGINX_LUA_MODULE_VERSION
 ARG NGINX_LUA_UPSTREAM_MODULE_VERSION
 ARG NGINX_LUA_RESTY_UPSTREAM_HEALTHCHECK_MODULE_VERSION
@@ -30,6 +31,7 @@ RUN --mount=type=cache,target=/var/cache/apk \
         zlib-static
 ADD "src/nginx-${NGINX_VERSION}.tar.gz" /build/
 ADD "src/nginx-module-vts-${NGINX_VTS_MODULE_VERSION}.tar.gz" "/build/nginx-${NGINX_VERSION}/"
+ADD "src/ngx_devel_kit-${NGINX_DEVEL_KIT_VERSION}.tar.gz" "/build/nginx-${NGINX_VERSION}/"
 ADD "src/lua-nginx-module-${NGINX_LUA_MODULE_VERSION}.tar.gz" "/build/nginx-${NGINX_VERSION}/"
 ADD "src/lua-upstream-nginx-module-${NGINX_LUA_UPSTREAM_MODULE_VERSION}.tar.gz" "/build/nginx-${NGINX_VERSION}/"
 ADD "src/lua-resty-upstream-healthcheck-${NGINX_LUA_RESTY_UPSTREAM_HEALTHCHECK_MODULE_VERSION}.tar.gz" "/build/"
@@ -154,6 +156,7 @@ RUN LUAJIT_LIB="/usr/lib" LUAJIT_INC="/usr/include/luajit-2.1" ./configure \
     # --with-cpp_test_module \
     # --add-module=PATH \
     --add-module="nginx-module-vts-${NGINX_VTS_MODULE_VERSION}" \
+    --add-module="ngx_devel_kit-${NGINX_DEVEL_KIT_VERSION}" \
     --add-module="lua-nginx-module-${NGINX_LUA_MODULE_VERSION}" \
     --add-module="lua-upstream-nginx-module-${NGINX_LUA_UPSTREAM_MODULE_VERSION}" \
     # --add-dynamic-module=PATH \
