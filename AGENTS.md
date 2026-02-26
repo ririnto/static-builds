@@ -22,17 +22,24 @@ static-builds/
 ├── dnsmasq/
 ├── vector/
 └── third-party/          # Git submodules (empty by default)
-    ├── apache-apr/          # Apache Portable Runtime
-    ├── apache-apr-util/     # Apache Portable Runtime Utilities
-    ├── apache-httpd/       # Apache HTTPD source
-    ├── coredns/             # CoreDNS DNS server
-    ├── dnsmasq/             # DNS forwarder/ DHCP server
-    ├── haproxy/             # HAProxy load balancer
-    ├── lua-nginx-module/    # Nginx Lua module
-    ├── lua-resty-upstream-healthcheck/ # Lua upstream healthcheck
-    ├── nginx-vts-module/    # Nginx Virtual Traffic Statistics
-    ├── nginx/               # Nginx source
-    └── vector/              # Vector observability pipeline
+    ├── apache/
+    │   ├── apr/              # Apache Portable Runtime
+    │   ├── apr-util/         # Apache Portable Runtime Utilities
+    │   └── httpd/            # Apache HTTPD source
+    ├── nginx/
+    │   ├── nginx/            # Nginx source
+    │   ├── lua-nginx-module/ # Nginx Lua module
+    │   ├── lua-resty-core/   # Lua resty core library
+    │   ├── lua-resty-upstream-healthcheck/ # Lua upstream healthcheck
+    │   └── nginx-vts-module/ # Nginx Virtual Traffic Statistics
+    ├── haproxy/
+    │   └── haproxy/          # HAProxy load balancer
+    ├── coredns/
+    │   └── coredns/          # CoreDNS DNS server
+    ├── dnsmasq/
+    │   └── dnsmasq/          # DNS forwarder/ DHCP server
+    └── vector/
+        └── vector/           # Vector observability pipeline
 ```
 
 ## WHERE TO LOOK
@@ -81,17 +88,18 @@ make download nginx
 
 The third-party/ directory contains external sources as git submodules:
 
-- apache-apr: Apache Portable Runtime for Apache HTTPD
-- apache-apr-util: APR utilities for Apache HTTPD
-- apache-httpd: Apache HTTPD source code
-- coredns: CoreDNS DNS server and plugin system
-- dnsmasq: Lightweight DNS forwarder and DHCP server
-- haproxy: High availability TCP/HTTP load balancer
-- lua-nginx-module: Nginx Lua scripting engine
-- lua-resty-upstream-healthcheck: Lua upstream healthcheck library
-- nginx-vts-module: Nginx virtual traffic statistics module
-- nginx: Nginx web server source code
-- vector: High-performance observability pipeline
+- apache/apr: Apache Portable Runtime for Apache HTTPD
+- apache/apr-util: APR utilities for Apache HTTPD
+- apache/httpd: Apache HTTPD source code
+- nginx/nginx: Nginx web server source code
+- nginx/lua-nginx-module: Nginx Lua scripting engine
+- nginx/lua-resty-core: Lua resty core library
+- nginx/lua-resty-upstream-healthcheck: Lua upstream healthcheck library
+- nginx/nginx-vts-module: Nginx virtual traffic statistics module
+- haproxy/haproxy: High availability TCP/HTTP load balancer
+- coredns/coredns: CoreDNS DNS server and plugin system
+- dnsmasq/dnsmasq: Lightweight DNS forwarder and DHCP server
+- vector/vector: High-performance observability pipeline
 
 > [!IMPORTANT]
 > These third-party modules are external dependencies and MUST NOT be modified. They are used as-is for reference only. Changes to these components SHOULD be made in their respective upstream repositories, not in this project.

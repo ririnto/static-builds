@@ -16,5 +16,8 @@ jobs:
       tag: ${{ github.ref_name }}
       release_files: |-
         nginx/sbin/nginx
+        nginx/lualib/resty/core.lua
+        nginx/lualib/resty/core
+        nginx/lualib/resty/upstream
       upload_release: true
     secrets: inherit
