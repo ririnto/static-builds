@@ -144,6 +144,28 @@ http {
 
 Each checker updates peer state via `ngx.upstream.set_peer_down`. Failed peers are marked down after `fall` consecutive failures and recovered after `rise` consecutive successes. For external scraping, keep `/metrics` behind network policy, IP allowlists, or an internal-only listener.
 
+## Nginx VTS Example
+
+If you also use `nginx-vts-module`, expose traffic statistics in Prometheus format.
+
+```nginx
+http {
+    vhost_traffic_status_zone;
+
+    server {
+        listen 127.0.0.1:18081;
+
+        location = /metrics/vts {
+            access_log off;
+            vhost_traffic_status_display;
+            vhost_traffic_status_display_format prometheus;
+        }
+    }
+}
+```
+
+This endpoint is independent from `resty.upstream.healthcheck` status and is useful for request/traffic volume monitoring.
+
 ## Reference
 
 See [lua-nginx-module README](https://github.com/openresty/lua-nginx-module) (section "Statically Linking Pure Lua Modules") for the canonical documentation on this embedding technique.
