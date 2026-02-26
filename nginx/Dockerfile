@@ -46,7 +46,7 @@ RUN --mount=type=cache,target=/var/cache/apk \
             flat_name="$(echo "${rel_path}" | tr '/' '_')"; \
             obj_name="${flat_name%.lua}.o"; \
             cp "${lua_file}" "/build/lua-embed/${flat_name}"; \
-            luajit -bg "/build/lua-embed/${flat_name}" "/build/lua-embed/${obj_name}"; \
+            (cd /build/lua-embed && luajit -bg "${flat_name}" "${obj_name}"); \
             test -s "/build/lua-embed/${obj_name}"; \
         done; \
     done && \
@@ -217,6 +217,9 @@ RUN set -eu; \
     strace ${TARGET_PREFIX}/sbin/nginx -V; \
     echo "=== Packaging Check: no lua runtime files installed ==="; \
     test ! -d ${TARGET_PREFIX}/lib/lua || (echo "Error: lib/lua directory should not exist in fully static build" && exit 1); \
+    echo "=== Symbol Check: embedded modules ==="; \
+    nm -a ${TARGET_PREFIX}/sbin/nginx | grep -q 'luaJIT_BC_resty_core' || (echo "Error: resty.core bytecode symbol missing" && exit 1); \
+    nm -a ${TARGET_PREFIX}/sbin/nginx | grep -q 'luaJIT_BC_resty_upstream_healthcheck' || (echo "Error: healthcheck bytecode symbol missing" && exit 1); \
     echo "=== Runtime Smoke Test: embedded resty modules ==="; \
     log_file="/tmp/nginx-healthcheck.log"; \
     ${TARGET_PREFIX}/sbin/nginx -c /tmp/nginx-healthcheck-require.conf -g "daemon off;" >"${log_file}" 2>&1 & \
