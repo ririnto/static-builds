@@ -76,7 +76,7 @@ Build caching is automatically handled via the `.cache/` directory.
 ## CI Behavior
 
 - Archive upload includes selected release files as a workflow artifact.
-- Release upload is optional and packages selected release files into one `.tgz` per tag.
+- Release upload is optional and packages selected release files into one `.tar.gz` per tag.
 - To enable release upload in GitHub Actions, set `release=true` and use one of:
   - `release_tag`: explicit full tag (for example, `httpd-2.4.66.1`)
   - `release_suffix`: custom last segment; CI composes `<name>-<version>.<suffix>`
@@ -88,7 +88,7 @@ Build caching is automatically handled via the `.cache/` directory.
   - `.github/workflows/release-dnsmasq-from-tag.yaml`
   - `.github/workflows/release-vector-from-tag.yaml`
 - Each caller is bound to one tag pattern (`nginx-*`, `haproxy-*`, `httpd-*`, `coredns-*`, `dnsmasq-*`, `vector-*`) and calls reusable template `.github/workflows/template-release.yaml`.
-- Template builds mapped target, uploads selected files as artifact, then uploads `${tag}.tgz` that contains selected release files.
+- Template builds mapped target, uploads selected files as artifact, then uploads `${tag}.tar.gz` that contains selected release files.
 
 Selected release binaries:
 

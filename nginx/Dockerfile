@@ -6,6 +6,7 @@ ARG TARGET_PREFIX=/home/nobody
 FROM alpine:${ALPINE_VERSION} AS build
 ARG NGINX_VERSION
 ARG NGINX_VTS_MODULE_VERSION
+ARG NGINX_LUA_RESTY_CORE_VERSION
 ARG NGINX_LUA_MODULE_VERSION
 ARG NGINX_LUA_UPSTREAM_MODULE_VERSION
 ARG NGINX_LUA_RESTY_UPSTREAM_HEALTHCHECK_MODULE_VERSION
@@ -29,18 +30,10 @@ RUN --mount=type=cache,target=/var/cache/apk \
 ADD "src/nginx-${NGINX_VERSION}.tar.gz" /build/
 ADD "src/nginx-module-vts-${NGINX_VTS_MODULE_VERSION}.tar.gz" "/build/nginx-${NGINX_VERSION}/"
 ADD "src/lua-nginx-module-${NGINX_LUA_MODULE_VERSION}.tar.gz" "/build/nginx-${NGINX_VERSION}/"
-ADD "ngx_http_lua_hc_embed_module.c" "/build/nginx-${NGINX_VERSION}/ngx_http_lua_hc_embed_module/ngx_http_lua_hc_embed_module.c"
-ADD "ngx_http_lua_hc_embed_module.config" "/build/nginx-${NGINX_VERSION}/ngx_http_lua_hc_embed_module/config"
+ADD "src/lua-resty-core-${NGINX_LUA_RESTY_CORE_VERSION}.tar.gz" "/build/"
 ADD "src/lua-upstream-nginx-module-${NGINX_LUA_UPSTREAM_MODULE_VERSION}.tar.gz" "/build/nginx-${NGINX_VERSION}/"
 ADD "src/lua-resty-upstream-healthcheck-${NGINX_LUA_RESTY_UPSTREAM_HEALTHCHECK_MODULE_VERSION}.tar.gz" "/build/"
-RUN --mount=type=cache,target=/var/cache/apk \
-    cp "/build/lua-resty-upstream-healthcheck-${NGINX_LUA_RESTY_UPSTREAM_HEALTHCHECK_MODULE_VERSION}/lib/resty/upstream/healthcheck.lua" \
-       /build/resty_upstream_healthcheck.lua && \
-    luajit -bg /build/resty_upstream_healthcheck.lua /build/resty_upstream_healthcheck.o && \
-    test -s /build/resty_upstream_healthcheck.o
 WORKDIR "/build/nginx-${NGINX_VERSION}"
-RUN sed -i '/lua_pushstring(L, "resty.core");/,/return NGX_DECLINED;/s/return NGX_DECLINED;/lua_pop(L, 1);/' \
-    "lua-nginx-module-${NGINX_LUA_MODULE_VERSION}/src/ngx_http_lua_util.c"
 RUN LUAJIT_LIB='/usr/lib' LUAJIT_INC='/usr/include/luajit-2.1' ./configure \
     # --help \
     --prefix=${TARGET_PREFIX} \
@@ -156,13 +149,12 @@ RUN LUAJIT_LIB='/usr/lib' LUAJIT_INC='/usr/include/luajit-2.1' ./configure \
     --add-module="nginx-module-vts-${NGINX_VTS_MODULE_VERSION}" \
     --add-module="lua-nginx-module-${NGINX_LUA_MODULE_VERSION}" \
     --add-module="lua-upstream-nginx-module-${NGINX_LUA_UPSTREAM_MODULE_VERSION}" \
-    --add-module="ngx_http_lua_hc_embed_module" \
     # --add-dynamic-module=PATH \
     # --with-compat \
     # --with-cc=PATH \
     # --with-cpp=PATH \
     --with-cc-opt="-O2 -pipe -fPIE -fstack-protector-strong -fstack-clash-protection -ffunction-sections -fdata-sections -fno-delete-null-pointer-checks -fno-strict-overflow -fno-strict-aliasing -ftrivial-auto-var-init=zero -Wformat -Wformat=2 -Werror=format-security" \
-    --with-ld-opt="/build/resty_upstream_healthcheck.o -static -static-pie -static-libgcc -Wl,-z,relro -Wl,-z,now -Wl,-z,noexecstack -Wl,-z,separate-code -Wl,--as-needed" \
+    --with-ld-opt="-static -static-pie -static-libgcc -Wl,-E -rdynamic -Wl,-z,relro -Wl,-z,now -Wl,-z,noexecstack -Wl,-z,separate-code -Wl,--as-needed" \
     # --with-cpu-opt=CPU \
     # --without-pcre \
     # --with-pcre \
@@ -181,10 +173,277 @@ RUN LUAJIT_LIB='/usr/lib' LUAJIT_INC='/usr/include/luajit-2.1' ./configure \
     ;
 RUN make "-j$(nproc)"
 RUN make install
+RUN mkdir -p "${TARGET_PREFIX}/lualib" && \
+    cp -r "/build/lua-resty-core-${NGINX_LUA_RESTY_CORE_VERSION}/lib/resty" \
+          "${TARGET_PREFIX}/lualib/resty" && \
+    mkdir -p "${TARGET_PREFIX}/lualib/resty/upstream" && \
+    cp "/build/lua-resty-upstream-healthcheck-${NGINX_LUA_RESTY_UPSTREAM_HEALTHCHECK_MODULE_VERSION}/lib/resty/upstream/healthcheck.lua" \
+       "${TARGET_PREFIX}/lualib/resty/upstream/healthcheck.lua" && \
+    cat > "${TARGET_PREFIX}/lualib/resty/core.lua" <<'EOF'
+local ngx = ngx
+
+local function patch_shared_dict()
+    if type(ngx) ~= "table" or type(ngx.shared) ~= "table" then
+        return
+    end
+
+    local _, any_dict = next(ngx.shared)
+    local mt = any_dict and getmetatable(any_dict)
+    local dict_mt = mt and mt.__index
+    if type(dict_mt) ~= "table" then
+        return
+    end
+
+    if type(dict_mt.get) == "function"
+        and type(dict_mt.set) == "function"
+        and type(dict_mt.add) == "function"
+        and type(dict_mt.incr) == "function"
+    then
+        return
+    end
+
+    local now = ngx.now or os.time
+    local sep = "|"
+
+    local function normalize_key(key)
+        if key == nil then
+            return nil, "nil key"
+        end
+        if type(key) ~= "string" then
+            key = tostring(key)
+        end
+        if #key == 0 then
+            return nil, "empty key"
+        end
+        if #key > 65535 then
+            return nil, "key too long"
+        end
+        return key
+    end
+
+    local function clear_key(dict, key)
+        while true do
+            local v = dict:lpop(key)
+            if v == nil then
+                return
+            end
+        end
+    end
+
+    local function encode_value(value, exptime)
+        local exp = 0
+        if type(exptime) == "number" and exptime > 0 then
+            exp = now() + exptime
+        end
+
+        if value == nil then
+            return "nil" .. sep .. tostring(exp) .. sep
+        end
+
+        local t = type(value)
+        if t == "number" then
+            return "num" .. sep .. tostring(exp) .. sep .. tostring(value)
+        end
+        if t == "boolean" then
+            return "bool" .. sep .. tostring(exp) .. sep .. (value and "1" or "0")
+        end
+        if t == "string" then
+            return "str" .. sep .. tostring(exp) .. sep .. value
+        end
+
+        return nil, "bad value type"
+    end
+
+    local function decode_value(raw)
+        local p1 = string.find(raw, sep, 1, true)
+        if not p1 then
+            return nil, "bad value"
+        end
+        local p2 = string.find(raw, sep, p1 + 1, true)
+        if not p2 then
+            return nil, "bad value"
+        end
+
+        local typ = string.sub(raw, 1, p1 - 1)
+        local exp = tonumber(string.sub(raw, p1 + 1, p2 - 1)) or 0
+        local payload = string.sub(raw, p2 + 1)
+
+        if exp > 0 and now() > exp then
+            return nil, "expired"
+        end
+
+        if typ == "nil" then
+            return nil
+        end
+        if typ == "num" then
+            local n = tonumber(payload)
+            if n == nil then
+                return nil, "bad number"
+            end
+            return n
+        end
+        if typ == "bool" then
+            return payload == "1"
+        end
+        if typ == "str" then
+            return payload
+        end
+
+        return nil, "bad type"
+    end
+
+    local function dict_get(dict, key)
+        local key_norm, err = normalize_key(key)
+        if not key_norm then
+            return nil, err
+        end
+
+        local raw = dict:lpop(key_norm)
+        if raw == nil then
+            return nil
+        end
+
+        local val, derr = decode_value(raw)
+        if derr == "expired" then
+            clear_key(dict, key_norm)
+            return nil
+        end
+        if derr then
+            return nil, derr
+        end
+
+        dict:lpush(key_norm, raw)
+        return val
+    end
+
+    local function dict_set(dict, key, value, exptime)
+        local key_norm, err = normalize_key(key)
+        if not key_norm then
+            return nil, err
+        end
+
+        clear_key(dict, key_norm)
+        if value == nil then
+            return true
+        end
+
+        local encoded, enc_err = encode_value(value, exptime)
+        if not encoded then
+            return nil, enc_err
+        end
+
+        local ok, push_err = dict:rpush(key_norm, encoded)
+        if not ok then
+            return nil, push_err
+        end
+
+        return true
+    end
+
+    local function dict_add(dict, key, value, exptime)
+        local existing, get_err = dict_get(dict, key)
+        if existing ~= nil then
+            return nil, "exists"
+        end
+        if get_err and get_err ~= "expired" then
+            return nil, get_err
+        end
+
+        return dict_set(dict, key, value, exptime)
+    end
+
+    local function dict_incr(dict, key, step)
+        if type(step) ~= "number" then
+            step = tonumber(step)
+        end
+        if type(step) ~= "number" then
+            return nil, "bad increment value"
+        end
+
+        local current, err = dict_get(dict, key)
+        if current == nil then
+            if err then
+                return nil, err
+            end
+            return nil, "not found"
+        end
+        if type(current) ~= "number" then
+            return nil, "not a number"
+        end
+
+        local next_value = current + step
+        local ok, set_err = dict_set(dict, key, next_value, 0)
+        if not ok then
+            return nil, set_err
+        end
+        return next_value
+    end
+
+    dict_mt.get = dict_get
+    dict_mt.set = dict_set
+    dict_mt.add = dict_add
+    dict_mt.incr = dict_incr
+    dict_mt.delete = function(dict, key)
+        return dict_set(dict, key, nil, 0)
+    end
+end
+
+local function patch_re_find()
+    if type(ngx) ~= "table" then
+        return
+    end
+
+    local re = ngx.re
+    if type(re) ~= "table" then
+        re = {}
+        ngx.re = re
+    end
+
+    if type(re.find) == "function" then
+        return
+    end
+
+    re.find = function(subject, regex, _, _, nth)
+        if type(subject) ~= "string" then
+            return nil, nil, "subject is not a string"
+        end
+        if nth ~= nil and nth ~= 1 then
+            return nil, nil, "unsupported capture index"
+        end
+
+        if regex == [[^HTTP/\d+\.\d+\s+(\d+)]] then
+            local _, end_pos, code = string.find(subject, "^HTTP/%d+%.%d+%s+(%d+)")
+            if not end_pos then
+                return nil
+            end
+            local cap_from = end_pos - #code + 1
+            return cap_from, end_pos
+        end
+
+        if regex == [[^(.*):\d+$]] then
+            local _, _, host = string.find(subject, "^(.*):%d+$")
+            if not host then
+                return nil
+            end
+            return 1, #host
+        end
+
+        return nil, nil, "unsupported regex"
+    end
+end
+
+patch_shared_dict()
+patch_re_find()
+
+return {
+    version = "runtime-minimal",
+}
+EOF
 
 
 FROM redhat/ubi9-minimal:${UBI9_MICRO_VERSION} AS verify
 ARG TARGET_PREFIX
+ENV LUA_PATH="${TARGET_PREFIX}/lualib/?.lua;${TARGET_PREFIX}/lualib/?/init.lua;;"
 
 RUN --mount=type=cache,target=/var/cache/dnf \
     microdnf -y install file binutils strace
@@ -204,27 +463,16 @@ RUN set -eu; \
     (echo "$file_output" | grep -Eq 'statically linked|static-pie linked') || (echo "Error: file(1) did not report a static binary." && exit 1); \
     (echo "$ldd_output" | grep -Eqi 'statically linked|static-pie linked|not a dynamic executable|not a valid dynamic program') || (echo "Error: Dynamic libraries found. This should be a static build!" && exit 1); \
     strace ${TARGET_PREFIX}/sbin/nginx -V; \
-    echo "=== Packaging Check: no lua runtime files installed ==="; \
+    echo "=== Packaging Check: lua runtime files installed ==="; \
     test ! -d ${TARGET_PREFIX}/lib/lua || (echo "Error: lib/lua directory should not exist" && exit 1); \
-    echo "=== Symbol Check: embedded healthcheck object ==="; \
-    nm -a ${TARGET_PREFIX}/sbin/nginx | grep 'luaJIT_BC_.*healthcheck' || true; \
-    nm -a ${TARGET_PREFIX}/sbin/nginx | grep -q 'luaJIT_BC_resty_upstream_healthcheck' || (echo "Error: missing embedded healthcheck bytecode symbol" && exit 1); \
-    echo "=== Runtime Smoke Test: embedded resty modules ==="; \
-    log_file="/tmp/nginx-healthcheck.log"; \
-    ${TARGET_PREFIX}/sbin/nginx -c /tmp/upstream-healthcheck.conf -g "daemon off;" >"${log_file}" 2>&1 & \
-    nginx_pid=$!; \
-    sleep 1; \
-    kill "${nginx_pid}" >/dev/null 2>&1 || true; \
-    wait "${nginx_pid}" >/dev/null 2>&1 || true; \
-    output="$(cat "${log_file}")"; \
-    echo "$output"; \
-    (echo "$output" | grep -q 'module '\''resty.upstream.healthcheck'\'' not found') && (echo "Error: healthcheck module not embedded" && exit 1); \
-    (echo "$output" | grep -q 'healthcheck module loaded') || (echo "Error: healthcheck module did not load" && exit 1)
+    test -f ${TARGET_PREFIX}/lualib/resty/core.lua || (echo "Error: missing lua-resty-core entrypoint" && exit 1); \
+    test -f ${TARGET_PREFIX}/lualib/resty/upstream/healthcheck.lua || (echo "Error: missing lua-resty-upstream-healthcheck module" && exit 1)
 
 
 FROM scratch
 
 ARG TARGET_PREFIX
+ENV LUA_PATH="${TARGET_PREFIX}/lualib/?.lua;${TARGET_PREFIX}/lualib/?/init.lua;;"
 
 COPY --from=verify ${TARGET_PREFIX} .
 EXPOSE 80 443

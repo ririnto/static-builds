@@ -65,39 +65,33 @@ jobs:
         if: ${{ inputs.upload_release }}
         run: |-
           TAG="${{ inputs.tag }}"
-          PACKAGE_NAME="${TAG}.tgz"
-          TAR_NAME="${TAG}.tar"
-          ADDED_COUNT=0
+          PACKAGE_NAME="${TAG}.tar.gz"
+          RELEASE_PATHS=()
 
-          rm -f "${PACKAGE_NAME}" "${TAR_NAME}" "${TAR_NAME}.gz"
-          tar -cf "${TAR_NAME}" --files-from /dev/null
+          rm -f "${PACKAGE_NAME}"
 
           while IFS= read -r release_file; do
             if [ -z "${release_file}" ]; then
               continue
             fi
 
-            if [ ! -f "${release_file}" ]; then
-              echo "Error: Release file not found at ${release_file}"
+            if [ -f "${release_file}" ] || [ -d "${release_file}" ]; then
+              RELEASE_PATHS+=("${release_file}")
+
+            else
+              echo "Error: Release path not found at ${release_file}"
               exit 1
             fi
-
-            RELEASE_DIR="$(dirname "${release_file}")"
-            RELEASE_BASE="$(basename "${release_file}")"
-
-            tar -rf "${TAR_NAME}" -C "${RELEASE_DIR}" "${RELEASE_BASE}"
-            ADDED_COUNT=$((ADDED_COUNT + 1))
           done << 'EOF'
           ${{ inputs.release_files }}
           EOF
 
-          if [ "${ADDED_COUNT}" -eq 0 ]; then
+          if [ "${#RELEASE_PATHS[@]}" -eq 0 ]; then
             echo "Error: No release files provided"
             exit 1
           fi
 
-          gzip -n -f "${TAR_NAME}"
-          mv "${TAR_NAME}.gz" "${PACKAGE_NAME}"
+          tar -czvf "${PACKAGE_NAME}" "${RELEASE_PATHS[@]}"
 
       - name: Publish assets to release
         if: ${{ inputs.upload_release }}
@@ -105,7 +99,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |-
           TAG="${{ inputs.tag }}"
-          PACKAGE_NAME="${TAG}.tgz"
+          PACKAGE_NAME="${TAG}.tar.gz"
           
           # Verify all assets exist
           if [ ! -f "${PACKAGE_NAME}" ]; then
