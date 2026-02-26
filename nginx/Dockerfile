@@ -36,7 +36,7 @@ ADD "src/lua-resty-upstream-healthcheck-${NGINX_LUA_RESTY_UPSTREAM_HEALTHCHECK_M
 RUN --mount=type=cache,target=/var/cache/apk \
     cp "/build/lua-resty-upstream-healthcheck-${NGINX_LUA_RESTY_UPSTREAM_HEALTHCHECK_MODULE_VERSION}/lib/resty/upstream/healthcheck.lua" \
        /build/resty_upstream_healthcheck.lua && \
-    cd /build && luajit -bg resty_upstream_healthcheck.lua resty_upstream_healthcheck.o && \
+    cd /build && luajit -b -g -n resty.upstream.healthcheck resty_upstream_healthcheck.lua resty_upstream_healthcheck.o && \
     test -s /build/resty_upstream_healthcheck.o
 WORKDIR "/build/nginx-${NGINX_VERSION}"
 RUN sed -i '/lua_pushstring(L, "resty.core");/,/return NGX_DECLINED;/s/return NGX_DECLINED;/lua_pop(L, 1);/' \
