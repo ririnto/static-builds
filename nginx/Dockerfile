@@ -202,7 +202,13 @@ RUN set -eu; \
     echo "=== Packaging Check: healthcheck.lua NOT installed ==="; \
     test ! -e ${TARGET_PREFIX}/lib/lua/resty/upstream/healthcheck.lua || (echo "Error: healthcheck.lua should not be installed" && exit 1); \
     echo "=== Runtime Smoke Test: embedded healthcheck module ==="; \
-    output="$(${TARGET_PREFIX}/sbin/nginx -t -c /tmp/nginx-healthcheck-require.conf 2>&1)"; \
+    log_file="/tmp/nginx-healthcheck.log"; \
+    ${TARGET_PREFIX}/sbin/nginx -c /tmp/nginx-healthcheck-require.conf -g "daemon off;" >"${log_file}" 2>&1 & \
+    nginx_pid=$!; \
+    sleep 1; \
+    kill "${nginx_pid}" >/dev/null 2>&1 || true; \
+    wait "${nginx_pid}" >/dev/null 2>&1 || true; \
+    output="$(cat "${log_file}")"; \
     echo "$output"; \
     (echo "$output" | grep -q 'module '\''resty.upstream.healthcheck'\'' not found') && (echo "Error: healthcheck module not embedded" && exit 1); \
     (echo "$output" | grep -q 'healthcheck module loaded') || (echo "Error: healthcheck module did not load" && exit 1)
