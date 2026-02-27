@@ -11,15 +11,16 @@ usage() {
     echo "  buildctl args   Additional arguments passed to buildctl"
     echo ""
     echo "Environment variables:"
-    echo "  BUILDKIT_IMAGE        BuildKit image (default: moby/buildkit:rootless)"
+    echo "  BUILDKIT_IMAGE        BuildKit image (default: moby/buildkit:latest)"
     echo "  BUILDKIT_PLATFORM     Target platform (default: linux/amd64)"
     echo "  BUILDKIT_INSECURE     Set to '1' to enable relaxed security (seccomp/apparmor unconfined)"
+    echo "                        Required when using moby/buildkit:rootless image"
     echo "  BUILD_OUTPUT_DEST     Output destination (default: ./out, CI: .)"
     echo ""
     echo "Examples:"
     echo "  $0 nginx"
     echo "  $0 haproxy --progress=plain"
-    echo "  BUILDKIT_INSECURE=1 $0 nginx"
+    echo "  BUILDKIT_IMAGE=moby/buildkit:rootless BUILDKIT_INSECURE=1 $0 nginx"
     exit 1
 }
 
@@ -54,20 +55,16 @@ if [ ! -f "${WORKDIR}/${TARGET}/Dockerfile" ]; then
 fi
 
 # Configuration with defaults
-BUILDKIT_IMAGE="${BUILDKIT_IMAGE:-moby/buildkit:rootless}"
+BUILDKIT_IMAGE="${BUILDKIT_IMAGE:-moby/buildkit:latest}"
 BUILDKIT_PLATFORM="${BUILDKIT_PLATFORM:-linux/amd64}"
 BUILDKIT_INSECURE="${BUILDKIT_INSECURE:-0}"
 
 # Prepare cache directory
-# chmod 0777 is required for rootless BuildKit container to write to host cache
 mkdir -p "${WORKDIR}/${TARGET}/.cache"
-chmod -R 0777 "${WORKDIR}/${TARGET}/.cache"
 
 # Set output destination based on environment
 if [ "${CI:-}" = "true" ] || [ "${GITHUB_ACTIONS:-}" = "true" ]; then
     BUILD_OUTPUT_DEST="."
-    # chmod 0777 is required for rootless BuildKit container to write to host directory
-    chmod 0777 "${WORKDIR}/${TARGET}"
 else
     BUILD_OUTPUT_DEST="${BUILD_OUTPUT_DEST:-./out}"
 fi
@@ -99,9 +96,10 @@ if [ "$#" -gt 0 ]; then
 fi
 
 # Build the docker run command
-DOCKER_CMD="docker run --rm -v \"${WORKDIR}:/workspace\" --workdir \"/workspace/${TARGET}\" -e \"BUILD_OUTPUT_DEST=${BUILD_OUTPUT_DEST}\""
+DOCKER_CMD="docker run --rm -v \"${WORKDIR}:/workspace\" --workdir \"/workspace/${TARGET}\""
 
 # Add security settings based on BUILDKIT_INSECURE flag
+# Required for rootless BuildKit image to function properly
 if [ "${BUILDKIT_INSECURE}" = "1" ]; then
     DOCKER_CMD="${DOCKER_CMD} --security-opt seccomp=unconfined --security-opt apparmor=unconfined -e BUILDKITD_FLAGS=--oci-worker-no-process-sandbox"
 fi
