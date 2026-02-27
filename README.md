@@ -65,10 +65,8 @@ Build artifacts are written directly under `<target>/`.
 ## How It Works
 
 1. The `Makefile` invokes `build.sh`, which validates the target directory and required files
-2. A BuildKit container is launched via `docker run`
-3. BuildKit executes the multi-stage Dockerfile
-4. Built artifacts are output directly into the target directory
-
+2. Docker BuildKit executes the multi-stage Dockerfile via `docker buildx build`
+3. Built artifacts are output directly into the target directory
 Build caching is automatically handled via the `.cache/` directory.
 
 ## CI Behavior
