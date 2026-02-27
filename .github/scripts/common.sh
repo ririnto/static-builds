@@ -109,8 +109,17 @@ extract_hash() {
     checksum_content="${1}"
     target_basename="${2}"
 
-    # Process line by line
-    echo "${checksum_content}" | while IFS= read -r line || [ -n "${line}" ]; do
+    # Strip .tmp.* suffix for temporary file matching
+    # Example: haproxy-1.2.3.tar.gz.tmp.12345 -> haproxy-1.2.3.tar.gz
+    target_basename="${target_basename%.tmp.*}"
+
+    # If first argument is '-', read from stdin
+    if [ "${checksum_content}" = "-" ]; then
+        checksum_content=$(cat)
+    fi
+
+    # Process line by line and capture first matching hash
+    result=$(echo "${checksum_content}" | while IFS= read -r line || [ -n "${line}" ]; do
         # Skip empty lines and comments
         case "${line}" in
             ''|\#*)
@@ -130,12 +139,12 @@ extract_hash() {
                 if [ "${file_part}" = "${target_basename}" ] || \
                    [ "${file_part}" = "*${target_basename}" ]; then
                     echo "${hash_part}"
-                    return 0
+                    exit 0
                 fi
                 # If single entry, return it
                 if [ -z "${target_basename}" ]; then
                     echo "${hash_part}"
-                    return 0
+                    exit 0
                 fi
                 continue
                 ;;
@@ -143,9 +152,12 @@ extract_hash() {
 
         # GNU format: HASH  filename or HASH *filename
         # Also handles plain hash (single token)
-        # Split by whitespace
+        # Split by whitespace (disable glob to prevent * expansion)
         # shellcheck disable=SC2086
+        set -f  # Disable glob expansion
         set -- ${line}
+        set +f  # Re-enable glob expansion
+
         if [ $# -ge 1 ]; then
             first_field="${1}"
             # Check if first field looks like a hex hash
@@ -159,7 +171,7 @@ extract_hash() {
             # Single token = plain hash
             if [ $# -eq 1 ]; then
                 echo "${first_field}"
-                return 0
+                exit 0
             fi
 
             # GNU format: HASH filename
@@ -172,10 +184,15 @@ extract_hash() {
             # Match by basename
             if [ "${file_field}" = "${target_basename}" ]; then
                 echo "${hash_field}"
-                return 0
+                exit 0
             fi
         fi
-    done
+    done)
+
+    if [ -n "${result}" ]; then
+        echo "${result}"
+        return 0
+    fi
 
     return 1
 }
@@ -209,12 +226,12 @@ verify_checksum() {
     fi
 
     # Extract target basename for matching
-    target_basename=$(basename "${file_path}")
-
+    # Strip .tmp.* suffix if present (from download_tarball temporary files)
+    target_basename=$(basename "${file_path}" | sed 's/\.tmp\.[0-9]*$//')
     # Extract expected hash
-    expected_hash=$(echo "${checksum_content}" | extract_hash - "${target_basename}") || {
+    expected_hash=$(extract_hash "${checksum_content}" "${target_basename}") || {
         # Try without basename matching (single entry files)
-        expected_hash=$(echo "${checksum_content}" | extract_hash - "") || {
+        expected_hash=$(extract_hash "${checksum_content}" "") || {
             echo "Error: Could not extract hash from checksum file for: ${target_basename}" >&2
             return 1
         }
