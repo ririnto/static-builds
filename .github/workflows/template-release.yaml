@@ -31,6 +31,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Validate release tag
+        run: sh .github/scripts/release-guard.sh "${{ inputs.target }}" "${{ inputs.tag }}"
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -38,7 +41,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ github.workspace }}/${{ inputs.target }}/src
-          key: src-${{ inputs.target }}-${{ hashFiles(format('{0}/.env', inputs.target), format('{0}/download.sh', inputs.target), '.github/scripts/common.sh') }}
+          key: src-${{ inputs.target }}-${{ hashFiles(format('{0}/.env', inputs.target), format('{0}/download.sh', inputs.target), format('{0}/checksums/**', inputs.target), '.github/scripts/common.sh') }}
           restore-keys: |-
             src-${{ inputs.target }}-
 
