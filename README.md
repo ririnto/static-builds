@@ -12,8 +12,7 @@ Build statically-linked binaries using Docker multi-stage builds for portable, m
 
 ## Prerequisites
 
-- Docker with Docker Compose
-- BuildKit support (automatically uses `moby/buildkit:rootless`)
+- Docker
 
 ## Usage
 
@@ -38,7 +37,6 @@ Build artifacts are written directly under `<target>/`.
 ├── build.sh              # Main build entry point
 ├── download.sh           # Download dispatcher (routes to module download.sh)
 ├── .github/
-│   ├── docker-compose.yaml
 │   └── scripts/
 │       └── common.sh     # Shared common functions
 └── <target>/             # Build target directory
@@ -67,7 +65,7 @@ Build artifacts are written directly under `<target>/`.
 ## How It Works
 
 1. The `Makefile` invokes `build.sh`, which validates the target directory and required files
-2. Docker Compose launches a BuildKit container
+2. A BuildKit container is launched via `docker run`
 3. BuildKit executes the multi-stage Dockerfile
 4. Built artifacts are output directly into the target directory
 
