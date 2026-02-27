@@ -1,0 +1,7 @@
+20e5e0f2c917acfb51120eec2fba9a4ba4e1e10fd28465067cc87a7d81a829a3  nginx-1.28.2.tar.gz
+
+cac326607e6166d9e4b03e3d3b29e520ed43bc86516aff1a946f7d326ca9e19b  nginx-module-vts-0.2.5.tar.gz
+ca2c2122b909529bf9d1a89e9a5763835a2bd2629def8cb279c550f638f0a78f  lua-nginx-module-0.10.29.tar.gz
+7d36188261f44d489acc1671ced73207e2f7adba70663d3f32804509873f3370  lua-resty-core-0.1.32R1.tar.gz
+2a69815e4ae01aa8b170941a8e1a10b6f6a9aab699dee485d58f021dd933829a  lua-upstream-nginx-module-0.07.tar.gz
+ac16cb1a5b119e2ab8e4e2cf2f1c74ccd19c26c5e8b612f10aaa18a153e40ae7  lua-resty-upstream-healthcheck-0.08.tar.gz
