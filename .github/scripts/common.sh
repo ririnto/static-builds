@@ -66,16 +66,9 @@ detect_algorithm() {
     esac
 }
 
-# Fetch checksum content from local file or HTTPS URL
 # Usage: fetch_checksum_content <checksum_ref>
 fetch_checksum_content() {
     checksum_ref="${1}"
-
-    # Local file path
-    if [ -f "${checksum_ref}" ]; then
-        cat "${checksum_ref}"
-        return 0
-    fi
 
     # HTTPS URL
     case "${checksum_ref}" in
@@ -96,7 +89,7 @@ fetch_checksum_content() {
             return 1
             ;;
         *)
-            echo "Error: Checksum ref must be a local file path or HTTPS URL: ${checksum_ref}" >&2
+            echo "Error: Checksum ref must be an HTTPS URL: ${checksum_ref}" >&2
             return 1
             ;;
     esac
