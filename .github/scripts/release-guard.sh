@@ -50,12 +50,6 @@ get_official_version() {
 
     # Map target to version variable name
     case "$target" in
-        nginx)
-            var_name="NGINX_VERSION"
-            ;;
-        haproxy)
-            var_name="HAPROXY_VERSION"
-            ;;
         apache-httpd)
             var_name="HTTPD_VERSION"
             ;;
@@ -64,6 +58,15 @@ get_official_version() {
             ;;
         dnsmasq)
             var_name="DNSMASQ_VERSION"
+            ;;
+        haproxy)
+            var_name="HAPROXY_VERSION"
+            ;;
+        monit)
+            var_name="MONIT_VERSION"
+            ;;
+        nginx)
+            var_name="NGINX_VERSION"
             ;;
         vector)
             var_name="VECTOR_VERSION"

@@ -1,4 +1,4 @@
-TARGETS := nginx haproxy apache-httpd coredns dnsmasq vector
+TARGETS := nginx haproxy apache-httpd coredns dnsmasq vector monit
 BUILD_SCRIPT := $(CURDIR)/build.sh
 BUILD_TARGET := $(word 2,$(MAKECMDGOALS))
 

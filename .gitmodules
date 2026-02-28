@@ -34,3 +34,6 @@
 [submodule "third-party/nginx/lua-resty-core"]
 	path = third-party/nginx/lua-resty-core
 	url = https://github.com/openresty/lua-resty-core.git
+[submodule "third-party/monit/monit"]
+	path = third-party/monit/monit
+	url = https://bitbucket.org/tildeslash/monit.git

@@ -2,7 +2,7 @@
 
 ## OVERVIEW
 
-Docker multi-stage build system for statically-linked binaries. Builds nginx, haproxy, apache-httpd, coredns, dnsmasq, vector using musl libc.
+Docker multi-stage build system for statically-linked binaries. Builds nginx, haproxy, apache-httpd, coredns, dnsmasq, vector, monit using musl libc.
 
 ## STRUCTURE
 
@@ -10,7 +10,7 @@ Docker multi-stage build system for statically-linked binaries. Builds nginx, ha
 static-builds/
 ├── build.sh              # Main build entry
 ├── download.sh           # Source download dispatcher
-├── Makefile              # Build orchestration (6 targets)
+├── Makefile              # Build orchestration (7 targets)
 ├── .github/
 │   ├── docker-compose.yaml  # BuildKit container
 │   ├── scripts/common.sh    # Shared functions
@@ -20,27 +20,10 @@ static-builds/
 ├── apache-httpd/
 ├── coredns/
 ├── dnsmasq/
-├── vector/
-└── third-party/          # Git submodules (empty by default)
-    ├── apache/
-    │   ├── apr/              # Apache Portable Runtime
-    │   ├── apr-util/         # Apache Portable Runtime Utilities
-    │   └── httpd/            # Apache HTTPD source
-    ├── nginx/
-    │   ├── nginx/            # Nginx source
-    │   ├── lua-nginx-module/ # Nginx Lua module
-    │   ├── lua-resty-core/   # Lua resty core library
-    │   ├── lua-resty-upstream-healthcheck/ # Lua upstream healthcheck
-    │   └── nginx-vts-module/ # Nginx Virtual Traffic Statistics
-    ├── haproxy/
-    │   └── haproxy/          # HAProxy load balancer
-    ├── coredns/
-    │   └── coredns/          # CoreDNS DNS server
-    ├── dnsmasq/
-    │   └── dnsmasq/          # DNS forwarder/ DHCP server
-    └── vector/
-        └── vector/           # Vector observability pipeline
+├── monit/
+└── vector/
 ```
+
 
 ## WHERE TO LOOK
 
@@ -54,7 +37,7 @@ static-builds/
 ## CONVENTIONS
 
 - EditorConfig: 4-space indent (2 for .sh/.yaml)
-- Makefile targets: nginx, haproxy, apache-httpd, coredns, dnsmasq, vector
+- Makefile targets: nginx, haproxy, apache-httpd, coredns, dnsmasq, vector, monit
 - Target dir: Must have Dockerfile + .env; download.sh optional
 
 ## ANTI-PATTERNS (THIS PROJECT)
@@ -86,24 +69,4 @@ make download nginx
 
 - Build caching via .cache/ directory
 - Uses moby/buildkit:rootless container
-- third-party/ submodules need `git submodule update --init`
 
-## THIRD-PARTY MODULES
-
-The third-party/ directory contains external sources as git submodules:
-
-- apache/apr: Apache Portable Runtime for Apache HTTPD
-- apache/apr-util: APR utilities for Apache HTTPD
-- apache/httpd: Apache HTTPD source code
-- nginx/nginx: Nginx web server source code
-- nginx/lua-nginx-module: Nginx Lua scripting engine
-- nginx/lua-resty-core: Lua resty core library
-- nginx/lua-resty-upstream-healthcheck: Lua upstream healthcheck library
-- nginx/nginx-vts-module: Nginx virtual traffic statistics module
-- haproxy/haproxy: High availability TCP/HTTP load balancer
-- coredns/coredns: CoreDNS DNS server and plugin system
-- dnsmasq/dnsmasq: Lightweight DNS forwarder and DHCP server
-- vector/vector: High-performance observability pipeline
-
-> [!IMPORTANT]
-> These third-party modules are external dependencies and MUST NOT be modified. They are used as-is for reference only. Changes to these components SHOULD be made in their respective upstream repositories, not in this project.
