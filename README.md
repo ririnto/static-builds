@@ -83,7 +83,8 @@ Build caching is automatically handled via the `.cache/` directory.
   - `.github/workflows/release-coredns-from-tag.yaml`
   - `.github/workflows/release-dnsmasq-from-tag.yaml`
   - `.github/workflows/release-vector-from-tag.yaml`
-- Each caller is bound to one tag pattern (`nginx-*`, `haproxy-*`, `httpd-*`, `coredns-*`, `dnsmasq-*`, `vector-*`) and calls reusable template `.github/workflows/template-release.yaml`.
+  - `.github/workflows/release-monit-from-tag.yaml`
+- Each caller is bound to one tag pattern (`nginx-*`, `haproxy-*`, `httpd-*`, `coredns-*`, `dnsmasq-*`, `vector-*`, `monit-*`) and calls reusable template `.github/workflows/template-release.yaml`.
 - Template builds mapped target, uploads selected files as artifact, then uploads `${tag}.tar.gz` that contains selected release files.
 
 Selected release binaries:
@@ -94,6 +95,7 @@ Selected release binaries:
 - `coredns`: `<target>/coredns`
 - `dnsmasq`: `<target>/sbin/dnsmasq`
 - `vector`: `<target>/bin/vector`
+- `monit`: `<target>/bin/monit`
 
 ## Logging Strategy
 

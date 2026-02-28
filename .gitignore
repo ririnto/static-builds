@@ -32,6 +32,6 @@ tmp/
 */.cache
 */src
 
-.omc/*
-.omx/*
-.sisyphus/*
+**/.omc/*
+**/.omx/*
+**/.sisyphus/*
