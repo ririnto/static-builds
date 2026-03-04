@@ -4,7 +4,7 @@ This document defines the rules and conventions for third-party dependencies in 
 
 ## OVERVIEW
 
-The `third-party/` directory contains external sources as git submodules. These are upstream projects that this build system uses to create statically-linked binaries.
+The `third-party/` directory contains external sources as git submodules. These are for research and exploration only and are NOT used in the build system.
 
 ## MODULE LIST
 
@@ -29,15 +29,16 @@ The following git submodules are included in this project:
 ### Module Management
 
 - The `.gitmodules` file is the source of truth for the submodule list
-- All submodules MUST be initialized with `git submodule update --init`
+- Submodules are for exploration and reference only; local initialization for exploration is allowed but CI MUST NOT initialize submodules (see `actions/checkout` `submodules: false` configuration)
 - Submodule versions SHOULD be pinned to specific commits or tags
 
-### Modification Policy
+### Reference-Only Policy
 
-- Third-party submodule source files MUST NOT be modified
-- These modules are for reference only and MUST be used as-is
-- Changes to third-party components SHOULD be made in their respective upstream repositories
-- Patches MAY be applied during the build process via build scripts, but MUST NOT be committed to the submodule
+- The `third-party/` directory MUST NOT be referenced by this repository's implementation
+- Build scripts, Dockerfiles, and workflows MUST NOT access `third-party/`
+- The repository MUST NOT introduce changes under `third-party/` (including submodule pointer updates)
+
+
 
 ### Adding New Modules
 
@@ -47,6 +48,5 @@ The following git submodules are included in this project:
 
 ### Build Integration
 
-- Build scripts MAY read from third-party sources
-- Build scripts MAY apply patches or modifications during compilation
+- Build scripts MUST NOT reference `third-party/` sources
 - Build scripts MUST NOT modify the third-party source files in place

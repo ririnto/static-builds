@@ -2,13 +2,15 @@ TARGETS := nginx haproxy apache-httpd coredns dnsmasq vector monit
 BUILD_SCRIPT := $(CURDIR)/build.sh
 BUILD_TARGET := $(word 2,$(MAKECMDGOALS))
 
+
 .PHONY: help list-targets check-target download build lint validate-tag
 
 help:
 	@printf '%s\n' "Usage:"
 	@printf '%s\n' "  make build <target>"
 	@printf '%s\n' "  make download <target>"
-	@printf '%s\n' "  Output: <target>/"
+
+	@printf '%s\n' "  Output: local=out/<target>/, CI=<target>/"
 	@printf '%s\n' ""
 	@printf '%s\n' "Targets: $(TARGETS)"
 
@@ -37,6 +39,7 @@ build: check-target
 download: check-target
 	@printf '%s\n' "Downloading source files for $(BUILD_TARGET)..."; \
 	"$(CURDIR)/download.sh" "$(BUILD_TARGET)"
+
 
 # Developer convenience targets
 

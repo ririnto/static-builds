@@ -14,7 +14,9 @@ RUN --mount=type=cache,target=/var/cache/apk \
         make
 ADD "src/coredns-${COREDNS_VERSION}.tar.gz" /build/
 WORKDIR "/build/coredns-${COREDNS_VERSION}"
-RUN make coredns \
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    --mount=type=cache,target=/go/pkg/mod \
+    make coredns \
         CGO_ENABLED=0 \
         BUILDOPTS="-v -trimpath"
 

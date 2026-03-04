@@ -1,6 +1,71 @@
 # Lua Runtime Modules
 
-This build keeps nginx and C modules statically linked, and ships Lua modules as runtime files inside the release artifact/image.
+This build keeps nginx and C modules statically linked, and ships Lua
+modules as runtime files inside the release artifact/image.
+
+## Modules and Features
+
+### Build Options (Explicit)
+
+- Protocol/security modules: `--with-http_ssl_module`,
+  `--with-http_v2_module`, `--with-http_v3_module`, and
+  `--with-stream_ssl_module`.
+- Utility modules: `--with-http_stub_status_module`,
+  `--with-http_gzip_static_module`, `--with-stream_realip_module`, and
+  `--with-stream_ssl_preread_module`.
+- Third-party modules: `--add-module=nginx-module-vts-*`,
+  `--add-module=lua-nginx-module-*`, and
+  `--add-module=lua-upstream-nginx-module-*`.
+- Explicit removals: selected HTTP modules are disabled with
+  `--without-*` flags (for example `fastcgi`, `uwsgi`, `scgi`, and
+  `memcached`).
+
+### Runtime/Packaging Snapshot
+
+- Lua runtime files are shipped under `${TARGET_PREFIX}/lualib`
+  (`resty/core.lua`, `resty/core/*`, and
+  `resty/upstream/healthcheck.lua`).
+- Runtime configure arguments are captured in
+  [Runtime Introspection Output](#runtime-introspection-output) via
+  `nginx -V`.
+
+## How to Verify
+
+> [!NOTE]
+> In CI outputs are under `nginx/`. Override with `BUILD_OUTPUT_DEST`.
+
+```bash
+./out/nginx/sbin/nginx -V
+```
+
+## Runtime Introspection Output
+
+```text
+nginx version: nginx/1.28.2
+built by gcc 15.2.0 (Alpine 15.2.0) 
+built with OpenSSL 3.5.5 27 Jan 2026
+TLS SNI support enabled
+configure arguments:
+  --prefix=/home/nobody --with-threads --with-file-aio
+  --with-http_ssl_module --with-http_v2_module --with-http_v3_module
+  --with-http_realip_module --with-http_gzip_static_module
+  --with-http_stub_status_module --without-http_ssi_module
+  --without-http_userid_module --without-http_autoindex_module
+  --without-http_split_clients_module --without-http_fastcgi_module
+  --without-http_uwsgi_module --without-http_scgi_module
+  --without-http_memcached_module --without-http_empty_gif_module
+  --without-http_browser_module --with-stream --with-stream_ssl_module
+  --with-stream_realip_module --with-stream_ssl_preread_module
+  --add-module=nginx-module-vts-0.2.5 --add-module=lua-nginx-module-0.10.29
+  --add-module=lua-upstream-nginx-module-0.07
+  --with-cc-opt='-O2 -pipe -fPIE -fstack-protector-strong -fstack-clash-protection
+    -ffunction-sections -fdata-sections -fno-delete-null-pointer-checks
+    -fno-strict-overflow -fno-strict-aliasing -ftrivial-auto-var-init=zero
+    -Wformat -Wformat=2 -Werror=format-security'
+  --with-ld-opt='-static -static-pie -static-libgcc -Wl,-E -rdynamic
+    -Wl,-z,relro -Wl,-z,now -Wl,-z,noexecstack -Wl,-z,separate-code
+    -Wl,--as-needed' --with-libatomic
+```
 
 ## What Is Shipped
 
@@ -10,24 +75,31 @@ The build installs Lua runtime files under `nginx/lualib`:
 - `nginx/lualib/resty/core/`
 - `nginx/lualib/resty/upstream/healthcheck.lua`
 
-`LUA_PATH` is configured to load modules from `${TARGET_PREFIX}/lualib` at runtime.
+`LUA_PATH` is configured to load modules from `${TARGET_PREFIX}/lualib`
+at runtime.
 
 ## Build and Runtime Model
 
-1. nginx is built as static PIE with statically linked C dependencies and nginx modules.
-2. `lua-resty-core` and `lua-resty-upstream-healthcheck` Lua files are copied into `${TARGET_PREFIX}/lualib` during image build.
-3. Runtime `require "resty.upstream.healthcheck"` loads from packaged Lua files instead of embedded bytecode.
+1. nginx is built as static PIE with statically linked C dependencies
+   and nginx modules.
+2. `lua-resty-core` and `lua-resty-upstream-healthcheck` Lua files are
+   copied into `${TARGET_PREFIX}/lualib` during image build.
+3. Runtime `require "resty.upstream.healthcheck"` loads from packaged
+   Lua files instead of embedded bytecode.
 
 ## Scope
 
-This target packages the runtime Lua modules required for `resty.upstream.healthcheck` operation while preserving static nginx/module builds.
+This target packages the runtime Lua modules required for
+`resty.upstream.healthcheck` operation while preserving static
+nginx/module builds.
 
 ## Prefix and Path Resolution
 
 - `-p <prefix>` sets the nginx runtime prefix.
 - If `-c` is omitted, nginx loads `${prefix}/conf/nginx.conf` by default.
 - `nginx.conf` cannot set prefix itself like `-p`; it can only reference `$prefix`.
-- Relative `lua_package_path` entries are not evaluated from binary path or `nginx.conf` file path.
+- Relative `lua_package_path` entries are not evaluated from binary path
+  or `nginx.conf` file path.
 - `lua_package_path` default value follows `LUA_PATH` or Lua compiled-in defaults.
 - `;;` appends those default search paths after your custom path.
 
@@ -54,7 +126,9 @@ Portable bundle example:
 
 ## Comprehensive Runtime Example
 
-Use this single `http {}` example for multiple upstream checks, automatic peer down/up handling, VTS traffic stats, and merged Prometheus output.
+Use this single `http {}` example for multiple upstream checks,
+automatic peer down/up handling, VTS traffic stats, and merged
+Prometheus output.
 
 ```nginx
 http {
@@ -142,22 +216,51 @@ http {
                         healthcheck_up = 1
                         table.insert(chunks, hc_out)
                     else
-                        table.insert(chunks, "# healthcheck module unavailable: " .. tostring(hc_err))
+                        table.insert(
+                            chunks,
+                            "# healthcheck module unavailable: "
+                                .. tostring(hc_err)
+                        )
                     end
                 else
-                    table.insert(chunks, "# healthcheck module unavailable: " .. tostring(hc_or_err))
+                    table.insert(
+                        chunks,
+                        "# healthcheck module unavailable: "
+                            .. tostring(hc_or_err)
+                    )
                 end
                 local vts = ngx.location.capture("/status/format/prometheus")
                 if vts.status == ngx.HTTP_OK then
                     vts_up = 1
                     table.insert(chunks, vts.body)
                 else
-                    table.insert(chunks, "# vts metrics unavailable: status=" .. tostring(vts.status))
+                    table.insert(
+                        chunks,
+                        "# vts metrics unavailable: status="
+                            .. tostring(vts.status)
+                    )
                 end
-                table.insert(chunks, "# HELP nginx_metrics_source_up Source availability for merged /metrics endpoint")
+                table.insert(
+                    chunks,
+                    "# HELP nginx_metrics_source_up Source availability "
+                        .. "for merged /metrics endpoint"
+                )
                 table.insert(chunks, "# TYPE nginx_metrics_source_up gauge")
-                table.insert(chunks, string.format("nginx_metrics_source_up{source=\"healthcheck_module\"} %d", healthcheck_up))
-                table.insert(chunks, string.format("nginx_metrics_source_up{source=\"vts\"} %d", vts_up))
+                table.insert(
+                    chunks,
+                    string.format(
+                        "nginx_metrics_source_up{source=\"healthcheck_"
+                            .. "module\"} %d",
+                        healthcheck_up
+                    )
+                )
+                table.insert(
+                    chunks,
+                    string.format(
+                        "nginx_metrics_source_up{source=\"vts\"} %d",
+                        vts_up
+                    )
+                )
                 ngx.print(table.concat(chunks, "\n"))
             }
         }
@@ -165,9 +268,12 @@ http {
 }
 ```
 
-`spawn_checker` updates peer state via `ngx.upstream.set_peer_down`. Failed peers are marked down after `fall` consecutive failures and recovered after `rise` consecutive successes.
+`spawn_checker` updates peer state via `ngx.upstream.set_peer_down`.
+Failed peers are marked down after `fall` consecutive failures and
+recovered after `rise` consecutive successes.
 
-`nginx_metrics_source_up` indicates metric source availability, not backend health status.
+`nginx_metrics_source_up` indicates metric source availability, not
+backend health status.
 
 ## Reference
 

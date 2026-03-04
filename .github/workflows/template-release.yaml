@@ -30,6 +30,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          submodules: false
 
       - name: Validate release tag
         run: sh .github/scripts/release-guard.sh "${{ inputs.target }}" "${{ inputs.tag }}"
@@ -45,15 +47,9 @@ jobs:
           restore-keys: |-
             src-${{ inputs.target }}-
 
-      - name: Cache buildkit
-        uses: actions/cache@v4
-        with:
-          path: ${{ github.workspace }}/${{ inputs.target }}/.cache
-          key: buildkit-${{ inputs.target }}-${{ hashFiles(format('{0}/Dockerfile', inputs.target), format('{0}/.env', inputs.target)) }}
-          restore-keys: |-
-            buildkit-${{ inputs.target }}-
-
       - name: Build target
+        env:
+          BUILDKIT_CACHE_BACKEND: gha
         run: make build ${{ inputs.target }}
 
       - name: Upload selected release files artifact
@@ -103,18 +99,18 @@ jobs:
         run: |-
           TAG="${{ inputs.tag }}"
           PACKAGE_NAME="${TAG}.tar.gz"
-          
+
           # Verify all assets exist
           if [ ! -f "${PACKAGE_NAME}" ]; then
             echo "Error: Release package not found at ${PACKAGE_NAME}"
             exit 1
           fi
-          
+
           # Create release if it doesn't exist
           if ! gh release view "${TAG}" >/dev/null 2>&1; then
             gh release create "${TAG}" \
               --title "${TAG}" \
               --notes "Automated static binary release from tag ${TAG}."
           fi
-          
+
           gh release upload "${TAG}" "${PACKAGE_NAME}" --clobber

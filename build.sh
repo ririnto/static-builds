@@ -12,7 +12,7 @@ usage() {
     echo ""
     echo "Environment variables:"
     echo "  BUILDKIT_PLATFORM     Target platform (default: linux/amd64)"
-    echo "  BUILD_OUTPUT_DEST     Output destination (default: current directory)"
+    echo "  BUILD_OUTPUT_DEST     Output destination (default: out/<target>/ for local)"
     echo ""
     echo "Examples:"
     echo "  $0 nginx"
@@ -52,45 +52,48 @@ fi
 
 # Configuration with defaults
 BUILDKIT_PLATFORM="${BUILDKIT_PLATFORM:-linux/amd64}"
+BUILDKIT_CACHE_BACKEND="${BUILDKIT_CACHE_BACKEND:-local}"
 
-# Prepare cache directory
-mkdir -p "${WORKDIR}/${TARGET}/.cache"
+case "${BUILDKIT_CACHE_BACKEND}" in
+    local)
+        mkdir -p "${WORKDIR}/${TARGET}/.cache"
+        CACHE_FROM="type=local,src=${WORKDIR}/${TARGET}/.cache"
+        CACHE_TO="type=local,dest=${WORKDIR}/${TARGET}/.cache,mode=max"
+        ;;
+    gha)
+        CACHE_FROM="type=gha,scope=${TARGET}"
+        CACHE_TO="type=gha,mode=max,scope=${TARGET}"
+        ;;
+    *)
+        echo "Error: Invalid BUILDKIT_CACHE_BACKEND '${BUILDKIT_CACHE_BACKEND}'"
+        echo "Allowed values: local, gha"
+        exit 1
+        ;;
+esac
 
 # Set output destination based on environment
 if [ "${CI:-}" = "true" ] || [ "${GITHUB_ACTIONS:-}" = "true" ]; then
     BUILD_OUTPUT_DEST="."
 else
-    BUILD_OUTPUT_DEST="${BUILD_OUTPUT_DEST:-.}"
+    BUILD_OUTPUT_DEST="${BUILD_OUTPUT_DEST:-${WORKDIR}/out/${TARGET}}"
 fi
-# Build the docker buildx command
-DOCKER_CMD="docker buildx build"
-DOCKER_CMD="${DOCKER_CMD} --network=host"
-DOCKER_CMD="${DOCKER_CMD} --platform=${BUILDKIT_PLATFORM}"
-DOCKER_CMD="${DOCKER_CMD} --output=type=local,dest=${BUILD_OUTPUT_DEST}"
 
-# Add cache configuration
-DOCKER_CMD="${DOCKER_CMD} --cache-from=type=local,src=${WORKDIR}/${TARGET}/.cache"
-DOCKER_CMD="${DOCKER_CMD} --cache-to=type=local,dest=${WORKDIR}/${TARGET}/.cache,mode=max"
-
+mkdir -p "${BUILD_OUTPUT_DEST}"
 # Read .env file and add build args
 while IFS='=' read -r key value || [ -n "${key}" ]; do
     case "${key}" in
         ''|\#*) continue ;;
     esac
-    DOCKER_CMD="${DOCKER_CMD} --build-arg=${key}=${value}"
+    set -- "--build-arg=${key}=${value}" "$@"
 done < "${WORKDIR}/${TARGET}/.env"
-
-# Add any additional args passed by user
-if [ "$#" -gt 0 ]; then
-    for arg in "$@"; do
-        DOCKER_CMD="${DOCKER_CMD} ${arg}"
-    done
-fi
-
-# Add the context path
-DOCKER_CMD="${DOCKER_CMD} ${WORKDIR}/${TARGET}"
 
 # Execute the build
 cd "${WORKDIR}/${TARGET}"
-eval "${DOCKER_CMD}"
-
+docker buildx build \
+    --network=host \
+    "--platform=${BUILDKIT_PLATFORM}" \
+    "--output=type=local,dest=${BUILD_OUTPUT_DEST}" \
+    "--cache-from=${CACHE_FROM}" \
+    "--cache-to=${CACHE_TO}" \
+    "$@" \
+    "${WORKDIR}/${TARGET}"
