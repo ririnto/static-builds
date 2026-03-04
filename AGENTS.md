@@ -39,6 +39,7 @@ static-builds/
 - EditorConfig: 4-space indent (2 for .sh/.yaml)
 - Makefile targets: nginx, haproxy, apache-httpd, coredns, dnsmasq, vector, monit
 - Target dir: Must have Dockerfile + .env; download.sh optional
+- `@third-party/` is reference-only material for research and exploration. It MUST NOT be referenced by this repository's implementation and MUST NOT be modified from this repository.
 
 ## ANTI-PATTERNS (THIS PROJECT)
 
@@ -69,4 +70,3 @@ make download nginx
 
 - Build caching via .cache/ directory
 - Uses moby/buildkit:rootless container
-
