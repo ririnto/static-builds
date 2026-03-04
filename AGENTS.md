@@ -2,7 +2,9 @@
 
 ## OVERVIEW
 
-Docker multi-stage build system for statically-linked binaries. Builds nginx, haproxy, apache-httpd, coredns, dnsmasq, vector, monit using musl libc.
+Docker multi-stage build system for statically-linked binaries.
+Builds nginx, haproxy, apache-httpd, coredns, dnsmasq, vector,
+monit using musl libc.
 
 ## STRUCTURE
 
@@ -12,7 +14,6 @@ static-builds/
 ├── download.sh           # Source download dispatcher
 ├── Makefile              # Build orchestration (7 targets)
 ├── .github/
-│   ├── docker-compose.yaml  # BuildKit container
 │   ├── scripts/common.sh    # Shared functions
 │   └── workflows/           # Tag-triggered release
 ├── nginx/                # Target dirs: Dockerfile + .env
@@ -23,7 +24,6 @@ static-builds/
 ├── monit/
 └── vector/
 ```
-
 
 ## WHERE TO LOOK
 
@@ -36,26 +36,50 @@ static-builds/
 
 ## CONVENTIONS
 
+- New top-level directories outside STRUCTURE MUST NOT be added
+  (for example, `docs/`, `tests/`).
+- Documentation files MUST be limited to `README.md` and `AGENTS.md`
+  at any directory level; other documentation filenames and directories
+  (for example, `ARTIFACTS.md`, `docs/`) MUST NOT be added.
+
 - EditorConfig: 4-space indent (2 for .sh/.yaml)
-- Makefile targets: nginx, haproxy, apache-httpd, coredns, dnsmasq, vector, monit
+- Makefile targets: nginx, haproxy, apache-httpd, coredns,
+  dnsmasq, vector, monit
 - Target dir: Must have Dockerfile + .env; download.sh optional
-- `@third-party/` is reference-only material for research and exploration. It MUST NOT be referenced by this repository's implementation and MUST NOT be modified from this repository.
+- `third-party/` is reference-only material for research and
+  exploration. It MUST NOT be referenced by this repository's
+  implementation and MUST NOT be modified from this repository.
+
+## Third-party Policy
+
+The `third-party/` directory is for research and exploration only.
+
+- The repository MUST NOT reference `third-party/` from build
+  scripts, Dockerfiles, workflows, or runtime artifacts.
+- The repository MUST NOT introduce changes under `third-party/`
+  (including submodule pointer updates).
+- The `third-party/` directory MAY be used only for collecting
+  information, investigation, and exploration.
 
 ## ANTI-PATTERNS (THIS PROJECT)
 
 - No regular CI (push/PR workflows absent)
-- docker-compose.yaml hidden in .github/ (unusual location)
 - No test framework - build infrastructure only
 
 ## UNIQUE STYLES
 
 - Tag-triggered release: `nginx-1.25.0` → builds + uploads artifact
 - Release tags MUST follow `<target>-<official_version>.<x>`.
-  - `official_version`: version from target `.env` (for example `NGINX_VERSION`, `HTTPD_VERSION`, `HAPROXY_VERSION`)
-  - `x`: release revision suffix starting at `0` and incrementing (`.0`, `.1`, `.2`, ...)
+  - `official_version`: version from target `.env`
+    (for example `NGINX_VERSION`, `HTTPD_VERSION`,
+    `HAPROXY_VERSION`)
+  - `x`: release revision suffix starting at `0` and
+    incrementing (`.0`, `.1`, `.2`, ...)
   - examples: `nginx-1.28.2.18`, `httpd-2.4.66.5`, `haproxy-3.2.13.0`
 - Per-target caller workflows + reusable template pattern
-- Artifacts: `<target>/sbin/nginx`, `sbin/haproxy`, `bin/httpd`, etc.
+- Artifacts: local builds output under `out/<target>/...`, while
+  CI/release builds output under `<target>/...` for packaging
+  compatibility.
 
 ## COMMANDS
 
@@ -68,5 +92,5 @@ make download nginx
 
 ## NOTES
 
-- Build caching via .cache/ directory
+- Build caching via per-target `<target>/.cache/` directory
 - Uses moby/buildkit:rootless container
