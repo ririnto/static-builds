@@ -53,7 +53,11 @@ fi
 # Configuration with defaults
 BUILDKIT_PLATFORM="${BUILDKIT_PLATFORM:-linux/amd64}"
 BUILDKIT_CACHE_BACKEND="${BUILDKIT_CACHE_BACKEND:-local}"
-BUILDKIT_NETWORK="${BUILDKIT_NETWORK:-default}"
+if [ "${CI:-}" = "true" ] || [ "${GITHUB_ACTIONS:-}" = "true" ]; then
+    BUILDKIT_NETWORK="${BUILDKIT_NETWORK:-default}"
+else
+    BUILDKIT_NETWORK="${BUILDKIT_NETWORK:-host}"
+fi
 
 case "${BUILDKIT_CACHE_BACKEND}" in
     local)
