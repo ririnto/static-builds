@@ -1,6 +1,10 @@
 #!/usr/bin/env sh
 set -eu
 
+# Download integrity policies
+DOWNLOAD_REQUIRE_CHECKSUM=${DOWNLOAD_REQUIRE_CHECKSUM:-1}
+DOWNLOAD_ALLOW_INSECURE_HTTP=${DOWNLOAD_ALLOW_INSECURE_HTTP:-0}
+
 # Compute hash for a file using available tools
 # Usage: compute_hash <file> <algorithm>
 # algorithm: sha256 or sha512
@@ -84,12 +88,8 @@ fetch_checksum_content() {
                 return 1
             fi
             ;;
-        http://*)
-            echo "Error: HTTP URLs not allowed for checksums (HTTPS required)" >&2
-            return 1
-            ;;
         *)
-            echo "Error: Checksum ref must be an HTTPS URL: ${checksum_ref}" >&2
+            echo "Error: Checksum ref must be an HTTPS URL or literal (sha256:<hex> or sha512:<hex>): ${checksum_ref}" >&2
             return 1
             ;;
     esac
@@ -192,7 +192,7 @@ extract_hash() {
 
 # Verify file checksum against reference
 # Usage: verify_checksum <file_path> <checksum_ref>
-# checksum_ref: local file path or HTTPS URL
+# checksum_ref: HTTPS URL or literal sha256:<hex>/sha512:<hex>
 verify_checksum() {
     file_path="${1}"
     checksum_ref="${2}"
@@ -207,39 +207,56 @@ verify_checksum() {
         return 1
     fi
 
-    # Fetch checksum content
-    checksum_content=$(fetch_checksum_content "${checksum_ref}") || {
-        echo "Error: Failed to fetch checksum from: ${checksum_ref}" >&2
-        return 1
-    }
+    # Check for literal hash format: sha256:<hex> or sha512:<hex>
+    expected_hash=""
+    algorithm=""
+    case "${checksum_ref}" in
+        sha256:*)
+            expected_hash="${checksum_ref#sha256:}"
+            algorithm="sha256"
+            ;;
+        sha512:*)
+            expected_hash="${checksum_ref#sha512:}"
+            algorithm="sha512"
+            ;;
+        *)
+            # Not a literal hash, try fetching from URL
+            checksum_content=$(fetch_checksum_content "${checksum_ref}") || {
+                echo "Error: Failed to fetch checksum from: ${checksum_ref}" >&2
+                return 1
+            }
 
-    if [ -z "${checksum_content}" ]; then
-        echo "Error: Checksum content is empty: ${checksum_ref}" >&2
-        return 1
-    fi
+            if [ -z "${checksum_content}" ]; then
+                echo "Error: Checksum content is empty: ${checksum_ref}" >&2
+                return 1
+            fi
 
-    # Extract target basename for matching
-    # Strip .tmp.* suffix if present (from download_tarball temporary files)
-    target_basename=$(basename "${file_path}" | sed 's/\.tmp\.[0-9]*$//')
-    # Extract expected hash
-    expected_hash=$(extract_hash "${checksum_content}" "${target_basename}") || {
-        # Try without basename matching (single entry files)
-        expected_hash=$(extract_hash "${checksum_content}" "") || {
-            echo "Error: Could not extract hash from checksum file for: ${target_basename}" >&2
-            return 1
-        }
-    }
+            # Extract target basename for matching
+            # Strip .tmp.* suffix if present (from download_tarball temporary files)
+            target_basename=$(basename "${file_path}" | sed 's/\.tmp\.[0-9]*$//')
+            # Extract expected hash
+            expected_hash=$(extract_hash "${checksum_content}" "${target_basename}") || {
+                # Try without basename matching (single entry files)
+                expected_hash=$(extract_hash "${checksum_content}" "") || {
+                    echo "Error: Could not extract hash from checksum file for: ${target_basename}" >&2
+                    return 1
+                }
+            }
+            ;;
+    esac
 
     if [ -z "${expected_hash}" ]; then
-        echo "Error: No matching hash found for: ${target_basename}" >&2
+        echo "Error: No matching hash found for: ${file_path}" >&2
         return 1
     fi
 
-    # Detect algorithm from hash length
-    algorithm=$(detect_algorithm "${expected_hash}") || {
-        echo "Error: Could not detect algorithm for hash: ${expected_hash}" >&2
-        return 1
-    }
+    # Detect algorithm from hash length if not already set
+    if [ -z "${algorithm}" ]; then
+        algorithm=$(detect_algorithm "${expected_hash}") || {
+            echo "Error: Could not detect algorithm for hash: ${expected_hash}" >&2
+            return 1
+        }
+    fi
 
     # Compute actual hash (only sha256/sha512 supported, md5 not supported for verification)
     case "${algorithm}" in
@@ -284,6 +301,12 @@ download_tarball() {
     max_time="${DOWNLOAD_MAX_TIME:-300}"
     attempt=1
 
+    # Enforce checksum requirement policy
+    if [ "${DOWNLOAD_REQUIRE_CHECKSUM}" = "1" ] && [ -z "${checksum_ref}" ]; then
+        echo "Error: DOWNLOAD_REQUIRE_CHECKSUM=1 requires checksum_ref to be provided" >&2
+        return 1
+    fi
+
     mkdir -p "${dest_dir}"
     echo "Downloading ${url} -> ${dest_file}" >&2
 
@@ -295,16 +318,39 @@ download_tarball() {
                 return 0
             fi
             echo "File exists but checksum mismatch, re-downloading: ${dest_file}" >&2
+        elif [ "${DOWNLOAD_REQUIRE_CHECKSUM}" = "1" ]; then
+            # Under policy, skip checksum-less files
+            echo "Warning: File exists but no checksum_ref provided (policy requires verification): ${dest_file}" >&2
+            # Fall through to download
         else
             echo "File exists (no checksum verification): ${dest_file}" >&2
             return 0
         fi
     fi
 
-    rm -f "${dest_file}"
+    # Enforce HTTPS for tarball URLs unless explicitly allowed
+    case "${url}" in
+        https://*)
+            ;;
+        http://*)
+            if [ "${DOWNLOAD_ALLOW_INSECURE_HTTP}" != "1" ]; then
+                echo "Error: HTTP URLs not allowed for tarballs (HTTPS required). Set DOWNLOAD_ALLOW_INSECURE_HTTP=1 to allow http:// URLs" >&2
+                return 1
+            fi
+            ;;
+        *)
+            echo "Error: Unsupported URL scheme: ${url}" >&2
+            return 1
+            ;;
+    esac
+
+    # Create temporary file in destination directory for atomic move
+    tmp_file=$(mktemp "${dest_file}.tmp.XXXXXX") || {
+        echo "Error: Failed to create temporary file in ${dest_dir}" >&2
+        return 1
+    }
 
     while [ "${attempt}" -le "${retries}" ]; do
-        tmp_file="${dest_file}.tmp.$$"
         rm -f "${tmp_file}"
 
         if command -v curl >/dev/null 2>&1; then
@@ -331,7 +377,8 @@ download_tarball() {
             # Verify checksum if provided
             if [ -n "${checksum_ref}" ]; then
                 if verify_checksum "${tmp_file}" "${checksum_ref}"; then
-                    mv "${tmp_file}" "${dest_file}"
+                    # Atomic move: verified temp file replaces destination
+                    mv -f "${tmp_file}" "${dest_file}"
                     return 0
                 fi
                 rm -f "${tmp_file}"
@@ -339,10 +386,12 @@ download_tarball() {
                 return 1
             fi
 
-            # No checksum - just check file is not empty
-            if [ -s "${tmp_file}" ]; then
-                mv "${tmp_file}" "${dest_file}"
-                return 0
+            # No checksum - just check file is not empty (only if policy allows)
+            if [ "${DOWNLOAD_REQUIRE_CHECKSUM}" != "1" ]; then
+                if [ -s "${tmp_file}" ]; then
+                    mv -f "${tmp_file}" "${dest_file}"
+                    return 0
+                fi
             fi
 
             rm -f "${tmp_file}"
