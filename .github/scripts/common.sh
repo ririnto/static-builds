@@ -2,10 +2,12 @@
 set -eu
 
 download_tarball() {
+    if [ $# -ne 2 ]; then
+        echo "Error: download_tarball expects 2 arguments: <url> <dest_file>" >&2
+        return 1
+    fi
     url="${1}"
     dest_file="${2}"
-    # Third argument (checksum_ref) is ignored for backward compatibility
-    _checksum_ref="${3:-}"
     dest_dir="$(dirname "${dest_file}")"
     retries="${DOWNLOAD_RETRIES:-5}"
     connect_timeout="${DOWNLOAD_CONNECT_TIMEOUT:-15}"
