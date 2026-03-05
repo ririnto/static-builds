@@ -30,6 +30,7 @@ tmp/
 
 .cache
 */.cache
+.cache-gh/
 */src
 
 **/.omc/*
