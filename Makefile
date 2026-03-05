@@ -45,8 +45,8 @@ download: check-target
 
 lint:
 	@printf '%s\n' "Running shellcheck on project shell scripts..."
-	@for file in .github/scripts/*.sh */download.sh; do \
-		cat "$$file" | docker run --rm -i koalaman/shellcheck:stable --severity=error /dev/stdin || exit 1; \
+	@for file in build.sh download.sh .github/scripts/*.sh */download.sh; do \
+		cat "$$file" | docker run --rm -i koalaman/shellcheck@sha256:bb596a0d169b85ddd81d8b6d3a2ff6d5baf5fca10b97f575ebc647c3dff62b3d --severity=error /dev/stdin || exit 1; \
 	done
 	@printf '%s\n' "✓ Shellcheck passed"
 
