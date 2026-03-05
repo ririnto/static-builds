@@ -46,6 +46,7 @@ static-builds/
 - Makefile targets: nginx, haproxy, apache-httpd, coredns,
   dnsmasq, vector, monit
 - Target dir: Must have Dockerfile + .env; download.sh optional
+- Upstream source downloads MUST NOT enforce checksum verification/pinning because some upstreams do not publish checksum files. Consumers SHOULD validate sources independently when possible.
 - `third-party/` is reference-only material for research and
   exploration. It MUST NOT be referenced by this repository's
   implementation and MUST NOT be modified from this repository.
