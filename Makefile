@@ -3,7 +3,7 @@ BUILD_SCRIPT := $(CURDIR)/build.sh
 BUILD_TARGET := $(word 2,$(MAKECMDGOALS))
 
 
-.PHONY: help list-targets check-target download build lint validate-tag
+.PHONY: help list-targets check-target download build lint shfmt-write shfmt-check validate-tag
 
 help:
 	@printf '%s\n' "Usage:"
@@ -59,6 +59,16 @@ validate-tag:
 	fi
 	@"$(CURDIR)/.github/scripts/release-guard.sh" \
 		"$(word 2,$(MAKECMDGOALS))" "$(word 3,$(MAKECMDGOALS))"
+
+shfmt-write:
+	@printf '%s\n' "Formatting shell scripts with shfmt..."
+	@go run mvdan.cc/sh/v3/cmd/shfmt@latest -w -ln posix -i 2 \
+		build.sh download.sh .github/scripts/*.sh */download.sh
+
+shfmt-check:
+	@printf '%s\n' "Checking shell formatting with shfmt..."
+	@go run mvdan.cc/sh/v3/cmd/shfmt@latest -d -ln posix -i 2 \
+		build.sh download.sh .github/scripts/*.sh */download.sh
 
 # Prevent make from treating validate-tag arguments as targets
 %:
