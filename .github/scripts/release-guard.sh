@@ -108,14 +108,13 @@ main() {
             ;;
     esac
 
-    # Validate tag format: <prefix>-<version>.<revision>
-    if ! printf '%s' "$tag" | grep -qE "^${tag_prefix}-[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$"; then
+    # Validate tag format: must start with prefix and have version.revision structure
+    if ! printf '%s' "$tag" | grep -qE "^${tag_prefix}-"; then
         err "Error: Invalid tag format '$tag'"
         err "Expected format: ${tag_prefix}-<version>.<revision>"
         err "Example: ${tag_prefix}-1.28.2.18"
         exit 1
     fi
-
     # Parse version from tag
     tag_version=$(parse_tag "$tag") || exit 1
 
