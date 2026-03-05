@@ -107,6 +107,7 @@ done < "${WORKDIR}/${TARGET}/.env"
 # Execute the build
 cd "${WORKDIR}/${TARGET}"
 docker buildx build \
+    "--platform=${BUILDKIT_PLATFORM}" \
     "--network=${BUILDKIT_NETWORK}" \
     "--output=type=local,dest=${BUILD_OUTPUT_DEST}" \
     "--cache-from=${CACHE_FROM}" \
