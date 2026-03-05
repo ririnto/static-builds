@@ -50,6 +50,16 @@ static-builds/
 - `third-party/` is reference-only material for research and
   exploration. It MUST NOT be referenced by this repository's
   implementation and MUST NOT be modified from this repository.
+- Shell scripts (`*.sh` and files with a `sh`/`bash` shebang) MUST NOT contain comments except:
+  - The shebang line (the first line starting with `#!`).
+  - Function documentation comment blocks that are placed immediately above a function definition.
+- Function documentation comment blocks MUST:
+  - Be contiguous lines starting with `#` (or `##`).
+  - Have no blank line between the comment block and the function definition.
+  - Describe purpose and expected inputs/outputs/return codes.
+  - Use reST Docstring style with field lists, including `:param`, `:return:` (or `:returns:`) and `:rtype:` fields where applicable.
+- Inline comments, section header comments, and file header comment blocks MUST NOT be used.
+- If explanation is needed, refactor code into a function and document that function instead of adding inline comments.
 
 ## Third-party Policy
 
