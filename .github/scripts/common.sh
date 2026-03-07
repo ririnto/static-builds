@@ -21,6 +21,7 @@ download_tarball() {
   connect_timeout="${DOWNLOAD_CONNECT_TIMEOUT:-15}"
   max_time="${DOWNLOAD_MAX_TIME:-300}"
   attempt=1
+  base_delay="${DOWNLOAD_BASE_DELAY:-1}"
   mkdir -p "${dest_dir}"
   echo "Downloading ${url} -> ${dest_file}" >&2
   if [ -f "${dest_file}" ] && [ -s "${dest_file}" ]; then
@@ -74,7 +75,12 @@ download_tarball() {
     echo "Error: Download failed (attempt ${attempt}/${retries}, exit=${rc}): ${url} -> ${dest_file}" >&2
     attempt=$((attempt + 1))
     if [ "${attempt}" -le "${retries}" ]; then
-      sleep 1
+      delay=$((base_delay * (2 ** (attempt - 1))))
+      if [ "${delay}" -gt 60 ]; then
+        delay=60
+      fi
+      echo "Retrying in ${delay} seconds..." >&2
+      sleep "${delay}"
     fi
   done
   return 1
