@@ -21,11 +21,10 @@ on:
         default: true
         type: boolean
 
-permissions:
-  contents: write
-
 jobs:
   build-and-release:
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -51,6 +50,20 @@ jobs:
         env:
           BUILDKIT_CACHE_BACKEND: gha
         run: make build ${{ inputs.target }}
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '${{ inputs.target }}'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
 
       - name: Upload selected release files artifact
         uses: actions/upload-artifact@v4

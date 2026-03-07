@@ -33,33 +33,16 @@ get_official_version() {
     err "Error: .env file not found: $env_file"
     return 1
   fi
+
   case "$target" in
   apache-httpd)
     var_name="HTTPD_VERSION"
     ;;
-  coredns)
-    var_name="COREDNS_VERSION"
-    ;;
-  dnsmasq)
-    var_name="DNSMASQ_VERSION"
-    ;;
-  haproxy)
-    var_name="HAPROXY_VERSION"
-    ;;
-  monit)
-    var_name="MONIT_VERSION"
-    ;;
-  nginx)
-    var_name="NGINX_VERSION"
-    ;;
-  vector)
-    var_name="VECTOR_VERSION"
-    ;;
   *)
-    err "Error: Unknown target '$target'"
-    return 1
+    var_name="$(printf '%s' "$target" | tr '[:lower:]' '[:upper:]')_VERSION"
     ;;
   esac
+
   version=$(grep "^${var_name}=" "$env_file" | cut -d'=' -f2)
   if [ -z "$version" ]; then
     err "Error: ${var_name} not found in $env_file"
@@ -80,14 +63,10 @@ main() {
   fi
   target="$1"
   tag="$2"
-  case "$target" in
-  apache-httpd)
+  tag_prefix="$target"
+  if [ "$target" = "apache-httpd" ]; then
     tag_prefix="httpd"
-    ;;
-  *)
-    tag_prefix="$target"
-    ;;
-  esac
+  fi
   if ! printf '%s' "$tag" | grep -qE "^${tag_prefix}-"; then
     err "Error: Invalid tag format '$tag'"
     err "Expected format: ${tag_prefix}-<version>.<revision>"
