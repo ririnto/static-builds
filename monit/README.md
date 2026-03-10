@@ -19,6 +19,15 @@ libraries statically.
   [Runtime Introspection Output](#runtime-introspection-output) with
   `monit -V` and `monit -h`.
 
+## Allowed Target-Specific Variations
+
+- This target intentionally relinks built object archives into a final
+  static PIE `bin/monit` binary instead of relying only on the default
+  upstream install output.
+- Static linkage against OpenSSL and zlib archives is an approved part
+  of this target profile.
+- The approved release artifact for this target is `monit/bin/monit`.
+
 ## Runtime Defaults
 
 Build features (confirmed from `monit -V` output):

@@ -20,6 +20,15 @@ binary as a static artifact.
   `vector --version`.
 - Component inventory is captured with `vector list`.
 
+## Allowed Target-Specific Variations
+
+- This target intentionally repackages the upstream musl release tarball
+  instead of compiling Vector from source inside this repository.
+- The approved release artifact for this target is `vector/bin/vector`.
+- The available sources, transforms, sinks, and enrichment tables are
+  intentionally defined by the upstream release selected in
+  `vector/.env`.
+
 ## How to Verify
 
 > [!NOTE]

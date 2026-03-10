@@ -22,6 +22,15 @@ deployments.
   [Runtime Introspection Output](#runtime-introspection-output) from
   `haproxy -vv`.
 
+## Allowed Target-Specific Variations
+
+- This target intentionally enables `USE_THREAD=0` and ships a
+  single-thread HAProxy profile.
+- Lua support and the Prometheus exporter are approved parts of this
+  target's runtime profile.
+- The release artifact for this target is intentionally limited to the
+  static `haproxy/sbin/haproxy` binary.
+
 ## How to Verify
 
 > [!NOTE]

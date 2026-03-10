@@ -19,6 +19,16 @@ This target builds a static CoreDNS binary from source using Go.
 - Binary version/platform metadata is captured with
   `coredns -version`.
 
+## Allowed Target-Specific Variations
+
+- This target intentionally uses a Go builder image and a pure-Go build
+  path instead of the Alpine C toolchain pattern used by many other
+  targets.
+- The packaged artifact is intentionally emitted as `coredns/coredns`
+  instead of a `bin/` or `sbin/` path.
+- Plugin inventory and version reporting are the approved verification
+  surface for this target.
+
 ## How to Verify
 
 > [!NOTE]

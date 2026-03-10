@@ -20,6 +20,16 @@ This target builds a static PIE `dnsmasq` binary from source.
 - Full option surface and default-related hints are captured via
   `dnsmasq --help`.
 
+## Allowed Target-Specific Variations
+
+- This target intentionally follows upstream `dnsmasq` defaults for much
+  of its compile-time feature surface instead of passing many
+  repository-specific feature toggles.
+- The approved release artifact for this target is the static
+  `dnsmasq/sbin/dnsmasq` binary.
+- Treat `dnsmasq -v` and `dnsmasq --help` as the authoritative runtime
+  contract for this target's allowed feature set.
+
 ## How to Verify
 
 > [!NOTE]

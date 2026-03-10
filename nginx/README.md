@@ -29,6 +29,16 @@ modules as runtime files inside the release artifact/image.
   [Runtime Introspection Output](#runtime-introspection-output) via
   `nginx -V`.
 
+## Allowed Target-Specific Variations
+
+- This target MAY ship runtime Lua files under `lualib/` in addition to
+  the static `nginx` binary.
+- Release contents intentionally include both `nginx/sbin/nginx` and
+  the packaged Lua runtime paths required by
+  `resty.upstream.healthcheck`.
+- Verify-stage checks intentionally include Lua packaging assertions in
+  addition to the shared static ELF checks used by other targets.
+
 ## How to Verify
 
 > [!NOTE]

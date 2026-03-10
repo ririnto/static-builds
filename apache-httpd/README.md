@@ -26,6 +26,16 @@ compiled in.
   [Runtime Introspection Output](#runtime-introspection-output) using
   `httpd -V`, `httpd -l`, and `httpd -M`.
 
+## Allowed Target-Specific Variations
+
+- This target MAY release both `apache-httpd/bin/httpd` and
+  `apache-httpd/bin/rotatelogs` as one approved packaging profile.
+- The target directory name remains `apache-httpd`, but release tags
+  intentionally use the `httpd-` prefix.
+- Verify output from `httpd -M` MAY contain only the expected FQDN
+  warning in some environments; treat `httpd -l` as the authoritative
+  compiled-module inventory for this target.
+
 ## How to Verify
 
 > [!NOTE]
