@@ -9,8 +9,8 @@ portable, minimal container deployments.
   musl libc
 - Multi-stage Builds - Leverage Docker BuildKit for efficient,
   cacheable builds
-- Minimal Images - Target Red Hat UBI9 Micro or similar minimal
-  runtime images
+- Minimal Outputs - Use a UBI9 Micro verify stage for runtime checks and
+  package final artifacts from a `scratch` stage
 - Extensible - Add new build targets by following a simple directory
   structure
 - Reproducible - Version-controlled configurations via `.env` files
@@ -52,7 +52,7 @@ override both behaviors with `BUILD_OUTPUT_DEST`.
 └── <target>/             # Build target directory
     ├── .env              # Version configuration
     ├── Dockerfile        # Multi-stage build definition
-    ├── download.sh       # Source download script (optional)
+    ├── download.sh       # Source download script used by `make build`
     └── ...               # CI/release artifacts under `<target>/`
 ```
 
@@ -67,7 +67,7 @@ override both behaviors with `BUILD_OUTPUT_DEST`.
    ```
 
 3. Add a `Dockerfile` with your multi-stage build configuration
-4. Optionally add `download.sh` for source downloads
+4. Add `download.sh` for source downloads used by `make build`
 
 > [!TIP]
 > Check existing targets (`nginx/`, `haproxy/`, `apache-httpd/`)
@@ -83,7 +83,7 @@ Each target must follow this structure:
 <target>/
 ├── .env              # Version configuration (required)
 ├── Dockerfile        # Multi-stage build definition (required)
-├── download.sh       # Source download script (optional)
+├── download.sh       # Source download script required by `make build`
 ├── README.md        # Target-specific documentation (optional)
 └── AGENTS.md        # Target-specific conventions (optional)
 ```
@@ -121,7 +121,7 @@ Each target must follow this structure:
    ENTRYPOINT ["/target/your-target"]
    ```
 
-4. Optional download.sh: Create `download.sh` to fetch source files:
+4. Create `download.sh`: Add a target download script to fetch source files:
 
    ```bash
    #!/usr/bin/env sh
@@ -139,21 +139,34 @@ Each target must follow this structure:
    TARGETS := nginx haproxy apache-httpd coredns dnsmasq vector monit your-target
    ```
 
-6. Update release workflow: Add release configuration in `.github/workflows/release-from-tag.yaml`:
+6. Update release mapping: Add release configuration in `.github/workflows/release-from-tag.yaml` and keep any related guard logic in sync until the repository moves this data into target metadata or a Makefile/script-driven source of truth:
 
    ```yaml
    - startsWith(github.ref_name, 'your-target-') && 'your-target'
    - startsWith(github.ref_name, 'your-target-') && 'your-target/bin/your-target'
    ```
 
-7. Validate: Run `make build your-target` to verify the build works
+7. Validate: Run `make build your-target` to verify the download and build flow works
+
+### Allowed Target-Specific Variations
+
+Targets share the same root contract, but some targets intentionally vary
+in builder image, release contents, or runtime packaging.
+
+- Document approved target-specific variations in that target's
+  `README.md`.
+- Keep the root `README.md` focused on shared repository behavior.
+- Treat `nginx`, `apache-httpd`, `coredns`, `vector`, `haproxy`,
+  `dnsmasq`, and `monit` differences as documented target profiles,
+  not as undocumented exceptions.
 
 ### Best Practices
 
 - Security hardening: Use static PIE builds (`-fPIE -pie`)
 - Verification: Always include a verify stage with ELF checks, static linking verification, and strace validation
 - Caching: Use `--mount=type=cache` for Alpine/DNF caches
-- Documentation: Document target-specific decisions in `AGENTS.md` if needed
+- Documentation: Document approved target-specific variations in each
+  target `README.md`; use `AGENTS.md` for repository-wide policy
 - Version variables: Follow naming convention `{TARGET}_VERSION` for consistency
 
 ## Release Process
@@ -165,6 +178,13 @@ Releases are triggered by Git tags following the pattern `<target>-<version>.<re
 - Format: `{target}-{official_version}.{revision}`
 - Example: `nginx-1.28.2.18` (target: nginx, version: 1.28.2, revision: 18)
 - Validation: Release tags are validated against `.env` file versions
+
+Current release target selection and release-file mapping live in
+`.github/workflows/release-from-tag.yaml`, while tag-version validation
+logic lives in `.github/scripts/release-guard.sh`. When adding or
+changing a target today, update those mirrored definitions together.
+The intended long-term direction is to move that mapping into
+target-defined metadata or a Makefile/script-driven source of truth.
 
 ### Steps to Release
 
@@ -187,11 +207,12 @@ Releases are triggered by Git tags following the pattern `<target>-<version>.<re
    git commit -m "Update your-target to 2.0.0"
    ```
 
-4. Create tag: Create and push release tag:
+4. Create tag: Create and push release tag. Use the target name as the
+   tag prefix, except `apache-httpd`, which uses `httpd-`:
 
    ```bash
    git tag your-target-2.0.0.0
-   git push origin your-target-2.0.0
+   git push origin your-target-2.0.0.0
    ```
 
 5. CI automation: GitHub Actions automatically:
@@ -206,7 +227,7 @@ Releases are triggered by Git tags following the pattern `<target>-<version>.<re
 Tags MUST follow this format:
 
 - `{target}-{version}.{revision}`
-- target: Target name (e.g., nginx, haproxy, apache-httpd)
+- target: Target tag prefix (e.g., nginx, haproxy, httpd)
 - version: Official version from `.env` file (e.g., 1.28.2)
 - revision: Release revision suffix starting at 0, incrementing for rebuilds (e.g., 18)
 
@@ -222,14 +243,17 @@ Invalid examples:
 
 ## How It Works
 
-1. The `Makefile` invokes `build.sh`, which validates target
-   directory and required files
+1. The `Makefile` invokes target `download.sh` through the root
+   `download.sh` dispatcher, then calls `build.sh`
 2. Docker BuildKit executes the multi-stage Dockerfile via
    `docker buildx build`
 3. Built artifacts go to `out/<target>/` for local builds, and to
    `<target>/` in CI for release packaging compatibility
-Build caching is automatically handled via per-target
-`<target>/.cache/` directories.
+4. Verify stages run inside UBI9 Micro, and the final exported artifact
+   comes from the target's `scratch` stage
+
+Build caching is automatically handled via per-target `<target>/.cache/`
+directories.
 
 ## CI Behavior
 
@@ -239,17 +263,19 @@ Build caching is automatically handled via per-target
   into one `.tar.gz` per tag.
 - Tag push release uses unified workflow
   `.github/workflows/release-from-tag.yaml`.
-- Workflow automatically determines target from tag pattern and calls
-  reusable template `.github/workflows/template-release.yaml`.
+- Workflow automatically determines the target from tag pattern and
+  calls reusable template `.github/workflows/template-release.yaml`.
 - Template builds mapped target, scans for vulnerabilities,
   uploads selected files as artifact, then uploads `${tag}.tar.gz`
   that contains selected release files.
 
-Selected release binaries:
+Selected release contents:
 
-- `nginx`: `<target>/sbin/nginx`
+- `nginx`: `nginx/sbin/nginx`, `nginx/lualib/resty/core.lua`,
+  `nginx/lualib/resty/core/`, `nginx/lualib/resty/upstream/`
 - `haproxy`: `<target>/sbin/haproxy`
-- `apache-httpd`: `<target>/bin/httpd`
+- `apache-httpd`: `apache-httpd/bin/httpd`,
+  `apache-httpd/bin/rotatelogs`
 - `coredns`: `<target>/coredns`
 - `dnsmasq`: `<target>/sbin/dnsmasq`
 - `vector`: `<target>/bin/vector`
