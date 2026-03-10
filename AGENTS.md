@@ -34,7 +34,7 @@ static-builds/
 | --- | --- | --- |
 | Add new target | Root + create dir | Follow nginx/ pattern |
 | CI release config | .github/workflows/ | release-from-tag + template-release |
-| Build definition | */Dockerfile | Multi-stage Alpine |
+| Build definition | */Dockerfile | Multi-stage target build |
 | Version config | */.env | ALPINE_VERSION, *_VERSION |
 
 ## CONVENTIONS
@@ -50,19 +50,33 @@ static-builds/
 - EditorConfig: 4-space indent (2 for .sh/.yaml)
 - Makefile targets: nginx, haproxy, apache-httpd, coredns,
   dnsmasq, vector, monit
-- Target dir: Must have Dockerfile + .env; download.sh optional
+- Target dir: Must have Dockerfile + .env + download.sh for the
+  standard `make build <target>` flow
 - Upstream source downloads MUST NOT enforce checksum verification/pinning because some upstreams do not publish checksum files. Consumers SHOULD validate sources independently when possible.
 - Release workflow MUST use `.github/workflows/release-from-tag.yaml`
   as the only tag-triggered entrypoint and MUST delegate build/release
   logic to `.github/workflows/template-release.yaml`.
+- Release target mapping, release-file selection, and tag-prefix
+  exceptions MUST be maintained as one logical source of truth. Until
+  that data is centralized into target metadata or a Makefile/script-
+  driven source of truth, every mirrored location MUST be updated in
+  the same change.
 - Release workflow MUST run Trivy filesystem scanning and MUST upload
   SARIF results to GitHub Security.
 - Release jobs MUST request the minimum required GitHub permission.
   `contents: write` MAY be used only for jobs that publish releases
   or upload release assets.
+- Common static verification logic duplicated across target verify
+  stages MUST be updated in every affected `*/Dockerfile` verify block
+  in the same change. Any repository documentation that describes that
+  shared verification contract SHOULD be updated at the same time.
 - `third-party/` is reference-only material for research and
   exploration. It MUST NOT be referenced by this repository's
   implementation and MUST NOT be modified from this repository.
+- Allowed target-specific variations MUST be documented in each
+  target's `README.md`. Root-level documentation and policy files MUST
+  treat those differences as approved target profiles, not as
+  undocumented exceptions.
 - Shell scripts (`*.sh` and files with a `sh`/`bash` shebang) MUST NOT contain comments except:
   - The shebang line (the first line starting with `#!`).
   - Function documentation comment blocks that are placed immediately above a function definition.
