@@ -4,8 +4,15 @@
 !.vscode/launch.json
 !.vscode/extensions.json
 !.vscode/*.code-snippets
+!*.code-workspace
+*.vsix
 
 .idea/
+*.iml
+*.ipr
+*.iws
+.idea_modules/
+atlassian-ide-plugin.xml
 
 *.swp
 *.swo
@@ -15,23 +22,72 @@ Session.vim
 tags
 
 .DS_Store
+__MACOSX/
+.AppleDouble
+.LSOverride
 ._*
+.DocumentRevisions-V100
+.fseventsd
 .Spotlight-V100
+.TemporaryItems
 .Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
 Thumbs.db
 Desktop.ini
 
+__pycache__/
+*.py[codz]
+*$py.class
+*.so
+.python-version
+.pytest_cache/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+.tox/
+.nox/
+.hypothesis/
+.coverage
+.coverage.*
+htmlcov/
+.ipynb_checkpoints/
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.pdm-python
+.pdm-build/
+.pixi/
+__pypackages__/
+.ruff_cache/
+.pypirc
+.spyderproject
+.spyproject
+.ropeproject
+
+.env
+.envrc
+
 bin/
-out/
-tmp/
+.out/
+.tmp/
 *.tmp
 *.bak
 *.log
 
-.cache
-*/.cache
+.cache/
 .cache-gh/
-*/src
+*/.cache/
 
 **/.omc/*
 **/.omx/*
