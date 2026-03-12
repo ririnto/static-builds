@@ -33,10 +33,10 @@ This target builds a static PIE `dnsmasq` binary from source.
 ## How to Verify
 
 > [!NOTE]
-> In CI outputs are under `dnsmasq/`. Override with `BUILD_OUTPUT_DEST`.
+> Outputs are under `.out/dnsmasq/`. Override with `BUILD_OUTPUT_DEST`.
 
 ```bash
-./out/dnsmasq/sbin/dnsmasq -v
+./.out/dnsmasq/sbin/dnsmasq -v
 ```
 
 ## Runtime Introspection Output

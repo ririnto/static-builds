@@ -34,10 +34,10 @@ deployments.
 ## How to Verify
 
 > [!NOTE]
-> In CI outputs are under `haproxy/`. Override with `BUILD_OUTPUT_DEST`.
+> Outputs are under `.out/haproxy/`. Override with `BUILD_OUTPUT_DEST`.
 
 ```bash
-./out/haproxy/sbin/haproxy -vv
+./.out/haproxy/sbin/haproxy -vv
 ```
 
 ## Runtime Introspection Output

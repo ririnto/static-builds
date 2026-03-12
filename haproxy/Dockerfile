@@ -17,7 +17,7 @@ RUN --mount=type=cache,target=/var/cache/apk \
         openssl-libs-static \
         pcre2-dev \
         pcre2-static
-ADD "src/haproxy-${HAPROXY_VERSION}.tar.gz" /build/
+ADD ".tmp/haproxy-${HAPROXY_VERSION}.tar.gz" /build/
 WORKDIR "/build/haproxy-${HAPROXY_VERSION}"
 RUN make "-j$(nproc)" \
     TARGET=linux-musl \

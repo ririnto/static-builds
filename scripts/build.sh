@@ -1,6 +1,7 @@
 #!/usr/bin/env sh
 set -eu
-WORKDIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+ROOT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
+METADATA_SCRIPT="${ROOT_DIR}/scripts/metadata.sh"
 usage() {
   echo "Usage: $0 <target> [buildx args...]"
   echo ""
@@ -13,8 +14,8 @@ usage() {
   echo "                      Default: linux/amd64"
   echo "                      Example: BUILDKIT_PLATFORM=linux/arm64"
   echo "  BUILD_OUTPUT_DEST     Output destination directory for build artifacts"
-  echo "                      Default (local): out/<target>/"
-  echo "                      Default (CI): <target>/"
+  echo "                      Default: .out/<target>/"
+  echo "                      Example (CI): .out/<target>/"
   echo "                      Example: BUILD_OUTPUT_DEST=/custom/output/nginx"
   echo "  BUILDKIT_CACHE_BACKEND Cache backend type for Docker BuildKit"
   echo "                      Default: local"
@@ -35,7 +36,7 @@ usage() {
   echo "  $0 nginx"
   echo "  $0 haproxy --progress=plain"
   echo "  BUILDKIT_PLATFORM=linux/arm64 $0 nginx"
-  echo "  BUILD_OUTPUT_DEST=/tmp/build $0 nginx"
+  echo "  BUILD_OUTPUT_DEST=.out/custom/nginx $0 nginx"
   exit 1
 }
 if [ "$#" -lt 1 ]; then
@@ -50,15 +51,11 @@ case "${TARGET}" in
   exit 1
   ;;
 esac
-if [ ! -d "${WORKDIR}/${TARGET}" ]; then
+if [ ! -d "${ROOT_DIR}/${TARGET}" ]; then
   echo "Error: Target directory '${TARGET}' not found"
   exit 1
 fi
-if [ ! -f "${WORKDIR}/${TARGET}/.env" ]; then
-  echo "Error: .env file not found in '${TARGET}'"
-  exit 1
-fi
-if [ ! -f "${WORKDIR}/${TARGET}/Dockerfile" ]; then
+if [ ! -f "${ROOT_DIR}/${TARGET}/Dockerfile" ]; then
   echo "Error: Dockerfile not found in '${TARGET}'"
   exit 1
 fi
@@ -67,9 +64,9 @@ BUILDKIT_CACHE_BACKEND="${BUILDKIT_CACHE_BACKEND:-local}"
 BUILDKIT_NETWORK="${BUILDKIT_NETWORK:-default}"
 case "${BUILDKIT_CACHE_BACKEND}" in
 local)
-  mkdir -p "${WORKDIR}/${TARGET}/.cache"
-  CACHE_FROM="type=local,src=${WORKDIR}/${TARGET}/.cache"
-  CACHE_TO="type=local,dest=${WORKDIR}/${TARGET}/.cache,mode=max"
+  mkdir -p "${ROOT_DIR}/.cache/${TARGET}"
+  CACHE_FROM="type=local,src=${ROOT_DIR}/.cache/${TARGET}"
+  CACHE_TO="type=local,dest=${ROOT_DIR}/.cache/${TARGET},mode=max"
   ;;
 gha)
   CACHE_FROM="type=gha,scope=${TARGET}"
@@ -81,11 +78,7 @@ gha)
   exit 1
   ;;
 esac
-if [ "${CI:-}" = "true" ] || [ "${GITHUB_ACTIONS:-}" = "true" ]; then
-  BUILD_OUTPUT_DEST="${WORKDIR}/${TARGET}"
-else
-  BUILD_OUTPUT_DEST="${BUILD_OUTPUT_DEST:-${WORKDIR}/out/${TARGET}}"
-fi
+BUILD_OUTPUT_DEST="${BUILD_OUTPUT_DEST:-${ROOT_DIR}/.out/${TARGET}}"
 mkdir -p "${BUILD_OUTPUT_DEST}"
 while IFS='=' read -r key value || [ -n "${key}" ]; do
   case "${key}" in
@@ -101,8 +94,10 @@ while IFS='=' read -r key value || [ -n "${key}" ]; do
     ;;
   esac
   set -- "--build-arg=${key}=${value}" "$@"
-done <"${WORKDIR}/${TARGET}/.env"
-cd "${WORKDIR}/${TARGET}"
+done <<EOF
+$(sh "${METADATA_SCRIPT}" get-env "${TARGET}")
+EOF
+cd "${ROOT_DIR}"
 docker buildx build \
   "--platform=${BUILDKIT_PLATFORM}" \
   "--network=${BUILDKIT_NETWORK}" \
@@ -110,4 +105,5 @@ docker buildx build \
   "--cache-from=${CACHE_FROM}" \
   "--cache-to=${CACHE_TO}" \
   "$@" \
-  "${WORKDIR}/${TARGET}"
+  "--file=${ROOT_DIR}/${TARGET}/Dockerfile" \
+  "${ROOT_DIR}"

@@ -19,5 +19,4 @@ jobs:
     with:
       target: ${{ github.ref_type == 'tag' && startsWith(github.ref_name, 'nginx-') && 'nginx' || startsWith(github.ref_name, 'haproxy-') && 'haproxy' || startsWith(github.ref_name, 'httpd-') && 'apache-httpd' || startsWith(github.ref_name, 'coredns-') && 'coredns' || startsWith(github.ref_name, 'dnsmasq-') && 'dnsmasq' || startsWith(github.ref_name, 'vector-') && 'vector' || startsWith(github.ref_name, 'monit-') && 'monit' || '' }}
       tag: ${{ github.ref_name }}
-      release_files: ${{ startsWith(github.ref_name, 'nginx-') && 'nginx/sbin/nginx nginx/lualib/resty/core.lua nginx/lualib/resty/core nginx/lualib/resty/upstream' || startsWith(github.ref_name, 'haproxy-') && 'haproxy/sbin/haproxy' || startsWith(github.ref_name, 'httpd-') && 'apache-httpd/bin/httpd apache-httpd/bin/rotatelogs' || startsWith(github.ref_name, 'coredns-') && 'coredns/coredns' || startsWith(github.ref_name, 'dnsmasq-') && 'dnsmasq/sbin/dnsmasq' || startsWith(github.ref_name, 'vector-') && 'vector/bin/vector' || startsWith(github.ref_name, 'monit-') && 'monit/bin/monit' || '' }}
       upload_release: true

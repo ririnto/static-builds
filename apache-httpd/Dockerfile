@@ -28,9 +28,9 @@ RUN --mount=type=cache,target=/var/cache/apk \
         brotli-dev \
         brotli-static \
     ;
-ADD "src/httpd-${HTTPD_VERSION}.tar.gz" /tmp/
-ADD "src/apr-${APR_VERSION}.tar.gz" /tmp/
-ADD "src/apr-util-${APR_UTIL_VERSION}.tar.gz" /tmp/
+ADD ".tmp/httpd-${HTTPD_VERSION}.tar.gz" /tmp/
+ADD ".tmp/apr-${APR_VERSION}.tar.gz" /tmp/
+ADD ".tmp/apr-util-${APR_UTIL_VERSION}.tar.gz" /tmp/
 RUN mv "/tmp/apr-${APR_VERSION}" "/tmp/httpd-${HTTPD_VERSION}/srclib/apr"
 RUN mv "/tmp/apr-util-${APR_UTIL_VERSION}" "/tmp/httpd-${HTTPD_VERSION}/srclib/apr-util"
 WORKDIR "/tmp/httpd-${HTTPD_VERSION}"

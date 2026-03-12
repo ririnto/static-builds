@@ -39,11 +39,11 @@ compiled in.
 ## How to Verify
 
 > [!NOTE]
-> In CI outputs are under `apache-httpd/`. Override with `BUILD_OUTPUT_DEST`.
+> Outputs are under `.out/apache-httpd/`. Override with `BUILD_OUTPUT_DEST`.
 
 ```bash
-./out/apache-httpd/bin/httpd -V
-./out/apache-httpd/bin/httpd -l
+./.out/apache-httpd/bin/httpd -V
+./.out/apache-httpd/bin/httpd -l
 ```
 
 ## Runtime Introspection Output

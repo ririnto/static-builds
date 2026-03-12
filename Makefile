@@ -1,5 +1,8 @@
-TARGETS := nginx haproxy apache-httpd coredns dnsmasq vector monit
-BUILD_SCRIPT := $(CURDIR)/build.sh
+METADATA_SCRIPT := $(CURDIR)/scripts/metadata.sh
+TARGETS := $(shell sh "$(METADATA_SCRIPT)" list-targets)
+BUILD_SCRIPT := $(CURDIR)/scripts/build.sh
+DOWNLOAD_SCRIPT := $(CURDIR)/scripts/download.sh
+RELEASE_GUARD_SCRIPT := $(CURDIR)/scripts/release-guard.sh
 BUILD_TARGET := $(word 2,$(MAKECMDGOALS))
 
 
@@ -10,7 +13,7 @@ help:
 	@printf '%s\n' "  make build <target>"
 	@printf '%s\n' "  make download <target>"
 
-	@printf '%s\n' "  Output: local=out/<target>/, CI=<target>/"
+	@printf '%s\n' "  Output: .out/<target>/"
 	@printf '%s\n' ""
 	@printf '%s\n' "Targets: $(TARGETS)"
 
@@ -38,14 +41,14 @@ build: check-target
 
 download: check-target
 	@printf '%s\n' "Downloading source files for $(BUILD_TARGET)..."; \
-	"$(CURDIR)/download.sh" "$(BUILD_TARGET)"
+	"$(DOWNLOAD_SCRIPT)" "$(BUILD_TARGET)"
 
 
 # Developer convenience targets
 
 lint:
 	@printf '%s\n' "Running shellcheck on project shell scripts..."
-	@for file in build.sh download.sh .github/scripts/*.sh */download.sh; do \
+	@for file in scripts/*.sh; do \
 		cat "$$file" | docker run --rm -i koalaman/shellcheck:stable --severity=error /dev/stdin || exit 1; \
 	done
 	@printf '%s\n' "✓ Shellcheck passed"
@@ -57,18 +60,18 @@ validate-tag:
 		printf '%s\n' "Example: make validate-tag nginx nginx-1.28.2.0"; \
 		exit 1; \
 	fi
-	@"$(CURDIR)/.github/scripts/release-guard.sh" \
+	@"$(RELEASE_GUARD_SCRIPT)" \
 		"$(word 2,$(MAKECMDGOALS))" "$(word 3,$(MAKECMDGOALS))"
 
 shfmt-write:
 	@printf '%s\n' "Formatting shell scripts with shfmt..."
 	@go run mvdan.cc/sh/v3/cmd/shfmt@latest -w -ln posix -i 2 \
-		build.sh download.sh .github/scripts/*.sh */download.sh
+		scripts/*.sh
 
 shfmt-check:
 	@printf '%s\n' "Checking shell formatting with shfmt..."
 	@go run mvdan.cc/sh/v3/cmd/shfmt@latest -d -ln posix -i 2 \
-		build.sh download.sh .github/scripts/*.sh */download.sh
+		scripts/*.sh
 
 # Prevent make from treating validate-tag arguments as targets
 %:

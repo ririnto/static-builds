@@ -42,10 +42,10 @@ modules as runtime files inside the release artifact/image.
 ## How to Verify
 
 > [!NOTE]
-> In CI outputs are under `nginx/`. Override with `BUILD_OUTPUT_DEST`.
+> Outputs are under `.out/nginx/`. Override with `BUILD_OUTPUT_DEST`.
 
 ```bash
-./out/nginx/sbin/nginx -V
+./.out/nginx/sbin/nginx -V
 ```
 
 ## Runtime Introspection Output

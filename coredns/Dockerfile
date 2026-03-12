@@ -12,7 +12,7 @@ RUN --mount=type=cache,target=/var/cache/apk \
     apk add \
         git \
         make
-ADD "src/coredns-${COREDNS_VERSION}.tar.gz" /build/
+ADD ".tmp/coredns-${COREDNS_VERSION}.tar.gz" /build/
 WORKDIR "/build/coredns-${COREDNS_VERSION}"
 RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg/mod \

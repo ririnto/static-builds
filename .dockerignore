@@ -1,0 +1,12 @@
+.git
+.github
+.vscode
+.idea
+.out
+.cache
+.ruff_cache
+third-party
+**/.cache
+**/.omc
+**/.omx
+**/.sisyphus

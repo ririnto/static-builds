@@ -13,7 +13,7 @@ portable, minimal container deployments.
   package final artifacts from a `scratch` stage
 - Extensible - Add new build targets by following a simple directory
   structure
-- Reproducible - Version-controlled configurations via `.env` files
+- Reproducible - Version-controlled configurations via `metadata.json`
 
 ## Prerequisites
 
@@ -33,7 +33,7 @@ make list-targets
 make build nginx
 ```
 
-Build artifacts are written to `out/<target>/` by default for local
+Build artifacts are written to `.out/<target>/` by default for local
 builds. In CI (`CI=true` or `GITHUB_ACTIONS=true`), artifacts remain
 under `<target>/` for release packaging compatibility. You can
 override both behaviors with `BUILD_OUTPUT_DEST`.
@@ -42,32 +42,48 @@ override both behaviors with `BUILD_OUTPUT_DEST`.
 
 ```text
 .
-├── build.sh              # Main build entry point
-├── download.sh           # Download dispatcher (routes to module download.sh)
+├── metadata.json         # Canonical build/release metadata
+├── scripts/
+│   ├── build.sh          # Main build entry point
+│   ├── download.sh       # Download dispatcher
+│   ├── common.sh         # Shared common functions
+│   ├── metadata.sh       # Metadata query helper
+│   ├── release-guard.sh  # Release tag validator
 ├── .github/
-│   └── scripts/
-│       └── common.sh     # Shared common functions
-├── out/                  # Local build outputs (gitignored)
+│   └── workflows/
+│       └── ...
+├── .tmp/                 # Downloaded source cache (gitignored)
+├── .out/                 # Build outputs (gitignored)
 │   └── <target>/         # Local artifacts (for example `sbin/`, `bin/`)
 └── <target>/             # Build target directory
-    ├── .env              # Version configuration
     ├── Dockerfile        # Multi-stage build definition
-    ├── download.sh       # Source download script used by `make build`
     └── ...               # CI/release artifacts under `<target>/`
 ```
 
 ## Adding a New Target
 
 1. Create a new directory with your target name
-2. Add a `.env` file with version variables:
+2. Add target metadata in `metadata.json`:
 
-   ```text
-   ALPINE_VERSION=3.23
-   YOUR_SOFTWARE_VERSION=1.0.0
+   ```json
+   {
+     "your-target": {
+       "tag_prefix": "your-target",
+       "version_env_var": "YOUR_SOFTWARE_VERSION",
+       "release_files": [
+         "your-target/bin/your-target"
+       ],
+       "env": {
+         "ALPINE_VERSION": "3.23",
+         "YOUR_SOFTWARE_VERSION": "1.0.0",
+         "UBI9_MICRO_VERSION": "9.5"
+       }
+     }
+   }
    ```
 
 3. Add a `Dockerfile` with your multi-stage build configuration
-4. Add `download.sh` for source downloads used by `make build`
+4. Add each target's `downloads` metadata in `metadata.json`. The downloader stores those files under root `.tmp/`.
 
 > [!TIP]
 > Check existing targets (`nginx/`, `haproxy/`, `apache-httpd/`)
@@ -81,23 +97,32 @@ Each target must follow this structure:
 
 ```text
 <target>/
-├── .env              # Version configuration (required)
 ├── Dockerfile        # Multi-stage build definition (required)
-├── download.sh       # Source download script required by `make build`
-├── README.md        # Target-specific documentation (optional)
-└── AGENTS.md        # Target-specific conventions (optional)
+├── README.md         # Target-specific documentation (optional)
+└── AGENTS.md         # Target-specific conventions (optional)
 ```
 
 ### Adding a New Target
 
 1. Create target directory: Create a new directory named after your target (e.g., `your-target/`)
 
-2. Add .env file: Create `.env` with version variables:
+2. Add centralized metadata: Register the target in `metadata.json`:
 
-   ```text
-   ALPINE_VERSION=3.23
-   YOUR_TARGET_VERSION=1.0.0
-   UBI9_MICRO_VERSION=9.5
+   ```json
+   {
+     "your-target": {
+       "tag_prefix": "your-target",
+       "version_env_var": "YOUR_TARGET_VERSION",
+       "release_files": [
+         "your-target/bin/your-target"
+       ],
+       "env": {
+         "ALPINE_VERSION": "3.23",
+         "YOUR_TARGET_VERSION": "1.0.0",
+         "UBI9_MICRO_VERSION": "9.5"
+       }
+     }
+   }
    ```
 
 3. Create Dockerfile: Implement a multi-stage build:
@@ -106,7 +131,7 @@ Each target must follow this structure:
    # Build stage
    FROM alpine:${ALPINE_VERSION} AS build
    ARG YOUR_TARGET_VERSION
-   ADD "src/your-target-${YOUR_TARGET_VERSION}.tar.gz" /build/
+   ADD ".tmp/your-target-${YOUR_TARGET_VERSION}.tar.gz" /build/
    # ... build steps ...
 
    # Verify stage (optional but recommended)
@@ -121,30 +146,34 @@ Each target must follow this structure:
    ENTRYPOINT ["/target/your-target"]
    ```
 
-4. Create `download.sh`: Add a target download script to fetch source files:
+4. Add download metadata: Define each upstream resource directly in `metadata.json`:
 
-   ```bash
-   #!/usr/bin/env sh
-   set -eu
-   # Source common functions
-   . "$(dirname -- "$0")/../.github/scripts/common.sh"
+    ```json
+    {
+      "your-target": {
+        "downloads": [
+          {
+            "url": "https://example.com/your-target-{YOUR_TARGET_VERSION}.tar.gz",
+            "name": "your-target-{YOUR_TARGET_VERSION}.tar.gz"
+          }
+        ]
+      }
+    }
+    ```
 
-   download_tarball "https://example.com/your-target-${YOUR_TARGET_VERSION}.tar.gz" \
-                 "src/your-target-${YOUR_TARGET_VERSION}.tar.gz"
-   ```
+5. Verify `make list-targets`: Targets are loaded from `metadata.json`, so no manual Makefile edit is needed.
 
-5. Update Makefile: Add target to `TARGETS` variable:
+6. Update release trigger mapping: Add the tag trigger and target selection case in `.github/workflows/release-from-tag.yaml`. Release file selection and official versions now come from `metadata.json`.
 
-   ```makefile
-   TARGETS := nginx haproxy apache-httpd coredns dnsmasq vector monit your-target
-   ```
+    ```yaml
+    on:
+      push:
+        tags:
+          - 'your-target-*'
 
-6. Update release mapping: Add release configuration in `.github/workflows/release-from-tag.yaml` and keep any related guard logic in sync until the repository moves this data into target metadata or a Makefile/script-driven source of truth:
-
-   ```yaml
-   - startsWith(github.ref_name, 'your-target-') && 'your-target'
-   - startsWith(github.ref_name, 'your-target-') && 'your-target/bin/your-target'
-   ```
+    with:
+    - startsWith(github.ref_name, 'your-target-') && 'your-target'
+    ```
 
 7. Validate: Run `make build your-target` to verify the download and build flow works
 
@@ -167,7 +196,7 @@ in builder image, release contents, or runtime packaging.
 - Caching: Use `--mount=type=cache` for Alpine/DNF caches
 - Documentation: Document approved target-specific variations in each
   target `README.md`; use `AGENTS.md` for repository-wide policy
-- Version variables: Follow naming convention `{TARGET}_VERSION` for consistency
+- Version variables: Follow naming convention `{TARGET}_VERSION` for consistency inside `metadata.json`
 
 ## Release Process
 
@@ -177,21 +206,25 @@ Releases are triggered by Git tags following the pattern `<target>-<version>.<re
 
 - Format: `{target}-{official_version}.{revision}`
 - Example: `nginx-1.28.2.18` (target: nginx, version: 1.28.2, revision: 18)
-- Validation: Release tags are validated against `.env` file versions
+- Validation: Release tags are validated against `metadata.json`
 
-Current release target selection and release-file mapping live in
-`.github/workflows/release-from-tag.yaml`, while tag-version validation
-logic lives in `.github/scripts/release-guard.sh`. When adding or
-changing a target today, update those mirrored definitions together.
-The intended long-term direction is to move that mapping into
-target-defined metadata or a Makefile/script-driven source of truth.
+Current release tag triggers and target selection still live in
+`.github/workflows/release-from-tag.yaml` because GitHub event filters
+must stay static, but release-file selection and tag-version validation
+now come from `metadata.json`.
 
 ### Steps to Release
 
-1. Update versions: Update version variables in target `.env` file:
+1. Update versions: Edit the target entry in `metadata.json`:
 
-   ```text
-   YOUR_TARGET_VERSION=2.0.0
+   ```json
+   {
+     "your-target": {
+       "env": {
+         "YOUR_TARGET_VERSION": "2.0.0"
+       }
+     }
+   }
    ```
 
 2. Test build: Verify that build works locally:
@@ -202,10 +235,10 @@ target-defined metadata or a Makefile/script-driven source of truth.
 
 3. Commit changes: Commit version updates:
 
-   ```bash
-   git add your-target/.env
-   git commit -m "Update your-target to 2.0.0"
-   ```
+    ```bash
+    git add metadata.json
+    git commit -m "Update your-target to 2.0.0"
+    ```
 
 4. Create tag: Create and push release tag. Use the target name as the
    tag prefix, except `apache-httpd`, which uses `httpd-`:
@@ -228,7 +261,7 @@ Tags MUST follow this format:
 
 - `{target}-{version}.{revision}`
 - target: Target tag prefix (e.g., nginx, haproxy, httpd)
-- version: Official version from `.env` file (e.g., 1.28.2)
+- version: Official version from `metadata.json` (e.g., 1.28.2)
 - revision: Release revision suffix starting at 0, incrementing for rebuilds (e.g., 18)
 
 Valid examples:
@@ -243,16 +276,14 @@ Invalid examples:
 
 ## How It Works
 
-1. The `Makefile` invokes target `download.sh` through the root
-   `download.sh` dispatcher, then calls `build.sh`
+1. The `Makefile` invokes `scripts/download.sh`, which resolves each target's download resources from `metadata.json`, then calls `scripts/build.sh`
 2. Docker BuildKit executes the multi-stage Dockerfile via
    `docker buildx build`
-3. Built artifacts go to `out/<target>/` for local builds, and to
-   `<target>/` in CI for release packaging compatibility
+3. Built artifacts go to `.out/<target>/` for both local builds and CI
 4. Verify stages run inside UBI9 Micro, and the final exported artifact
    comes from the target's `scratch` stage
 
-Build caching is automatically handled via per-target `<target>/.cache/`
+Build caching is automatically handled via root `.cache/<target>/`
 directories.
 
 ## CI Behavior
@@ -273,13 +304,13 @@ Selected release contents:
 
 - `nginx`: `nginx/sbin/nginx`, `nginx/lualib/resty/core.lua`,
   `nginx/lualib/resty/core/`, `nginx/lualib/resty/upstream/`
-- `haproxy`: `<target>/sbin/haproxy`
+- `haproxy`: `haproxy/sbin/haproxy`
 - `apache-httpd`: `apache-httpd/bin/httpd`,
   `apache-httpd/bin/rotatelogs`
-- `coredns`: `<target>/coredns`
-- `dnsmasq`: `<target>/sbin/dnsmasq`
-- `vector`: `<target>/bin/vector`
-- `monit`: `<target>/bin/monit`
+- `coredns`: `coredns/coredns`
+- `dnsmasq`: `dnsmasq/sbin/dnsmasq`
+- `vector`: `vector/bin/vector`
+- `monit`: `monit/bin/monit`
 
 ## Logging Strategy
 

@@ -17,7 +17,7 @@ RUN --mount=type=cache,target=/var/cache/apk \
         zlib-static \
         flex \
         byacc
-ADD "src/monit-${MONIT_VERSION}.tar.gz" /build/
+ADD ".tmp/monit-${MONIT_VERSION}.tar.gz" /build/
 WORKDIR "/build/monit-${MONIT_VERSION}"
 RUN ./configure \
     --prefix=${TARGET_PREFIX} \

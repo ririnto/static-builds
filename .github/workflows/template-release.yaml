@@ -1,4 +1,4 @@
-name: Release Template
+name: Template Release
 
 on:
   workflow_call:
@@ -11,10 +11,6 @@ on:
         description: Release tag name
         required: true
         type: string
-      release_files:
-        description: Newline-separated relative paths to files to include in release package
-        required: true
-        type: string
       upload_release:
         description: Upload selected binary to GitHub Release
         required: false
@@ -22,18 +18,17 @@ on:
         type: boolean
 
 jobs:
-  build-and-release:
+  release:
+    runs-on: ubuntu-latest
     permissions:
       contents: write
-    runs-on: ubuntu-latest
+      security-events: write
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
-        with:
-          submodules: false
 
       - name: Validate release tag
-        run: sh .github/scripts/release-guard.sh "${{ inputs.target }}" "${{ inputs.tag }}"
+        run: sh scripts/release-guard.sh "${{ inputs.target }}" "${{ inputs.tag }}"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -41,21 +36,44 @@ jobs:
       - name: Cache source downloads
         uses: actions/cache@v4
         with:
-          path: ${{ github.workspace }}/${{ inputs.target }}/src
-          key: src-${{ inputs.target }}-${{ hashFiles(format('{0}/.env', inputs.target), format('{0}/download.sh', inputs.target), '.github/scripts/common.sh') }}
+          path: ${{ github.workspace }}/.tmp
+          key: tmp-${{ inputs.target }}-${{ hashFiles('metadata.json', 'scripts/download.sh', 'scripts/metadata.sh', 'scripts/common.sh') }}
           restore-keys: |-
-            src-${{ inputs.target }}-
+            tmp-${{ inputs.target }}-
+
+      - name: Resolve release metadata
+        id: metadata
+        run: |-
+          RELEASE_FILES="$(sh scripts/metadata.sh get-release-files "${{ inputs.target }}")"
+          ARTIFACT_PATHS=""
+
+          printf '%s\n' "${RELEASE_FILES}" | while IFS= read -r release_file; do
+            if [ -z "${release_file}" ]; then
+              continue
+            fi
+            ARTIFACT_PATHS="${ARTIFACT_PATHS}.out/${release_file}\n"
+          done
+
+          {
+            echo 'release_files<<EOF'
+            printf '%s\n' "${RELEASE_FILES}"
+            echo 'EOF'
+            echo 'artifact_paths<<EOF'
+            printf '%b' "${ARTIFACT_PATHS}"
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
 
       - name: Build target
         env:
           BUILDKIT_CACHE_BACKEND: gha
+          BUILD_OUTPUT_DEST: ${{ github.workspace }}/.out/${{ inputs.target }}
         run: make build ${{ inputs.target }}
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: 'fs'
-          scan-ref: '${{ inputs.target }}'
+          scan-ref: '.out/${{ inputs.target }}'
           format: 'sarif'
           output: 'trivy-results.sarif'
           severity: 'CRITICAL,HIGH'
@@ -69,7 +87,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.target }}-static-build
-          path: ${{ inputs.release_files }}
+          path: ${{ steps.metadata.outputs.artifact_paths }}
           if-no-files-found: error
           retention-days: 30
 
@@ -82,28 +100,25 @@ jobs:
 
           rm -f "${PACKAGE_NAME}"
 
-          while IFS= read -r release_file; do
+          printf '%s\n' "${{ steps.metadata.outputs.release_files }}" | while IFS= read -r release_file; do
             if [ -z "${release_file}" ]; then
               continue
             fi
 
-            if [ -f "${release_file}" ] || [ -d "${release_file}" ]; then
+            if [ -f ".out/${release_file}" ] || [ -d ".out/${release_file}" ]; then
               RELEASE_PATHS+=("${release_file}")
-
             else
-              echo "Error: Release path not found at ${release_file}"
+              echo "Error: Release path not found at .out/${release_file}"
               exit 1
             fi
-          done << 'EOF'
-          ${{ inputs.release_files }}
-          EOF
+          done
 
           if [ "${#RELEASE_PATHS[@]}" -eq 0 ]; then
             echo "Error: No release files provided"
             exit 1
           fi
 
-          tar -czvf "${PACKAGE_NAME}" "${RELEASE_PATHS[@]}"
+          tar -czvf "${PACKAGE_NAME}" -C .out "${RELEASE_PATHS[@]}"
 
       - name: Publish assets to release
         if: ${{ inputs.upload_release }}
@@ -113,13 +128,11 @@ jobs:
           TAG="${{ inputs.tag }}"
           PACKAGE_NAME="${TAG}.tar.gz"
 
-          # Verify all assets exist
           if [ ! -f "${PACKAGE_NAME}" ]; then
             echo "Error: Release package not found at ${PACKAGE_NAME}"
             exit 1
           fi
 
-          # Create release if it doesn't exist
           if ! gh release view "${TAG}" >/dev/null 2>&1; then
             gh release create "${TAG}" \
               --title "${TAG}" \

@@ -27,15 +27,15 @@ binary as a static artifact.
 - The approved release artifact for this target is `vector/bin/vector`.
 - The available sources, transforms, sinks, and enrichment tables are
   intentionally defined by the upstream release selected in
-  `vector/.env`.
+  `metadata.json`.
 
 ## How to Verify
 
 > [!NOTE]
-> In CI outputs are under `vector/`. Override with `BUILD_OUTPUT_DEST`.
+> Outputs are under `.out/vector/`. Override with `BUILD_OUTPUT_DEST`.
 
 ```bash
-./out/vector/bin/vector list
+./.out/vector/bin/vector list
 ```
 
 ## Runtime Introspection Output

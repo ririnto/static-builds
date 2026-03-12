@@ -27,12 +27,12 @@ RUN --mount=type=cache,target=/var/cache/apk \
         pcre2-static \
         zlib-dev \
         zlib-static
-ADD "src/nginx-${NGINX_VERSION}.tar.gz" /build/
-ADD "src/nginx-module-vts-${NGINX_VTS_MODULE_VERSION}.tar.gz" "/build/nginx-${NGINX_VERSION}/"
-ADD "src/lua-nginx-module-${NGINX_LUA_MODULE_VERSION}.tar.gz" "/build/nginx-${NGINX_VERSION}/"
-ADD "src/lua-resty-core-${NGINX_LUA_RESTY_CORE_VERSION}.tar.gz" "/build/"
-ADD "src/lua-upstream-nginx-module-${NGINX_LUA_UPSTREAM_MODULE_VERSION}.tar.gz" "/build/nginx-${NGINX_VERSION}/"
-ADD "src/lua-resty-upstream-healthcheck-${NGINX_LUA_RESTY_UPSTREAM_HEALTHCHECK_MODULE_VERSION}.tar.gz" "/build/"
+ADD ".tmp/nginx-${NGINX_VERSION}.tar.gz" /build/
+ADD ".tmp/nginx-module-vts-${NGINX_VTS_MODULE_VERSION}.tar.gz" "/build/nginx-${NGINX_VERSION}/"
+ADD ".tmp/lua-nginx-module-${NGINX_LUA_MODULE_VERSION}.tar.gz" "/build/nginx-${NGINX_VERSION}/"
+ADD ".tmp/lua-resty-core-${NGINX_LUA_RESTY_CORE_VERSION}.tar.gz" "/build/"
+ADD ".tmp/lua-upstream-nginx-module-${NGINX_LUA_UPSTREAM_MODULE_VERSION}.tar.gz" "/build/nginx-${NGINX_VERSION}/"
+ADD ".tmp/lua-resty-upstream-healthcheck-${NGINX_LUA_RESTY_UPSTREAM_HEALTHCHECK_MODULE_VERSION}.tar.gz" "/build/"
 WORKDIR "/build/nginx-${NGINX_VERSION}"
 RUN LUAJIT_LIB='/usr/lib' LUAJIT_INC='/usr/include/luajit-2.1' ./configure \
     # --help \
@@ -448,7 +448,7 @@ ENV LUA_PATH="${TARGET_PREFIX}/lualib/?.lua;${TARGET_PREFIX}/lualib/?/init.lua;;
 RUN --mount=type=cache,target=/var/cache/dnf \
     microdnf -y install file binutils strace
 COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
-COPY upstream-healthcheck.conf /tmp/upstream-healthcheck.conf
+COPY nginx/upstream-healthcheck.conf /tmp/upstream-healthcheck.conf
 RUN set -eu; \
     echo "=== ELF Header ==="; \
     readelf -h ${TARGET_PREFIX}/sbin/nginx | egrep 'Type:|Machine:'; \

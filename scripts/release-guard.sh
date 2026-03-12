@@ -22,30 +22,16 @@ parse_tag() {
   fi
   printf '%s' "$version"
 }
-# Get official version from target's .env file.
+# Get official version from centralized metadata.
 # :param str target: Build target name.
 # :returns: Official version string printed to stdout.
 # :rtype: str
 get_official_version() {
   target="$1"
-  env_file="${target}/.env"
-  if [ ! -f "$env_file" ]; then
-    err "Error: .env file not found: $env_file"
-    return 1
-  fi
-
-  case "$target" in
-  apache-httpd)
-    var_name="HTTPD_VERSION"
-    ;;
-  *)
-    var_name="$(printf '%s' "$target" | tr '[:lower:]' '[:upper:]')_VERSION"
-    ;;
-  esac
-
-  version=$(grep "^${var_name}=" "$env_file" | cut -d'=' -f2)
+  metadata_script="scripts/metadata.sh"
+  version=$(sh "$metadata_script" get-official-version "$target")
   if [ -z "$version" ]; then
-    err "Error: ${var_name} not found in $env_file"
+    err "Error: official version not found for $target"
     return 1
   fi
   printf '%s' "$version"
@@ -63,10 +49,7 @@ main() {
   fi
   target="$1"
   tag="$2"
-  tag_prefix="$target"
-  if [ "$target" = "apache-httpd" ]; then
-    tag_prefix="httpd"
-  fi
+  tag_prefix=$(sh scripts/metadata.sh get-tag-prefix "$target") || exit 1
   if ! printf '%s' "$tag" | grep -qE "^${tag_prefix}-"; then
     err "Error: Invalid tag format '$tag'"
     err "Expected format: ${tag_prefix}-<version>.<revision>"
@@ -78,7 +61,7 @@ main() {
   if [ "$tag_version" != "$official_version" ]; then
     err "Error: Version mismatch"
     err "  Tag version:      $tag_version"
-    err "  Official version: $official_version (from ${target}/.env)"
+    err "  Official version: $official_version (from metadata.json)"
     exit 1
   fi
   printf '✓ Tag validation passed: %s (version %s)\n' "$tag" "$tag_version"

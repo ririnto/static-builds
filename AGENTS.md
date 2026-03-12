@@ -10,16 +10,21 @@ monit using musl libc.
 
 ```text
 static-builds/
-├── build.sh              # Main build entry
-├── download.sh           # Source download dispatcher
+├── metadata.json         # Canonical build/release metadata
+├── scripts/              # Project-owned build/release scripts
+│   ├── build.sh          # Main build entry
+│   ├── download.sh       # Source download dispatcher
+│   ├── common.sh         # Shared shell helpers
+│   ├── metadata.sh       # Metadata query helper
+│   ├── release-guard.sh  # Release tag validator
 ├── Makefile              # Build orchestration (7 targets)
 ├── .github/
-│   ├── scripts/common.sh    # Shared functions
-│   └── workflows/           # Unified tag-triggered release
+│   └── workflows/        # Unified tag-triggered release
 │       ├── release-from-tag.yaml
 │       └── template-release.yaml
-├── out/                   # Local build outputs (gitignored)
-├── nginx/                # Target dirs: Dockerfile + .env
+├── .tmp/                 # Downloaded source cache (gitignored)
+├── .out/                 # Build outputs (gitignored)
+├── nginx/                # Target dirs: Dockerfile + outputs
 ├── haproxy/
 ├── apache-httpd/
 ├── coredns/
@@ -35,7 +40,7 @@ static-builds/
 | Add new target | Root + create dir | Follow nginx/ pattern |
 | CI release config | .github/workflows/ | release-from-tag + template-release |
 | Build definition | */Dockerfile | Multi-stage target build |
-| Version config | */.env | ALPINE_VERSION, *_VERSION |
+| Build metadata | metadata.json | tag_prefix, release_files, env, downloads |
 
 ## CONVENTIONS
 
@@ -50,8 +55,11 @@ static-builds/
 - EditorConfig: 4-space indent (2 for .sh/.yaml)
 - Makefile targets: nginx, haproxy, apache-httpd, coredns,
   dnsmasq, vector, monit
-- Target dir: Must have Dockerfile + .env + download.sh for the
-  standard `make build <target>` flow
+- `metadata.json` MUST be the canonical source of build and
+  release metadata for all targets.
+- Target dir: Must have Dockerfile for the standard `make build
+  <target>` flow. Target-specific download metadata MUST live under that
+  target's `metadata.json` `downloads` entries, and downloader output MUST land directly under root `.tmp/`.
 - Upstream source downloads MUST NOT enforce checksum verification/pinning because some upstreams do not publish checksum files. Consumers SHOULD validate sources independently when possible.
 - Release workflow MUST use `.github/workflows/release-from-tag.yaml`
   as the only tag-triggered entrypoint and MUST delegate build/release
@@ -130,7 +138,7 @@ The `third-party/` directory is for research and exploration only.
 
 - Tag-triggered release: `nginx-1.28.2.18` → builds + uploads artifact
 - Release tags MUST follow `<target>-<official_version>.<x>`.
-  - `official_version`: version from target `.env`
+  - `official_version`: version from `metadata.json`
     (for example `NGINX_VERSION`, `HTTPD_VERSION`,
     `HAPROXY_VERSION`)
   - `x`: release revision suffix starting at `0` and
@@ -139,9 +147,7 @@ The `third-party/` directory is for research and exploration only.
 - Unified caller workflow + reusable template pattern
   - caller: `.github/workflows/release-from-tag.yaml`
   - template: `.github/workflows/template-release.yaml`
-- Artifacts: local builds output under `out/<target>/...`, while
-  CI/release builds output under `<target>/...` for packaging
-  compatibility.
+- Artifacts: local builds and CI/release builds both output under `.out/<target>/...`.
 
 ## COMMANDS
 
@@ -155,5 +161,5 @@ make validate-tag nginx nginx-1.28.2.0
 
 ## NOTES
 
-- Build caching via per-target `<target>/.cache/` directory
+- Build caching via root `.cache/<target>/` directory
 - Uses Docker Buildx with BuildKit

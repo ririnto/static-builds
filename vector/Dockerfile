@@ -8,7 +8,7 @@ ARG VECTOR_VERSION
 ARG TARGET_PREFIX
 
 WORKDIR /download
-ADD "src/vector-${VECTOR_VERSION}-x86_64-unknown-linux-musl.tar.gz" /download/
+ADD ".tmp/vector-${VECTOR_VERSION}-x86_64-unknown-linux-musl.tar.gz" /download/
 RUN mkdir -p ${TARGET_PREFIX}/bin && \
     mv vector-x86_64-unknown-linux-musl/bin/vector ${TARGET_PREFIX}/bin/
 

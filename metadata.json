@@ -1,0 +1,168 @@
+{
+  "nginx": {
+    "tag_prefix": "nginx",
+    "release_files": [
+      "nginx/sbin/nginx",
+      "nginx/lualib/resty/core.lua",
+      "nginx/lualib/resty/core",
+      "nginx/lualib/resty/upstream"
+    ],
+    "env": {
+      "ALPINE_VERSION": "3.23",
+      "NGINX_LUA_RESTY_CORE_VERSION": "0.1.32R1",
+      "NGINX_LUA_MODULE_VERSION": "0.10.29",
+      "NGINX_LUA_RESTY_UPSTREAM_HEALTHCHECK_MODULE_VERSION": "0.08",
+      "NGINX_LUA_UPSTREAM_MODULE_VERSION": "0.07",
+      "NGINX_VERSION": "1.28.2",
+      "NGINX_VTS_MODULE_VERSION": "0.2.5",
+      "UBI9_MICRO_VERSION": "9.5"
+    },
+    "downloads": [
+      {
+        "url": "https://nginx.org/download/nginx-{NGINX_VERSION}.tar.gz",
+        "name": "nginx-{NGINX_VERSION}.tar.gz"
+      },
+      {
+        "url": "https://github.com/vozlt/nginx-module-vts/archive/refs/tags/v{NGINX_VTS_MODULE_VERSION}.tar.gz",
+        "name": "nginx-module-vts-{NGINX_VTS_MODULE_VERSION}.tar.gz"
+      },
+      {
+        "url": "https://github.com/openresty/lua-nginx-module/archive/refs/tags/v{NGINX_LUA_MODULE_VERSION}.tar.gz",
+        "name": "lua-nginx-module-{NGINX_LUA_MODULE_VERSION}.tar.gz"
+      },
+      {
+        "url": "https://github.com/openresty/lua-resty-core/archive/refs/tags/v{NGINX_LUA_RESTY_CORE_VERSION}.tar.gz",
+        "name": "lua-resty-core-{NGINX_LUA_RESTY_CORE_VERSION}.tar.gz"
+      },
+      {
+        "url": "https://github.com/openresty/lua-upstream-nginx-module/archive/refs/tags/v{NGINX_LUA_UPSTREAM_MODULE_VERSION}.tar.gz",
+        "name": "lua-upstream-nginx-module-{NGINX_LUA_UPSTREAM_MODULE_VERSION}.tar.gz"
+      },
+      {
+        "url": "https://github.com/openresty/lua-resty-upstream-healthcheck/archive/refs/tags/v{NGINX_LUA_RESTY_UPSTREAM_HEALTHCHECK_MODULE_VERSION}.tar.gz",
+        "name": "lua-resty-upstream-healthcheck-{NGINX_LUA_RESTY_UPSTREAM_HEALTHCHECK_MODULE_VERSION}.tar.gz"
+      }
+    ],
+    "version_env_var": "NGINX_VERSION"
+  },
+  "haproxy": {
+    "tag_prefix": "haproxy",
+    "release_files": [
+      "haproxy/sbin/haproxy"
+    ],
+    "env": {
+      "ALPINE_VERSION": "3.23",
+      "HAPROXY_VERSION": "3.2.13",
+      "UBI9_MICRO_VERSION": "9.5",
+      "HAPROXY_VERSION_SERIES": "3.2"
+    },
+    "downloads": [
+      {
+        "url": "https://www.haproxy.org/download/{HAPROXY_VERSION_SERIES}/src/haproxy-{HAPROXY_VERSION}.tar.gz",
+        "name": "haproxy-{HAPROXY_VERSION}.tar.gz"
+      }
+    ],
+    "version_env_var": "HAPROXY_VERSION"
+  },
+  "apache-httpd": {
+    "tag_prefix": "httpd",
+    "release_files": [
+      "apache-httpd/bin/httpd",
+      "apache-httpd/bin/rotatelogs"
+    ],
+    "env": {
+      "ALPINE_VERSION": "3.23",
+      "UBI9_MICRO_VERSION": "9.5",
+      "HTTPD_VERSION": "2.4.66",
+      "APR_VERSION": "1.7.6",
+      "APR_UTIL_VERSION": "1.6.3"
+    },
+    "downloads": [
+      {
+        "url": "https://downloads.apache.org/httpd/httpd-{HTTPD_VERSION}.tar.gz",
+        "name": "httpd-{HTTPD_VERSION}.tar.gz"
+      },
+      {
+        "url": "https://downloads.apache.org/apr/apr-{APR_VERSION}.tar.gz",
+        "name": "apr-{APR_VERSION}.tar.gz"
+      },
+      {
+        "url": "https://downloads.apache.org/apr/apr-util-{APR_UTIL_VERSION}.tar.gz",
+        "name": "apr-util-{APR_UTIL_VERSION}.tar.gz"
+      }
+    ],
+    "version_env_var": "HTTPD_VERSION"
+  },
+  "coredns": {
+    "tag_prefix": "coredns",
+    "release_files": [
+      "coredns/coredns"
+    ],
+    "env": {
+      "GOLANG_IMAGE_TAG": "1.26-alpine",
+      "COREDNS_VERSION": "1.14.1",
+      "UBI9_MICRO_VERSION": "9.5"
+    },
+    "downloads": [
+      {
+        "url": "https://github.com/coredns/coredns/archive/refs/tags/v{COREDNS_VERSION}.tar.gz",
+        "name": "coredns-{COREDNS_VERSION}.tar.gz"
+      }
+    ],
+    "version_env_var": "COREDNS_VERSION"
+  },
+  "dnsmasq": {
+    "tag_prefix": "dnsmasq",
+    "release_files": [
+      "dnsmasq/sbin/dnsmasq"
+    ],
+    "env": {
+      "ALPINE_VERSION": "3.23",
+      "DNSMASQ_VERSION": "2.91",
+      "UBI9_MICRO_VERSION": "9.5"
+    },
+    "downloads": [
+      {
+        "url": "https://thekelleys.org.uk/dnsmasq/dnsmasq-{DNSMASQ_VERSION}.tar.gz",
+        "name": "dnsmasq-{DNSMASQ_VERSION}.tar.gz"
+      }
+    ],
+    "version_env_var": "DNSMASQ_VERSION"
+  },
+  "vector": {
+    "tag_prefix": "vector",
+    "release_files": [
+      "vector/bin/vector"
+    ],
+    "env": {
+      "ALPINE_VERSION": "3.23",
+      "VECTOR_VERSION": "0.53.0",
+      "UBI9_MICRO_VERSION": "9.5"
+    },
+    "downloads": [
+      {
+        "url": "https://github.com/vectordotdev/vector/releases/download/v{VECTOR_VERSION}/vector-{VECTOR_VERSION}-x86_64-unknown-linux-musl.tar.gz",
+        "name": "vector-{VECTOR_VERSION}-x86_64-unknown-linux-musl.tar.gz"
+      }
+    ],
+    "version_env_var": "VECTOR_VERSION"
+  },
+  "monit": {
+    "tag_prefix": "monit",
+    "release_files": [
+      "monit/bin/monit"
+    ],
+    "env": {
+      "ALPINE_VERSION": "3.23",
+      "MONIT_VERSION": "5.35.2",
+      "UBI9_MICRO_VERSION": "9.5"
+    },
+    "downloads": [
+      {
+        "url": "https://mmonit.com/monit/dist/monit-{MONIT_VERSION}.tar.gz",
+        "name": "monit-{MONIT_VERSION}.tar.gz"
+      }
+    ],
+    "version_env_var": "MONIT_VERSION"
+  }
+}

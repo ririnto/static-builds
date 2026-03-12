@@ -12,7 +12,7 @@ RUN --mount=type=cache,target=/var/cache/apk \
     apk add \
         build-base \
         linux-headers
-ADD "src/dnsmasq-${DNSMASQ_VERSION}.tar.gz" /build/
+ADD ".tmp/dnsmasq-${DNSMASQ_VERSION}.tar.gz" /build/
 WORKDIR "/build/dnsmasq-${DNSMASQ_VERSION}"
 RUN make "-j$(nproc)" \
     CFLAGS="-O2 -pipe -fPIE -fstack-protector-strong -fstack-clash-protection -ffunction-sections -fdata-sections -fno-delete-null-pointer-checks -fno-strict-overflow -fno-strict-aliasing -ftrivial-auto-var-init=zero -Wformat -Wformat=2 -Werror=format-security" \

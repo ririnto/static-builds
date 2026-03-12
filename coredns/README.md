@@ -32,10 +32,10 @@ This target builds a static CoreDNS binary from source using Go.
 ## How to Verify
 
 > [!NOTE]
-> In CI outputs are under `coredns/`. Override with `BUILD_OUTPUT_DEST`.
+> Outputs are under `.out/coredns/`. Override with `BUILD_OUTPUT_DEST`.
 
 ```bash
-./out/coredns/coredns -plugins
+./.out/coredns/coredns -plugins
 ```
 
 ## Runtime Introspection Output

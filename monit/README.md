@@ -114,8 +114,8 @@ Build monit and inspect the feature set:
 
 ```bash
 CI= GITHUB_ACTIONS= make build monit
-./out/monit/bin/monit -V
-./out/monit/bin/monit -h
+./.out/monit/bin/monit -V
+./.out/monit/bin/monit -h
 ```
 
 The `-V` flag shows the build feature summary, and `-h` shows all
@@ -126,8 +126,8 @@ for the actual output.
 ## How to Verify
 
 > [!NOTE]
-> In CI outputs are under `monit/`. Override with `BUILD_OUTPUT_DEST`.
+> Outputs are under `.out/monit/`. Override with `BUILD_OUTPUT_DEST`.
 
 ```bash
-./out/monit/bin/monit -V
+./.out/monit/bin/monit -V
 ```
