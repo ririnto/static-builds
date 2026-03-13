@@ -13,6 +13,7 @@ static-builds/
 ├── metadata.json         # Canonical build/release metadata
 ├── scripts/              # Project-owned build/release scripts
 │   ├── build.sh          # Main build entry
+│   ├── build-rootless.sh # Rootless BuildKit build entry
 │   ├── download.sh       # Source download dispatcher
 │   ├── common.sh         # Shared shell helpers
 │   ├── metadata.sh       # Metadata query helper
@@ -20,8 +21,7 @@ static-builds/
 │   ├── release-guard.sh  # Release tag validator
 │   └── generate-gitlab-child-pipeline.sh # GitLab child pipeline generator
 ├── templates/            # GitLab CI components
-│   └── static-release/
-│       └── template.yml
+│   └── static-release.yaml
 ├── Makefile              # Build orchestration (7 targets)
 ├── .github/
 │   └── workflows/        # Unified tag-triggered release
@@ -153,6 +153,9 @@ The `third-party/` directory is for research and exploration only.
   - caller: `.github/workflows/release-from-tag.yaml`
   - template: `.github/workflows/template-release.yaml`
 - Artifacts: local builds and CI/release builds both output under `.out/<target>/...`.
+- GitLab package pipelines on `main` and `feature/*` SHOULD use a
+  single manual parent job that generates a child pipeline and reuses
+  `templates/static-release.yaml`.
 
 ## COMMANDS
 

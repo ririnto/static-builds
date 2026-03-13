@@ -33,10 +33,8 @@ make list-targets
 make build nginx
 ```
 
-Build artifacts are written to `.out/<target>/` by default for local
-builds. In CI (`CI=true` or `GITHUB_ACTIONS=true`), artifacts remain
-under `<target>/` for release packaging compatibility. You can
-override both behaviors with `BUILD_OUTPUT_DEST`.
+Build artifacts are written to `.out/<target>/` by default for both
+local and CI builds. You can override this with `BUILD_OUTPUT_DEST`.
 
 ## Project Structure
 
@@ -45,10 +43,15 @@ override both behaviors with `BUILD_OUTPUT_DEST`.
 ├── metadata.json         # Canonical build/release metadata
 ├── scripts/
 │   ├── build.sh          # Main build entry point
+│   ├── build-rootless.sh # Rootless BuildKit build entry
 │   ├── download.sh       # Download dispatcher
 │   ├── common.sh         # Shared common functions
 │   ├── metadata.sh       # Metadata query helper
+│   ├── package-release.sh # Release package helper
 │   ├── release-guard.sh  # Release tag validator
+│   └── generate-gitlab-child-pipeline.sh # GitLab child pipeline generator
+├── templates/            # GitLab CI components
+│   └── static-release.yaml
 ├── .github/
 │   └── workflows/
 │       └── ...
@@ -68,11 +71,11 @@ override both behaviors with `BUILD_OUTPUT_DEST`.
    ```json
    {
      "your-target": {
-       "tag_prefix": "your-target",
-       "version_env_var": "YOUR_SOFTWARE_VERSION",
-       "release_files": [
-         "your-target/bin/your-target"
-       ],
+        "tag_prefix": "your-target",
+        "version_env_var": "YOUR_SOFTWARE_VERSION",
+        "release_files": [
+          "bin/your-target"
+        ],
        "env": {
          "ALPINE_VERSION": "3.23",
          "YOUR_SOFTWARE_VERSION": "1.0.0",
@@ -111,11 +114,11 @@ Each target must follow this structure:
    ```json
    {
      "your-target": {
-       "tag_prefix": "your-target",
-       "version_env_var": "YOUR_TARGET_VERSION",
-       "release_files": [
-         "your-target/bin/your-target"
-       ],
+        "tag_prefix": "your-target",
+        "version_env_var": "YOUR_TARGET_VERSION",
+        "release_files": [
+          "bin/your-target"
+        ],
        "env": {
          "ALPINE_VERSION": "3.23",
          "YOUR_TARGET_VERSION": "1.0.0",
@@ -364,9 +367,7 @@ docker run --rm \
 
 ## GitLab CI
 
-- GitLab pipelines on `main` and `feature/*` expose manual package jobs that generate a child pipeline with `scripts/generate-gitlab-child-pipeline.sh`.
+- GitLab pipelines on `main` and `feature/*` expose one manual package job that generates a child pipeline with `scripts/generate-gitlab-child-pipeline.sh`.
 - Manual runs provide `TARGET` and optional `PACKAGE_VERSION`. If `PACKAGE_VERSION` is omitted, the child pipeline uses the official version from `metadata.json` and creates `<target>-<version>.tar.gz` without any extra revision suffix.
-- GitHub release packaging and GitLab package generation both reuse `scripts/package-release.sh`.
-
-- GitLab tag pipelines use `.gitlab-ci.yml` to generate a child pipeline from `metadata.json` and include the local component at `templates/static-release/template.yml`.
+- The generated child pipeline includes the local component at `templates/static-release.yaml`.
 - GitHub release packaging and GitLab package generation both reuse `scripts/package-release.sh`.

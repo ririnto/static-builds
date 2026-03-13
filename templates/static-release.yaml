@@ -9,19 +9,17 @@ spec:
 ---
 "gitlab-static-package-$[[ inputs.target ]]":
   stage: $[[ inputs.stage ]]
-  image: alpine:3.23
-  services:
-    - name: docker:27.1-dind
-      alias: docker
+  image:
+    name: moby/buildkit:rootless
+    entrypoint: [""]
   variables:
-    DOCKER_HOST: tcp://docker:2375
-    DOCKER_TLS_CERTDIR: ""
+    BUILDKITD_FLAGS: --oci-worker-no-process-sandbox
     BUILDKIT_CACHE_BACKEND: local
     BUILD_OUTPUT_DEST: "$CI_PROJECT_DIR/.out/$[[ inputs.target ]]"
-  before_script:
-    - apk add --no-cache docker-cli docker-cli-buildx make git curl bash
+    BUILDKIT_NETWORK: host
   script:
-    - make build "$[[ inputs.target ]]"
+    - sh scripts/download.sh "$[[ inputs.target ]]"
+    - sh scripts/build-rootless.sh "$[[ inputs.target ]]"
     - sh scripts/package-release.sh "$[[ inputs.target ]]" "$[[ inputs.package_name ]]"
   artifacts:
     paths:

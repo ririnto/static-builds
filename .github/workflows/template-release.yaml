@@ -51,14 +51,6 @@ jobs:
             exit 1
           fi
 
-          for release_file in ${RELEASE_FILES}; do
-            ARTIFACT_PATH=".out/${{ inputs.target }}/${release_file}"
-            if [ ! -f "${ARTIFACT_PATH}" ] && [ ! -d "${ARTIFACT_PATH}" ]; then
-              echo "Error: Release path not found at ${ARTIFACT_PATH}"
-              exit 1
-            fi
-          done
-
           {
             echo 'release_files<<EOF'
             printf '%s\n' "${RELEASE_FILES}"

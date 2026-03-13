@@ -273,10 +273,10 @@ UBI9_MICRO_VERSION=9.5
 
   if command_enabled 'get-release-files'; then
     run_helper 'get-release-files' '' 'get-release-files' 'nginx'
-    assert_capture 'get-release-files' 0 'nginx/sbin/nginx
-nginx/lualib/resty/core.lua
-nginx/lualib/resty/core
-nginx/lualib/resty/upstream
+    assert_capture 'get-release-files' 0 'sbin/nginx
+lualib/resty/core.lua
+lualib/resty/core
+lualib/resty/upstream
 ' ''
   fi
 
