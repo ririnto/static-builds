@@ -16,7 +16,6 @@ spec:
     BUILDKITD_FLAGS: --oci-worker-no-process-sandbox
     BUILDKIT_CACHE_BACKEND: local
     BUILD_OUTPUT_DEST: "$CI_PROJECT_DIR/.out/$[[ inputs.target ]]"
-    BUILDKIT_NETWORK: host
   script:
     - sh scripts/download.sh "$[[ inputs.target ]]"
     - sh scripts/build-rootless.sh "$[[ inputs.target ]]"
@@ -26,4 +25,3 @@ spec:
       - ".out/$[[ inputs.target ]]/"
       - "$[[ inputs.package_name ]].tar.gz"
     when: always
-    expire_in: 30 days
