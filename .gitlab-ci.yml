@@ -1,0 +1,27 @@
+stages:
+  - prepare
+  - release
+
+generate-release-pipeline:
+  stage: prepare
+  image: alpine:3.23
+  before_script:
+    - apk add --no-cache bash
+  script:
+    - test -n "$CI_COMMIT_TAG"
+    - sh scripts/generate-gitlab-child-pipeline.sh "$CI_COMMIT_TAG" > generated-release-pipeline.yml
+  artifacts:
+    paths:
+      - generated-release-pipeline.yml
+  rules:
+    - if: $CI_COMMIT_TAG
+
+run-release-pipeline:
+  stage: release
+  trigger:
+    include:
+      - artifact: generated-release-pipeline.yml
+        job: generate-release-pipeline
+    strategy: mirror
+  rules:
+    - if: $CI_COMMIT_TAG

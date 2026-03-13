@@ -26,7 +26,7 @@ This target builds a static PIE `dnsmasq` binary from source.
   of its compile-time feature surface instead of passing many
   repository-specific feature toggles.
 - The approved release artifact for this target is the static
-  `dnsmasq/sbin/dnsmasq` binary.
+  `sbin/dnsmasq` binary.
 - Treat `dnsmasq -v` and `dnsmasq --help` as the authoritative runtime
   contract for this target's allowed feature set.
 

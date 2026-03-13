@@ -16,7 +16,12 @@ static-builds/
 │   ├── download.sh       # Source download dispatcher
 │   ├── common.sh         # Shared shell helpers
 │   ├── metadata.sh       # Metadata query helper
+│   ├── package-release.sh # Release package helper
 │   ├── release-guard.sh  # Release tag validator
+│   └── generate-gitlab-child-pipeline.sh # GitLab child pipeline generator
+├── templates/            # GitLab CI components
+│   └── static-release/
+│       └── template.yml
 ├── Makefile              # Build orchestration (7 targets)
 ├── .github/
 │   └── workflows/        # Unified tag-triggered release
@@ -38,7 +43,7 @@ static-builds/
 | Task | Location | Notes |
 | --- | --- | --- |
 | Add new target | Root + create dir | Follow nginx/ pattern |
-| CI release config | .github/workflows/ | release-from-tag + template-release |
+| CI release config | .github/workflows/, .gitlab-ci.yml, templates/ | GitHub workflows + GitLab component pipeline |
 | Build definition | */Dockerfile | Multi-stage target build |
 | Build metadata | metadata.json | tag_prefix, release_files, env, downloads |
 

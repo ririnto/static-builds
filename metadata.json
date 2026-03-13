@@ -2,10 +2,10 @@
   "nginx": {
     "tag_prefix": "nginx",
     "release_files": [
-      "nginx/sbin/nginx",
-      "nginx/lualib/resty/core.lua",
-      "nginx/lualib/resty/core",
-      "nginx/lualib/resty/upstream"
+      "sbin/nginx",
+      "lualib/resty/core.lua",
+      "lualib/resty/core",
+      "lualib/resty/upstream"
     ],
     "env": {
       "ALPINE_VERSION": "3.23",
@@ -48,7 +48,7 @@
   "haproxy": {
     "tag_prefix": "haproxy",
     "release_files": [
-      "haproxy/sbin/haproxy"
+      "sbin/haproxy"
     ],
     "env": {
       "ALPINE_VERSION": "3.23",
@@ -67,8 +67,8 @@
   "apache-httpd": {
     "tag_prefix": "httpd",
     "release_files": [
-      "apache-httpd/bin/httpd",
-      "apache-httpd/bin/rotatelogs"
+      "bin/httpd",
+      "bin/rotatelogs"
     ],
     "env": {
       "ALPINE_VERSION": "3.23",
@@ -96,7 +96,7 @@
   "coredns": {
     "tag_prefix": "coredns",
     "release_files": [
-      "coredns/coredns"
+      "coredns"
     ],
     "env": {
       "GOLANG_IMAGE_TAG": "1.26-alpine",
@@ -114,7 +114,7 @@
   "dnsmasq": {
     "tag_prefix": "dnsmasq",
     "release_files": [
-      "dnsmasq/sbin/dnsmasq"
+      "sbin/dnsmasq"
     ],
     "env": {
       "ALPINE_VERSION": "3.23",
@@ -132,7 +132,7 @@
   "vector": {
     "tag_prefix": "vector",
     "release_files": [
-      "vector/bin/vector"
+      "bin/vector"
     ],
     "env": {
       "ALPINE_VERSION": "3.23",
@@ -150,7 +150,7 @@
   "monit": {
     "tag_prefix": "monit",
     "release_files": [
-      "monit/bin/monit"
+      "bin/monit"
     ],
     "env": {
       "ALPINE_VERSION": "3.23",

@@ -29,7 +29,7 @@ deployments.
 - Lua support and the Prometheus exporter are approved parts of this
   target's runtime profile.
 - The release artifact for this target is intentionally limited to the
-  static `haproxy/sbin/haproxy` binary.
+  static `sbin/haproxy` binary.
 
 ## How to Verify
 

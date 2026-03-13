@@ -33,7 +33,7 @@ modules as runtime files inside the release artifact/image.
 
 - This target MAY ship runtime Lua files under `lualib/` in addition to
   the static `nginx` binary.
-- Release contents intentionally include both `nginx/sbin/nginx` and
+- Release contents intentionally include both `sbin/nginx` and
   the packaged Lua runtime paths required by
   `resty.upstream.healthcheck`.
 - Verify-stage checks intentionally include Lua packaging assertions in
@@ -81,9 +81,9 @@ configure arguments:
 
 The build installs Lua runtime files under `nginx/lualib`:
 
-- `nginx/lualib/resty/core.lua`
-- `nginx/lualib/resty/core/`
-- `nginx/lualib/resty/upstream/healthcheck.lua`
+- `lualib/resty/core.lua`
+- `lualib/resty/core/`
+- `lualib/resty/upstream/healthcheck.lua`
 
 `LUA_PATH` is configured to load modules from `${TARGET_PREFIX}/lualib`
 at runtime.

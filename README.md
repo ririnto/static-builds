@@ -302,15 +302,15 @@ directories.
 
 Selected release contents:
 
-- `nginx`: `nginx/sbin/nginx`, `nginx/lualib/resty/core.lua`,
-  `nginx/lualib/resty/core/`, `nginx/lualib/resty/upstream/`
-- `haproxy`: `haproxy/sbin/haproxy`
-- `apache-httpd`: `apache-httpd/bin/httpd`,
-  `apache-httpd/bin/rotatelogs`
-- `coredns`: `coredns/coredns`
-- `dnsmasq`: `dnsmasq/sbin/dnsmasq`
-- `vector`: `vector/bin/vector`
-- `monit`: `monit/bin/monit`
+- `nginx`: `sbin/nginx`, `lualib/resty/core.lua`,
+  `lualib/resty/core/`, `lualib/resty/upstream/`
+- `haproxy`: `sbin/haproxy`
+- `apache-httpd`: `bin/httpd`,
+  `bin/rotatelogs`
+- `coredns`: `coredns`
+- `dnsmasq`: `sbin/dnsmasq`
+- `vector`: `bin/vector`
+- `monit`: `bin/monit`
 
 ## Logging Strategy
 
@@ -360,3 +360,13 @@ docker run --rm \
   -v "$(pwd)/haproxy.cfg:/etc/haproxy/haproxy.cfg:ro" \
   <image> -c -f /etc/haproxy/haproxy.cfg
 ```
+
+
+## GitLab CI
+
+- Tag pipelines generate a child pipeline from `metadata.json` with `scripts/generate-gitlab-child-pipeline.sh`.
+- The child pipeline includes the local GitLab CI component at `templates/static-release/template.yml`.
+- GitHub and GitLab packaging both reuse `scripts/package-release.sh`.
+
+- GitLab tag pipelines use `.gitlab-ci.yml` to generate a child pipeline from `metadata.json` and include the local component at `templates/static-release/template.yml`.
+- GitHub and GitLab packaging both reuse `scripts/package-release.sh`.

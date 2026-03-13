@@ -37,7 +37,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ github.workspace }}/.tmp
-          key: tmp-${{ inputs.target }}-${{ hashFiles('metadata.json', 'scripts/download.sh', 'scripts/metadata.sh', 'scripts/common.sh') }}
+          key: tmp-${{ inputs.target }}-${{ hashFiles('metadata.json', 'scripts/download.sh', 'scripts/metadata.sh', 'scripts/common.sh', 'scripts/package-release.sh') }}
           restore-keys: |-
             tmp-${{ inputs.target }}-
 
@@ -47,11 +47,18 @@ jobs:
           RELEASE_FILES="$(sh scripts/metadata.sh get-release-files "${{ inputs.target }}")"
           ARTIFACT_PATHS=""
 
-          printf '%s\n' "${RELEASE_FILES}" | while IFS= read -r release_file; do
-            if [ -z "${release_file}" ]; then
-              continue
+          if [ -z "${RELEASE_FILES}" ]; then
+            echo "Error: No release files configured for ${{ inputs.target }}"
+            exit 1
+          fi
+
+          for release_file in ${RELEASE_FILES}; do
+            ARTIFACT_PATH=".out/${{ inputs.target }}/${release_file}"
+            if [ ! -f "${ARTIFACT_PATH}" ] && [ ! -d "${ARTIFACT_PATH}" ]; then
+              echo "Error: Release path not found at ${ARTIFACT_PATH}"
+              exit 1
             fi
-            ARTIFACT_PATHS="${ARTIFACT_PATHS}.out/${release_file}\n"
+            ARTIFACT_PATHS="${ARTIFACT_PATHS}${ARTIFACT_PATH}\n"
           done
 
           {
@@ -68,6 +75,23 @@ jobs:
           BUILDKIT_CACHE_BACKEND: gha
           BUILD_OUTPUT_DEST: ${{ github.workspace }}/.out/${{ inputs.target }}
         run: make build ${{ inputs.target }}
+
+      - name: Verify release files exist
+        run: |-
+          RELEASE_FILES="$(sh scripts/metadata.sh get-release-files "${{ inputs.target }}")"
+
+          if [ -z "${RELEASE_FILES}" ]; then
+            echo "Error: No release files configured for ${{ inputs.target }}"
+            exit 1
+          fi
+
+          for release_file in ${RELEASE_FILES}; do
+            RELEASE_PATH=".out/${{ inputs.target }}/${release_file}"
+            if [ ! -f "${RELEASE_PATH}" ] && [ ! -d "${RELEASE_PATH}" ]; then
+              echo "Error: Release path not found at ${RELEASE_PATH}"
+              exit 1
+            fi
+          done
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
@@ -93,32 +117,7 @@ jobs:
 
       - name: Create release package
         if: ${{ inputs.upload_release }}
-        run: |-
-          TAG="${{ inputs.tag }}"
-          PACKAGE_NAME="${TAG}.tar.gz"
-          RELEASE_PATHS=()
-
-          rm -f "${PACKAGE_NAME}"
-
-          printf '%s\n' "${{ steps.metadata.outputs.release_files }}" | while IFS= read -r release_file; do
-            if [ -z "${release_file}" ]; then
-              continue
-            fi
-
-            if [ -f ".out/${release_file}" ] || [ -d ".out/${release_file}" ]; then
-              RELEASE_PATHS+=("${release_file}")
-            else
-              echo "Error: Release path not found at .out/${release_file}"
-              exit 1
-            fi
-          done
-
-          if [ "${#RELEASE_PATHS[@]}" -eq 0 ]; then
-            echo "Error: No release files provided"
-            exit 1
-          fi
-
-          tar -czvf "${PACKAGE_NAME}" -C .out "${RELEASE_PATHS[@]}"
+        run: sh scripts/package-release.sh "${{ inputs.target }}" "${{ inputs.tag }}"
 
       - name: Publish assets to release
         if: ${{ inputs.upload_release }}

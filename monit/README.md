@@ -26,7 +26,7 @@ libraries statically.
   upstream install output.
 - Static linkage against OpenSSL and zlib archives is an approved part
   of this target profile.
-- The approved release artifact for this target is `monit/bin/monit`.
+- The approved release artifact for this target is `bin/monit`.
 
 ## Runtime Defaults
 

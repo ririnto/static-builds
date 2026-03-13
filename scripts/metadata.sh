@@ -645,6 +645,30 @@ render_download_template() {
   printf '%s\n' "$rendered"
 }
 
+get_target_by_tag() {
+  tag="$1"
+  records=$(parse_metadata_records)
+  tab=$(printf '	')
+  found=''
+  while IFS="$tab" read -r record_type record_target record_field record_value _; do
+    if [ "$record_type" = 'SCALAR' ] && [ "$record_field" = 'tag_prefix' ]; then
+      case "$tag" in
+      "${record_value}-"*)
+        found="$record_target"
+        break
+        ;;
+      esac
+    fi
+  done <<EOF
+$records
+EOF
+  if [ -z "$found" ]; then
+    fail "unable to resolve target for tag '$tag'"
+  fi
+  printf '%s
+' "$found"
+}
+
 get_downloads() {
   target="$1"
   records=$(parse_metadata_records)
@@ -716,6 +740,10 @@ main() {
   get-release-files)
     [ $# -eq 1 ] || usage
     get_release_files "$1"
+    ;;
+  get-target-by-tag)
+    [ $# -eq 1 ] || usage
+    get_target_by_tag "$1"
     ;;
   get-downloads)
     [ $# -eq 1 ] || usage

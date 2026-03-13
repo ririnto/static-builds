@@ -28,8 +28,8 @@ compiled in.
 
 ## Allowed Target-Specific Variations
 
-- This target MAY release both `apache-httpd/bin/httpd` and
-  `apache-httpd/bin/rotatelogs` as one approved packaging profile.
+- This target MAY release both `bin/httpd` and
+  `bin/rotatelogs` as one approved packaging profile.
 - The target directory name remains `apache-httpd`, but release tags
   intentionally use the `httpd-` prefix.
 - Verify output from `httpd -M` MAY contain only the expected FQDN
