@@ -83,7 +83,7 @@ static-builds/
   stages MUST be updated in every affected `*/Dockerfile` verify block
   in the same change. Any repository documentation that describes that
   shared verification contract SHOULD be updated at the same time.
-- `third-party/` is reference-only material for research and
+- `.third-party/` is reference-only material for research and
   exploration. It MUST NOT be referenced by this repository's
   implementation and MUST NOT be modified from this repository.
 - Allowed target-specific variations MUST be documented in each
@@ -125,13 +125,13 @@ upstream source downloads.
 
 ## Third-party Policy
 
-The `third-party/` directory is for research and exploration only.
+The `.third-party/` directory is for research and exploration only.
 
-- The repository MUST NOT reference `third-party/` from build
+- The repository MUST NOT reference `.third-party/` from build
   scripts, Dockerfiles, workflows, or runtime artifacts.
-- The repository MUST NOT introduce changes under `third-party/`
+- The repository MUST NOT introduce changes under `.third-party/`
   (including submodule pointer updates).
-- The `third-party/` directory MAY be used only for collecting
+- The `.third-party/` directory MAY be used only for collecting
   information, investigation, and exploration.
 
 ## ANTI-PATTERNS (THIS PROJECT)
