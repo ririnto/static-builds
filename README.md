@@ -297,7 +297,7 @@ directories.
 - Workflow automatically determines the target from tag pattern and
   calls reusable template `.github/workflows/template-release.yaml`.
 - Template builds mapped target, scans for vulnerabilities,
-  uploads selected files as artifact, then uploads `${tag}.tar.gz`
+  uploads the full `.out/<target>/` tree as artifact, then uploads `${tag}.tar.gz`
   that contains selected release files.
 
 Selected release contents:
@@ -364,9 +364,9 @@ docker run --rm \
 
 ## GitLab CI
 
-- Tag pipelines generate a child pipeline from `metadata.json` with `scripts/generate-gitlab-child-pipeline.sh`.
-- The child pipeline includes the local GitLab CI component at `templates/static-release/template.yml`.
-- GitHub and GitLab packaging both reuse `scripts/package-release.sh`.
+- GitLab pipelines on `main` and `feature/*` expose manual package jobs that generate a child pipeline with `scripts/generate-gitlab-child-pipeline.sh`.
+- Manual runs provide `TARGET` and optional `PACKAGE_VERSION`. If `PACKAGE_VERSION` is omitted, the child pipeline uses the official version from `metadata.json` and creates `<target>-<version>.tar.gz` without any extra revision suffix.
+- GitHub release packaging and GitLab package generation both reuse `scripts/package-release.sh`.
 
 - GitLab tag pipelines use `.gitlab-ci.yml` to generate a child pipeline from `metadata.json` and include the local component at `templates/static-release/template.yml`.
-- GitHub and GitLab packaging both reuse `scripts/package-release.sh`.
+- GitHub release packaging and GitLab package generation both reuse `scripts/package-release.sh`.

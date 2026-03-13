@@ -45,7 +45,6 @@ jobs:
         id: metadata
         run: |-
           RELEASE_FILES="$(sh scripts/metadata.sh get-release-files "${{ inputs.target }}")"
-          ARTIFACT_PATHS=""
 
           if [ -z "${RELEASE_FILES}" ]; then
             echo "Error: No release files configured for ${{ inputs.target }}"
@@ -58,15 +57,11 @@ jobs:
               echo "Error: Release path not found at ${ARTIFACT_PATH}"
               exit 1
             fi
-            ARTIFACT_PATHS="${ARTIFACT_PATHS}${ARTIFACT_PATH}\n"
           done
 
           {
             echo 'release_files<<EOF'
             printf '%s\n' "${RELEASE_FILES}"
-            echo 'EOF'
-            echo 'artifact_paths<<EOF'
-            printf '%b' "${ARTIFACT_PATHS}"
             echo 'EOF'
           } >> "$GITHUB_OUTPUT"
 
@@ -111,7 +106,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.target }}-static-build
-          path: ${{ steps.metadata.outputs.artifact_paths }}
+          path: .out/${{ inputs.target }}/
           if-no-files-found: error
           retention-days: 30
 
