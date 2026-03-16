@@ -54,8 +54,7 @@ download_tarball() {
       fi
     else
       if wget -q \
-        --connect-timeout="${connect_timeout}" \
-        --timeout="${max_time}" \
+        -T "${connect_timeout}" \
         -O "${tmp_file}" "${url}"; then
         rc=0
       else
