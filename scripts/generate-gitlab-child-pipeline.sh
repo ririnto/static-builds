@@ -13,7 +13,7 @@ if [ -z "$target" ]; then
   printf '%s\n' 'include:'
   for t in $targets; do
     pv="$(sh "${ROOT_DIR}/scripts/metadata.sh" get-official-version "$t")"
-    printf '%s\n' '  - component: $CI_SERVER_FQDN/$CI_PROJECT_PATH/static-release@$CI_COMMIT_SHA'
+    printf '%s\n' '  - local: templates/static-release.yaml'
     printf '%s\n' '    inputs:'
     printf '%s\n' '      stage: release'
     printf '      target: %s\n' "$t"
@@ -34,7 +34,7 @@ if [ -n "$release_tag" ]; then
   printf '%s\n' ''
 fi
 printf '%s\n' 'include:'
-printf '%s\n' '  - component: $CI_SERVER_FQDN/$CI_PROJECT_PATH/static-release@$CI_COMMIT_SHA'
+printf '%s\n' '  - local: templates/static-release.yaml'
 printf '%s\n' '    inputs:'
 if [ -n "$release_tag" ]; then
   printf '%s\n' '      stage: build'
