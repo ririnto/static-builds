@@ -6,13 +6,13 @@ spec:
       type: string
     package_name:
       type: string
-    when:
+    run_policy:
       default: on_success
 ---
 "gitlab-static-package-$[[ inputs.target ]]":
   stage: $[[ inputs.stage ]]
   rules:
-    - when: $[[ inputs.when ]]
+    - when: $[[ inputs.run_policy ]]
   image:
     name: moby/buildkit:rootless
     entrypoint: [""]

@@ -18,7 +18,7 @@ if [ -z "$target" ]; then
     printf '%s\n' '      stage: release'
     printf '      target: %s\n' "$t"
     printf '      package_name: %s\n' "${t}-${pv}"
-    printf '%s\n' '      when: manual'
+    printf '%s\n' '      run_policy: manual'
   done
   exit 0
 fi
