@@ -5,15 +5,19 @@ if [ "$#" -gt 3 ]; then
   exit 1
 fi
 ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+COMPONENT_REF='$CI_SERVER_FQDN/$CI_PROJECT_PATH/static-release@$CI_COMMIT_SHA'
 target="${1:-}"
 package_version="${2:-}"
 release_tag="${3:-}"
 if [ -z "$target" ]; then
   targets="$(sh "${ROOT_DIR}/scripts/metadata.sh" list-targets)"
+  printf '%s\n' 'stages:'
+  printf '%s\n' '  - release'
+  printf '%s\n' ''
   printf '%s\n' 'include:'
   for t in $targets; do
     pv="$(sh "${ROOT_DIR}/scripts/metadata.sh" get-official-version "$t")"
-    printf '%s\n' '  - local: templates/static-release.yaml'
+    printf '  - component: %s\n' "$COMPONENT_REF"
     printf '%s\n' '    inputs:'
     printf '%s\n' '      stage: release'
     printf '      target: %s\n' "$t"
@@ -31,10 +35,13 @@ if [ -n "$release_tag" ]; then
   printf '%s\n' 'stages:'
   printf '%s\n' '  - build'
   printf '%s\n' '  - publish'
-  printf '%s\n' ''
+else
+  printf '%s\n' 'stages:'
+  printf '%s\n' '  - release'
 fi
+printf '%s\n' ''
 printf '%s\n' 'include:'
-printf '%s\n' '  - local: templates/static-release.yaml'
+printf '  - component: %s\n' "$COMPONENT_REF"
 printf '%s\n' '    inputs:'
 if [ -n "$release_tag" ]; then
   printf '%s\n' '      stage: build'
