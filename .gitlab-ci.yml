@@ -8,28 +8,50 @@ generate-package-pipeline:
   before_script:
     - apk add --no-cache bash
   script:
-    - test -n "$TARGET"
-    - sh scripts/generate-gitlab-child-pipeline.sh "$TARGET" "${PACKAGE_VERSION:-}" > generated-package-pipeline.yml
+    - sh scripts/generate-gitlab-child-pipeline.sh > generated-package-pipeline.yaml
   artifacts:
     paths:
-      - generated-package-pipeline.yml
+      - generated-package-pipeline.yaml
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
-      when: manual
     - if: '$CI_COMMIT_BRANCH =~ /^feature\/.+$/'
-      when: manual
     - when: never
 
 run-package-pipeline:
   stage: package
   trigger:
     include:
-      - artifact: generated-package-pipeline.yml
+      - artifact: generated-package-pipeline.yaml
         job: generate-package-pipeline
-    strategy: mirror
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
-      when: on_success
     - if: '$CI_COMMIT_BRANCH =~ /^feature\/.+$/'
-      when: on_success
+    - when: never
+
+generate-release-pipeline:
+  stage: prepare
+  image: alpine:3.23
+  before_script:
+    - apk add --no-cache bash
+  script:
+    - |
+      TARGET="$(sh scripts/metadata.sh get-target-by-tag "$CI_COMMIT_TAG")"
+      sh scripts/release-guard.sh "$TARGET" "$CI_COMMIT_TAG"
+      sh scripts/generate-gitlab-child-pipeline.sh "$TARGET" "" "$CI_COMMIT_TAG" > generated-release-pipeline.yaml
+  artifacts:
+    paths:
+      - generated-release-pipeline.yaml
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^(nginx|haproxy|httpd|coredns|dnsmasq|vector|monit)-/'
+    - when: never
+
+run-release-pipeline:
+  stage: package
+  trigger:
+    include:
+      - artifact: generated-release-pipeline.yaml
+        job: generate-release-pipeline
+    strategy: mirror
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^(nginx|haproxy|httpd|coredns|dnsmasq|vector|monit)-/'
     - when: never
