@@ -14,10 +14,10 @@ spec:
   rules:
     - when: $[[ inputs.run_policy ]]
   image:
-    name: moby/buildkit:rootless
+    name: moby/buildkit:v0.17.3-rootless
     entrypoint: [""]
   variables:
-    BUILDKITD_FLAGS: --oci-worker-no-process-sandbox --oci-worker-snapshotter=native
+    BUILDKITD_FLAGS: --oci-worker-no-process-sandbox
     BUILDKIT_CACHE_BACKEND: local
     BUILD_OUTPUT_DEST: "$CI_PROJECT_DIR/.out/$[[ inputs.target ]]"
   script:
