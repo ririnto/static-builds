@@ -94,17 +94,21 @@ jobs:
         with:
           sarif_file: 'trivy-results.sarif'
 
-      - name: Upload selected release files artifact
+      - name: Create release package
+        env:
+          TARGET: ${{ inputs.target }}
+          TAG: ${{ inputs.tag }}
+        run: sh scripts/package-release.sh "$TARGET" "$TAG"
+
+      - name: Upload release artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.target }}-static-build
-          path: .out/${{ inputs.target }}/
+          path: |-
+            .out/${{ inputs.target }}/
+            ${{ inputs.tag }}.tar.gz
           if-no-files-found: error
           retention-days: 30
-
-      - name: Create release package
-        if: ${{ inputs.upload_release }}
-        run: sh scripts/package-release.sh "${{ inputs.target }}" "${{ inputs.tag }}"
 
       - name: Publish assets to release
         if: ${{ inputs.upload_release }}
