@@ -21,10 +21,11 @@ static-builds/
 │   ├── release-guard.sh  # Release tag validator
 │   └── generate-gitlab-child-pipeline.sh # GitLab child pipeline generator
 ├── templates/            # GitLab CI components
-│   └── static-release.yaml
+│   └── static-release.yml
 ├── Makefile              # Build orchestration (7 targets)
 ├── .github/
-│   └── workflows/        # Unified tag-triggered release
+│   └── workflows/        # GitHub Actions workflows
+│       ├── build-package.yaml
 │       ├── release-from-tag.yaml
 │       └── template-release.yaml
 ├── .tmp/                 # Downloaded source cache (gitignored)
@@ -69,6 +70,8 @@ static-builds/
 - Release workflow MUST use `.github/workflows/release-from-tag.yaml`
   as the only tag-triggered entrypoint and MUST delegate build/release
   logic to `.github/workflows/template-release.yaml`.
+- Manual build workflow MUST use
+  `.github/workflows/build-package.yaml` and reuse the same template.
 - Release target mapping, release-file selection, and tag-prefix
   exceptions MUST be maintained as one logical source of truth. Until
   that data is centralized into target metadata or a Makefile/script-
@@ -83,9 +86,6 @@ static-builds/
   stages MUST be updated in every affected `*/Dockerfile` verify block
   in the same change. Any repository documentation that describes that
   shared verification contract SHOULD be updated at the same time.
-- `.third-party/` is reference-only material for research and
-  exploration. It MUST NOT be referenced by this repository's
-  implementation and MUST NOT be modified from this repository.
 - Allowed target-specific variations MUST be documented in each
   target's `README.md`. Root-level documentation and policy files MUST
   treat those differences as approved target profiles, not as
@@ -123,17 +123,6 @@ upstream source downloads.
 - This policy ensures consistency across all targets regardless of
   upstream practices
 
-## Third-party Policy
-
-The `.third-party/` directory is for research and exploration only.
-
-- The repository MUST NOT reference `.third-party/` from build
-  scripts, Dockerfiles, workflows, or runtime artifacts.
-- The repository MUST NOT introduce changes under `.third-party/`
-  (including submodule pointer updates).
-- The `.third-party/` directory MAY be used only for collecting
-  information, investigation, and exploration.
-
 ## ANTI-PATTERNS (THIS PROJECT)
 
 - No push/PR validation CI (tag-triggered release only)
@@ -155,7 +144,9 @@ The `.third-party/` directory is for research and exploration only.
 - Artifacts: local builds and CI/release builds both output under `.out/<target>/...`.
 - GitLab package pipelines on `main` and `feature/*` SHOULD use a
   single manual parent job that generates a child pipeline and reuses
-  `templates/static-release.yaml`.
+  `templates/static-release.yml`.
+- GitLab tag-triggered release pipelines MUST automatically build,
+  upload to Package Registry, and create a GitLab Release.
 
 ## COMMANDS
 
