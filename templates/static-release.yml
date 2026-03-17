@@ -17,7 +17,7 @@ spec:
     name: moby/buildkit:rootless
     entrypoint: [""]
   variables:
-    BUILDKITD_FLAGS: --oci-worker-no-process-sandbox
+    BUILDKITD_FLAGS: --oci-worker-no-process-sandbox --oci-worker-snapshotter=native
     BUILDKIT_CACHE_BACKEND: local
     BUILD_OUTPUT_DEST: "$CI_PROJECT_DIR/.out/$[[ inputs.target ]]"
   script:
