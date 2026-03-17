@@ -17,6 +17,15 @@ jobs:
       contents: write
     uses: ./.github/workflows/template-release.yaml
     with:
-      target: ${{ github.ref_type == 'tag' && startsWith(github.ref_name, 'nginx-') && 'nginx' || startsWith(github.ref_name, 'haproxy-') && 'haproxy' || startsWith(github.ref_name, 'httpd-') && 'apache-httpd' || startsWith(github.ref_name, 'coredns-') && 'coredns' || startsWith(github.ref_name, 'dnsmasq-') && 'dnsmasq' || startsWith(github.ref_name, 'vector-') && 'vector' || startsWith(github.ref_name, 'monit-') && 'monit' || '' }}
+      target: >-
+        ${{ github.ref_type == 'tag'
+        && startsWith(github.ref_name, 'nginx-') && 'nginx'
+        || startsWith(github.ref_name, 'haproxy-') && 'haproxy'
+        || startsWith(github.ref_name, 'httpd-') && 'apache-httpd'
+        || startsWith(github.ref_name, 'coredns-') && 'coredns'
+        || startsWith(github.ref_name, 'dnsmasq-') && 'dnsmasq'
+        || startsWith(github.ref_name, 'vector-') && 'vector'
+        || startsWith(github.ref_name, 'monit-') && 'monit'
+        || '' }}
       tag: ${{ github.ref_name }}
       upload_release: true

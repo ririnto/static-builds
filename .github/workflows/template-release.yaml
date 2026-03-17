@@ -37,8 +37,11 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ github.workspace }}/.tmp
-          key: tmp-${{ inputs.target }}-${{ hashFiles('metadata.json', 'scripts/download.sh', 'scripts/metadata.sh', 'scripts/common.sh', 'scripts/package-release.sh') }}
-          restore-keys: |-
+          key: >-
+            tmp-${{ inputs.target }}-${{ hashFiles('metadata.json',
+            'scripts/download.sh', 'scripts/metadata.sh',
+            'scripts/common.sh', 'scripts/package-release.sh') }}
+          restore-keys: >-
             tmp-${{ inputs.target }}-
 
       - name: Resolve release metadata
@@ -105,7 +108,7 @@ jobs:
         with:
           name: ${{ inputs.target }}-static-build
           path: |-
-            .out/${{ inputs.target }}/
+            .out/${{ inputs.target }}
             ${{ inputs.tag }}.tar.gz
           if-no-files-found: error
           retention-days: 30
