@@ -12,17 +12,36 @@ release_tag="${3:-}"
 if [ -z "$target" ]; then
   targets="$(sh "${ROOT_DIR}/scripts/metadata.sh" list-targets)"
   printf '%s\n' 'stages:'
-  printf '%s\n' '  - release'
+  printf '%s\n' '  - build'
+  printf '%s\n' '  - publish'
   printf '%s\n' ''
   printf '%s\n' 'include:'
   for t in $targets; do
     pv="$(sh "${ROOT_DIR}/scripts/metadata.sh" get-official-version "$t")"
     printf '  - component: %s\n' "$COMPONENT_REF"
     printf '%s\n' '    inputs:'
-    printf '%s\n' '      stage: release'
+    printf '%s\n' '      stage: build'
     printf '      target: %s\n' "$t"
     printf '      package_name: %s\n' "${t}-${pv}"
     printf '%s\n' '      run_policy: manual'
+  done
+  printf '%s\n' ''
+  for t in $targets; do
+    pv="$(sh "${ROOT_DIR}/scripts/metadata.sh" get-official-version "$t")"
+    pn="${t}-${pv}"
+    printf 'publish-%s:\n' "$t"
+    printf '%s\n' '  stage: publish'
+    printf '%s\n' '  image: alpine:3.23'
+    printf '%s\n' '  needs:'
+    printf '    - job: gitlab-static-package-%s\n' "$t"
+    printf '%s\n' '      artifacts: true'
+    printf '%s\n' '  before_script:'
+    printf '%s\n' '    - apk add --no-cache curl'
+    printf '%s\n' '  script:'
+    printf '%s\n' '    - |'
+    printf '      curl --header "JOB-TOKEN: $CI_JOB_TOKEN" \\\n'
+    printf '        --upload-file "%s.tar.gz" \\\n' "$pn"
+    printf '        "$CI_API_V4_URL/projects/$CI_PROJECT_ID/packages/generic/%s/%s/%s.tar.gz"\n' "$t" "$pn" "$pn"
   done
   exit 0
 fi
