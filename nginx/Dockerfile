@@ -445,7 +445,8 @@ FROM redhat/ubi9-minimal:${UBI9_MICRO_VERSION} AS verify
 ARG TARGET_PREFIX
 ENV LUA_PATH="${TARGET_PREFIX}/lualib/?.lua;${TARGET_PREFIX}/lualib/?/init.lua;;"
 
-RUN microdnf -y install file binutils strace
+RUN --mount=type=cache,target=/var/cache/dnf \
+    microdnf -y install file binutils strace
 COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
 COPY nginx/upstream-healthcheck.conf /tmp/upstream-healthcheck.conf
 RUN set -eu; \

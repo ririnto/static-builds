@@ -16,7 +16,8 @@ RUN mkdir -p ${TARGET_PREFIX}/bin && \
 FROM redhat/ubi9-minimal:${UBI9_MICRO_VERSION} AS verify
 ARG TARGET_PREFIX
 
-RUN microdnf -y install file binutils strace
+RUN --mount=type=cache,target=/var/cache/dnf \
+    microdnf -y install file binutils strace
 COPY --from=download ${TARGET_PREFIX} ${TARGET_PREFIX}
 RUN set -eu; \
     readelf -h ${TARGET_PREFIX}/bin/vector | egrep 'Type:|Machine:'; \

@@ -25,7 +25,8 @@ FROM redhat/ubi9-minimal:${UBI9_MICRO_VERSION} AS verify
 ARG COREDNS_VERSION
 ARG TARGET_PREFIX
 
-RUN microdnf -y install file binutils strace
+RUN --mount=type=cache,target=/var/cache/dnf \
+    microdnf -y install file binutils strace
 COPY --from=build /build/coredns-${COREDNS_VERSION}/coredns ${TARGET_PREFIX}/coredns
 RUN set -eu; \
     echo "=== ELF Header ==="; \

@@ -24,7 +24,8 @@ RUN make "-j$(nproc)" \
 FROM redhat/ubi9-minimal:${UBI9_MICRO_VERSION} AS verify
 ARG TARGET_PREFIX
 
-RUN microdnf -y install file binutils strace
+RUN --mount=type=cache,target=/var/cache/dnf \
+    microdnf -y install file binutils strace
 COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
 RUN set -eu; \
     echo "=== ELF Header ==="; \
