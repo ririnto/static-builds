@@ -44,22 +44,6 @@ jobs:
           restore-keys: >-
             tmp-${{ inputs.target }}-
 
-      - name: Resolve release metadata
-        id: metadata
-        run: |-
-          RELEASE_FILES="$(sh scripts/metadata.sh get-release-files "${{ inputs.target }}")"
-
-          if [ -z "${RELEASE_FILES}" ]; then
-            echo "Error: No release files configured for ${{ inputs.target }}"
-            exit 1
-          fi
-
-          {
-            echo 'release_files<<EOF'
-            printf '%s\n' "${RELEASE_FILES}"
-            echo 'EOF'
-          } >> "$GITHUB_OUTPUT"
-
       - name: Build target
         env:
           BUILDKIT_CACHE_BACKEND: gha
@@ -67,20 +51,14 @@ jobs:
         run: make build ${{ inputs.target }}
 
       - name: Verify release files exist
+        env:
+          TARGET: ${{ inputs.target }}
         run: |-
-          RELEASE_FILES="$(sh scripts/metadata.sh get-release-files "${{ inputs.target }}")"
-
-          if [ -z "${RELEASE_FILES}" ]; then
-            echo "Error: No release files configured for ${{ inputs.target }}"
-            exit 1
-          fi
-
-          for release_file in ${RELEASE_FILES}; do
-            RELEASE_PATH=".out/${{ inputs.target }}/${release_file}"
-            if [ ! -f "${RELEASE_PATH}" ] && [ ! -d "${RELEASE_PATH}" ]; then
-              echo "Error: Release path not found at ${RELEASE_PATH}"
-              exit 1
-            fi
+          RELEASE_FILES="$(sh scripts/metadata.sh get-release-files "$TARGET")"
+          test -n "${RELEASE_FILES}" || { echo "Error: No release files for ${TARGET}" >&2; exit 1; }
+          for f in ${RELEASE_FILES}; do
+            test -f ".out/${TARGET}/${f}" -o -d ".out/${TARGET}/${f}" \
+              || { echo "Error: ${f} not found in .out/${TARGET}" >&2; exit 1; }
           done
 
       - name: Run Trivy vulnerability scanner
@@ -104,14 +82,11 @@ jobs:
         run: sh scripts/package-release.sh "$TARGET" "$TAG"
 
       - name: Upload release artifacts
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ inputs.target }}-static-build
-          path: |-
-            .out/${{ inputs.target }}
-            ${{ inputs.tag }}.tar.gz
-          if-no-files-found: error
-          retention-days: 30
+          path: .out/${{ inputs.target }}
+          include-hidden-files: true
 
       - name: Publish assets to release
         if: ${{ inputs.upload_release }}
@@ -120,16 +95,7 @@ jobs:
         run: |-
           TAG="${{ inputs.tag }}"
           PACKAGE_NAME="${TAG}.tar.gz"
-
-          if [ ! -f "${PACKAGE_NAME}" ]; then
-            echo "Error: Release package not found at ${PACKAGE_NAME}"
-            exit 1
-          fi
-
-          if ! gh release view "${TAG}" >/dev/null 2>&1; then
-            gh release create "${TAG}" \
-              --title "${TAG}" \
-              --notes "Automated static binary release from tag ${TAG}."
-          fi
-
+          test -f "${PACKAGE_NAME}" || { echo "Error: ${PACKAGE_NAME} not found" >&2; exit 1; }
+          gh release view "${TAG}" >/dev/null 2>&1 \
+            || gh release create "${TAG}" --title "${TAG}" --notes "Automated static binary release from tag ${TAG}."
           gh release upload "${TAG}" "${PACKAGE_NAME}" --clobber
