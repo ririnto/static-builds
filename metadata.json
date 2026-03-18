@@ -8,14 +8,14 @@
       "lualib/resty/upstream"
     ],
     "env": {
-      "ALPINE_VERSION": "3.23",
+      "ALPINE_VERSION": "3.23.3",
       "NGINX_LUA_RESTY_CORE_VERSION": "0.1.32R1",
       "NGINX_LUA_MODULE_VERSION": "0.10.29",
       "NGINX_LUA_RESTY_UPSTREAM_HEALTHCHECK_MODULE_VERSION": "0.08",
       "NGINX_LUA_UPSTREAM_MODULE_VERSION": "0.07",
       "NGINX_VERSION": "1.28.2",
       "NGINX_VTS_MODULE_VERSION": "0.2.5",
-      "UBI9_MICRO_VERSION": "9.5"
+      "UBI9_MICRO_VERSION": "9.7"
     },
     "downloads": [
       {
@@ -51,9 +51,9 @@
       "sbin/haproxy"
     ],
     "env": {
-      "ALPINE_VERSION": "3.23",
-      "HAPROXY_VERSION": "3.2.13",
-      "UBI9_MICRO_VERSION": "9.5",
+      "ALPINE_VERSION": "3.23.3",
+      "HAPROXY_VERSION": "3.2.14",
+      "UBI9_MICRO_VERSION": "9.7",
       "HAPROXY_VERSION_SERIES": "3.2"
     },
     "downloads": [
@@ -71,8 +71,8 @@
       "bin/rotatelogs"
     ],
     "env": {
-      "ALPINE_VERSION": "3.23",
-      "UBI9_MICRO_VERSION": "9.5",
+      "ALPINE_VERSION": "3.23.3",
+      "UBI9_MICRO_VERSION": "9.7",
       "HTTPD_VERSION": "2.4.66",
       "APR_VERSION": "1.7.6",
       "APR_UTIL_VERSION": "1.6.3"
@@ -100,8 +100,8 @@
     ],
     "env": {
       "GOLANG_IMAGE_TAG": "1.26-alpine",
-      "COREDNS_VERSION": "1.14.1",
-      "UBI9_MICRO_VERSION": "9.5"
+      "COREDNS_VERSION": "1.14.2",
+      "UBI9_MICRO_VERSION": "9.7"
     },
     "downloads": [
       {
@@ -117,9 +117,9 @@
       "sbin/dnsmasq"
     ],
     "env": {
-      "ALPINE_VERSION": "3.23",
-      "DNSMASQ_VERSION": "2.91",
-      "UBI9_MICRO_VERSION": "9.5"
+      "ALPINE_VERSION": "3.23.3",
+      "DNSMASQ_VERSION": "2.92",
+      "UBI9_MICRO_VERSION": "9.7"
     },
     "downloads": [
       {
@@ -135,9 +135,9 @@
       "bin/vector"
     ],
     "env": {
-      "ALPINE_VERSION": "3.23",
-      "VECTOR_VERSION": "0.53.0",
-      "UBI9_MICRO_VERSION": "9.5"
+      "ALPINE_VERSION": "3.23.3",
+      "VECTOR_VERSION": "0.54.0",
+      "UBI9_MICRO_VERSION": "9.7"
     },
     "downloads": [
       {
@@ -153,9 +153,9 @@
       "bin/monit"
     ],
     "env": {
-      "ALPINE_VERSION": "3.23",
+      "ALPINE_VERSION": "3.23.3",
       "MONIT_VERSION": "5.35.2",
-      "UBI9_MICRO_VERSION": "9.5"
+      "UBI9_MICRO_VERSION": "9.7"
     },
     "downloads": [
       {
