@@ -1,5 +1,7 @@
 #!/usr/bin/env sh
 set -eu
+ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
+
 # Print error message to stderr.
 # :param str message: Error message to print.
 # :returns: Nothing (prints to stderr).
@@ -7,6 +9,7 @@ set -eu
 err() {
   printf '%s\n' "$*" >&2
 }
+
 # Parse version and revision from tag using last-dot split.
 # :param str tag: Release tag in format <target>-<version>.<revision>.
 # :returns: Version string (without revision) printed to stdout.
@@ -22,13 +25,14 @@ parse_tag() {
   fi
   printf '%s' "$version"
 }
+
 # Get official version from centralized metadata.
 # :param str target: Build target name.
 # :returns: Official version string printed to stdout.
 # :rtype: str
 get_official_version() {
   target="$1"
-  metadata_script="scripts/metadata.sh"
+  metadata_script="${ROOT_DIR}/scripts/metadata.sh"
   version=$(sh "$metadata_script" get-official-version "$target")
   if [ -z "$version" ]; then
     err "Error: official version not found for $target"
@@ -36,6 +40,7 @@ get_official_version() {
   fi
   printf '%s' "$version"
 }
+
 # Main entry point for tag validation.
 # :param str target: Target name (e.g., nginx, haproxy, apache-httpd).
 # :param str tag: Release tag (e.g., nginx-1.28.2.18).
@@ -49,7 +54,7 @@ main() {
   fi
   target="$1"
   tag="$2"
-  tag_prefix=$(sh scripts/metadata.sh get-tag-prefix "$target") || exit 1
+  tag_prefix=$(sh "${ROOT_DIR}/scripts/metadata.sh" get-tag-prefix "$target") || exit 1
   if ! printf '%s' "$tag" | grep -qE "^${tag_prefix}-"; then
     err "Error: Invalid tag format '$tag'"
     err "Expected format: ${tag_prefix}-<version>.<revision>"
@@ -58,12 +63,15 @@ main() {
   fi
   tag_version=$(parse_tag "$tag") || exit 1
   official_version=$(get_official_version "$target") || exit 1
-  if [ "$tag_version" != "$official_version" ]; then
-    err "Error: Version mismatch"
-    err "  Tag version:      $tag_version"
-    err "  Official version: $official_version (from metadata.json)"
-    exit 1
-  fi
+  case "$tag_version" in
+    "${official_version}" | "${official_version}"-*) ;;
+    *)
+      err "Error: Version mismatch"
+      err "  Tag version:      $tag_version (from tag '$tag')"
+      err "  Official version: $official_version (from metadata.json)"
+      exit 1
+      ;;
+  esac
   printf '✓ Tag validation passed: %s (version %s)\n' "$tag" "$tag_version"
 }
 main "$@"

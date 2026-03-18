@@ -1,78 +1,70 @@
-METADATA_SCRIPT := $(CURDIR)/scripts/metadata.sh
-TARGETS := $(shell sh "$(METADATA_SCRIPT)" list-targets)
-BUILD_SCRIPT := $(CURDIR)/scripts/build.sh
 DOWNLOAD_SCRIPT := $(CURDIR)/scripts/download.sh
-RELEASE_GUARD_SCRIPT := $(CURDIR)/scripts/release-guard.sh
-BUILD_TARGET := $(word 2,$(MAKECMDGOALS))
+METADATA_SCRIPT := $(CURDIR)/scripts/metadata.sh
 
+ARGS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
+$(eval $(ARGS):;@:)
 
-.PHONY: help list-targets check-target download build lint shfmt-write shfmt-check validate-tag
+BUILDKIT_PLATFORM ?= linux/amd64
+BUILDKIT_CACHE_BACKEND ?= local
+BUILDKIT_NETWORK ?= default
+
+.PHONY: help build download list-targets lint shfmt-check shfmt-write
 
 help:
-	@printf '%s\n' "Usage:"
-	@printf '%s\n' "  make build <target>"
-	@printf '%s\n' "  make download <target>"
-
-	@printf '%s\n' "  Output: .out/<target>/"
-	@printf '%s\n' ""
-	@printf '%s\n' "Targets: $(TARGETS)"
+	@echo "Usage:"
+	@echo "  make build <target>       Download sources and build"
+	@echo "  make download <target>    Download sources only"
+	@echo "  make list-targets         List available targets"
+	@echo "  make lint                 Run shellcheck on all scripts"
+	@echo "  make shfmt-check          Check shell formatting"
+	@echo "  make shfmt-write          Fix shell formatting"
 
 list-targets:
-	@printf '%s\n' "$(TARGETS)"
+	@python3 -c "import json;[print(k) for k in json.load(open('metadata.json'))]"
 
-check-target:
-	@if [ -z "$(BUILD_TARGET)" ]; then \
-		printf '%s\n' "Error: target is required"; \
-		printf '%s\n' "Example: make build nginx"; \
-		exit 1; \
-	fi; \
-	case " $(TARGETS) " in \
-	*" $(BUILD_TARGET) "*) ;; \
-	*) \
-		printf '%s\n' "Error: invalid target '$(BUILD_TARGET)'"; \
-		printf '%s\n' "Allowed: $(TARGETS)"; \
-		exit 1; \
-	;; \
-	esac
+build: download
+	$(eval TARGET := $(word 1,$(ARGS)))
+	$(eval BUILD_OUTPUT_DEST ?= $(CURDIR)/.out/$(TARGET))
+	$(eval CACHE_DIR := $(CURDIR)/.cache/$(TARGET))
+	@mkdir -p "$(BUILD_OUTPUT_DEST)" "$(CACHE_DIR)"
+	docker buildx build \
+		"--platform=$(BUILDKIT_PLATFORM)" \
+		"--network=$(BUILDKIT_NETWORK)" \
+		"--output=type=local,dest=$(BUILD_OUTPUT_DEST)" \
+		"--cache-from=type=local,src=$(CACHE_DIR)" \
+		"--cache-to=type=local,dest=$(CACHE_DIR),mode=max" \
+		$$(sh "$(METADATA_SCRIPT)" get-env "$(TARGET)" | while IFS='=' read -r k v; do \
+			case "$$k" in \
+			*[!A-Z0-9_]*) \
+				continue \
+				;; \
+			esac; \
+			if [ -n "$$v" ]; then \
+				printf ' --build-arg=%s=%s' "$$k" "$$v"; \
+			fi; \
+		done) \
+		"--file=$(CURDIR)/$(TARGET)/Dockerfile" \
+		"$(CURDIR)"
 
-build: check-target
-	@$(MAKE) --no-print-directory download "$(BUILD_TARGET)"
-	"$(BUILD_SCRIPT)" "$(BUILD_TARGET)"
-
-download: check-target
-	@printf '%s\n' "Downloading source files for $(BUILD_TARGET)..."; \
-	"$(DOWNLOAD_SCRIPT)" "$(BUILD_TARGET)"
-
-
-# Developer convenience targets
-
-lint:
-	@printf '%s\n' "Running shellcheck on project shell scripts..."
-	@for file in scripts/*.sh; do \
-		cat "$$file" | docker run --rm -i koalaman/shellcheck:stable --severity=error /dev/stdin || exit 1; \
-	done
-	@printf '%s\n' "✓ Shellcheck passed"
-
-validate-tag:
-	@if [ -z "$(word 2,$(MAKECMDGOALS))" ] || [ -z "$(word 3,$(MAKECMDGOALS))" ]; then \
-		printf '%s\n' "Error: validate-tag requires two arguments"; \
-		printf '%s\n' "Usage: make validate-tag <target> <tag>"; \
-		printf '%s\n' "Example: make validate-tag nginx nginx-1.28.2.0"; \
+download:
+	@if [ -z "$(word 1,$(ARGS))" ]; then \
+		echo "Error: target required" >&2; \
 		exit 1; \
 	fi
-	@"$(RELEASE_GUARD_SCRIPT)" \
-		"$(word 2,$(MAKECMDGOALS))" "$(word 3,$(MAKECMDGOALS))"
+	sh "$(DOWNLOAD_SCRIPT)" "$(word 1,$(ARGS))"
 
-shfmt-write:
-	@printf '%s\n' "Formatting shell scripts with shfmt..."
-	@go run mvdan.cc/sh/v3/cmd/shfmt@latest -w -ln posix -i 2 \
-		scripts/*.sh
+lint:
+	@find scripts .github/scripts .gitlab/scripts -name '*.sh' 2>/dev/null | while read -r file; do \
+		echo "shellcheck $$file"; \
+		if ! shellcheck "$$file"; then \
+			exit 1; \
+		fi; \
+	done
 
 shfmt-check:
-	@printf '%s\n' "Checking shell formatting with shfmt..."
-	@go run mvdan.cc/sh/v3/cmd/shfmt@latest -d -ln posix -i 2 \
-		scripts/*.sh
+	@find scripts .github/scripts .gitlab/scripts -name '*.sh' 2>/dev/null \
+		| xargs shfmt -d -i 2 -ci
 
-# Prevent make from treating validate-tag arguments as targets
-%:
-	@:
+shfmt-write:
+	@find scripts .github/scripts .gitlab/scripts -name '*.sh' 2>/dev/null \
+		| xargs shfmt -w -i 2 -ci

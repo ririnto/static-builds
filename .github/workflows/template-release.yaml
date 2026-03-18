@@ -28,7 +28,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Validate release tag
-        run: sh scripts/release-guard.sh "${{ inputs.target }}" "${{ inputs.tag }}"
+        run: sh .github/scripts/release-guard.sh "${{ inputs.target }}" "${{ inputs.tag }}"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -40,7 +40,7 @@ jobs:
           key: >-
             tmp-${{ inputs.target }}-${{ hashFiles('metadata.json',
             'scripts/download.sh', 'scripts/metadata.sh',
-            'scripts/common.sh', 'scripts/package-release.sh') }}
+            'scripts/package-release.sh') }}
           restore-keys: >-
             tmp-${{ inputs.target }}-
 
@@ -48,7 +48,10 @@ jobs:
         env:
           BUILDKIT_CACHE_BACKEND: gha
           BUILD_OUTPUT_DEST: ${{ github.workspace }}/.out/${{ inputs.target }}
-        run: make build ${{ inputs.target }}
+          TARGET: ${{ inputs.target }}
+        run: |-
+          sh scripts/download.sh "$TARGET"
+          sh .github/scripts/build.sh "$TARGET"
 
       - name: Verify release files exist
         env:

@@ -3,17 +3,25 @@ set -eu
 
 ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 
+## Print an error message to stderr and exit.
+##
+## :param str message: Error message body.
+## :returns: Does not return (exits with code 1).
+## :rtype: None
 fail() {
   printf 'Error: %s\n' "$*" >&2
   exit 1
 }
 
+## Print usage information and exit.
+##
+## :returns: Does not return (exits with code 1).
+## :rtype: None
 usage() {
   script_name=$(basename "$0")
   printf 'Usage: %s <command> [args...]\n' "$script_name" >&2
   printf '\n' >&2
   printf 'Commands:\n' >&2
-  printf '  list-targets\n' >&2
   printf '  get-env <target>\n' >&2
   printf '  get-official-version <target>\n' >&2
   printf '  get-tag-prefix <target>\n' >&2
@@ -22,6 +30,10 @@ usage() {
   exit 1
 }
 
+## Resolve the path to metadata.json.
+##
+## :returns: Absolute path to metadata.json printed to stdout.
+## :rtype: str
 resolve_metadata_path() {
   if [ "${METADATA_PATH_OVERRIDE:-}" ]; then
     printf '%s\n' "$METADATA_PATH_OVERRIDE"
@@ -30,6 +42,10 @@ resolve_metadata_path() {
   printf '%s/metadata.json\n' "$ROOT_DIR"
 }
 
+## Parse metadata.json into tab-separated records via AWK.
+##
+## :returns: Tab-separated records printed to stdout.
+## :rtype: str
 parse_metadata_records() {
   metadata_path=$(resolve_metadata_path)
   if [ ! -f "$metadata_path" ]; then
@@ -455,20 +471,12 @@ BEGIN {
 ' "$metadata_path"
 }
 
-list_targets() {
-  records=$(parse_metadata_records)
-  tab=$(printf '\t')
-  targets=''
-  while IFS="$tab" read -r record_type target _; do
-    if [ "$record_type" = 'TARGET' ]; then
-      targets="${targets}${targets:+ }${target}"
-    fi
-  done <<EOF
-$records
-EOF
-  printf '%s\n' "$targets"
-}
-
+## Get a scalar field value for a target.
+##
+## :param str target: Build target name.
+## :param str field_name: Scalar field name (e.g., tag_prefix).
+## :returns: Field value printed to stdout.
+## :rtype: str
 get_scalar_field() {
   target="$1"
   field_name="$2"
@@ -498,6 +506,11 @@ EOF
   printf '%s\n' "$value"
 }
 
+## Get environment variables for a target as KEY=VALUE lines.
+##
+## :param str target: Build target name.
+## :returns: KEY=VALUE pairs printed to stdout, one per line.
+## :rtype: str
 get_env() {
   target="$1"
   records=$(parse_metadata_records)
@@ -524,6 +537,11 @@ EOF
   fi
 }
 
+## Get release file paths for a target.
+##
+## :param str target: Build target name.
+## :returns: Release file paths printed to stdout, one per line.
+## :rtype: str
 get_release_files() {
   target="$1"
   records=$(parse_metadata_records)
@@ -550,6 +568,11 @@ EOF
   fi
 }
 
+## Get the official version for a target from its version_env_var.
+##
+## :param str target: Build target name.
+## :returns: Official version string printed to stdout.
+## :rtype: str
 get_official_version() {
   target="$1"
   records=$(parse_metadata_records)
@@ -591,9 +614,18 @@ EOF
   printf '%s\n' "$env_value"
 }
 
+## Look up an env value from parsed records.
+##
+## Requires $records to be set in the calling scope.
+##
+## :param str lookup_target: Build target name.
+## :param str lookup_key: Environment variable key.
+## :returns: 0 if found (sets LOOKUP_ENV_VALUE), 1 if not found.
+## :rtype: int
 lookup_env_value() {
   lookup_target="$1"
   lookup_key="$2"
+  tab=$(printf '\t')
   LOOKUP_ENV_FOUND=0
   LOOKUP_ENV_VALUE=''
   while IFS="$tab" read -r record_type record_target record_key record_value _; do
@@ -608,6 +640,16 @@ EOF
   [ "$LOOKUP_ENV_FOUND" -eq 1 ]
 }
 
+## Render a download URL or filename template by substituting env placeholders.
+##
+## Requires $records to be set in the calling scope.
+##
+## :param str render_target: Build target name.
+## :param str entry_index: Download entry index (for error messages).
+## :param str field_name: Field name being rendered (url or name).
+## :param str template: Template string with {PLACEHOLDER} references.
+## :returns: Rendered string printed to stdout.
+## :rtype: str
 render_download_template() {
   render_target="$1"
   entry_index="$2"
@@ -617,58 +659,39 @@ render_download_template() {
   remainder="$template"
   while :; do
     case "$remainder" in
-    *'{'*)
-      prefix=${remainder%%\{*}
-      rendered="${rendered}${prefix}"
-      remainder=${remainder#*\{}
-      case "$remainder" in
-      *'}'*)
-        placeholder=${remainder%%\}*}
-        remainder=${remainder#*\}}
-        if ! lookup_env_value "$render_target" "$placeholder"; then
-          fail "target '$render_target' references unknown placeholder '$placeholder' in downloads[$entry_index].$field_name"
-        fi
-        rendered="${rendered}${LOOKUP_ENV_VALUE}"
+      *'{'*)
+        prefix=${remainder%%\{*}
+        rendered="${rendered}${prefix}"
+        remainder=${remainder#*\{}
+        case "$remainder" in
+          *'}'*)
+            placeholder=${remainder%%\}*}
+            remainder=${remainder#*\}}
+            if ! lookup_env_value "$render_target" "$placeholder"; then
+              fail "target '$render_target' references unknown placeholder '$placeholder' in downloads[$entry_index].$field_name"
+            fi
+            rendered="${rendered}${LOOKUP_ENV_VALUE}"
+            ;;
+          *)
+            rendered="${rendered}{${remainder}"
+            break
+            ;;
+        esac
         ;;
       *)
-        rendered="${rendered}{${remainder}"
+        rendered="${rendered}${remainder}"
         break
         ;;
-      esac
-      ;;
-    *)
-      rendered="${rendered}${remainder}"
-      break
-      ;;
     esac
   done
   printf '%s\n' "$rendered"
 }
 
-get_target_by_tag() {
-  tag="$1"
-  records=$(parse_metadata_records)
-  tab=$(printf '	')
-  found=''
-  while IFS="$tab" read -r record_type record_target record_field record_value _; do
-    if [ "$record_type" = 'SCALAR' ] && [ "$record_field" = 'tag_prefix' ]; then
-      case "$tag" in
-      "${record_value}-"*)
-        found="$record_target"
-        break
-        ;;
-      esac
-    fi
-  done <<EOF
-$records
-EOF
-  if [ -z "$found" ]; then
-    fail "unable to resolve target for tag '$tag'"
-  fi
-  printf '%s
-' "$found"
-}
-
+## Get rendered download URLs and filenames for a target.
+##
+## :param str target: Build target name.
+## :returns: Tab-separated URL and filename pairs printed to stdout.
+## :rtype: str
 get_downloads() {
   target="$1"
   records=$(parse_metadata_records)
@@ -712,6 +735,12 @@ $records
 EOF
 }
 
+## Main entry point for metadata query commands.
+##
+## :param str command: Subcommand to execute.
+## :param list args: Arguments for the subcommand.
+## :returns: Exit code 0 on success, 1 on failure.
+## :rtype: int
 main() {
   if [ $# -lt 1 ]; then
     usage
@@ -721,37 +750,29 @@ main() {
   shift
 
   case "$command" in
-  list-targets)
-    [ $# -eq 0 ] || usage
-    list_targets
-    ;;
-  get-tag-prefix)
-    [ $# -eq 1 ] || usage
-    get_scalar_field "$1" 'tag_prefix'
-    ;;
-  get-official-version)
-    [ $# -eq 1 ] || usage
-    get_official_version "$1"
-    ;;
-  get-env)
-    [ $# -eq 1 ] || usage
-    get_env "$1"
-    ;;
-  get-release-files)
-    [ $# -eq 1 ] || usage
-    get_release_files "$1"
-    ;;
-  get-target-by-tag)
-    [ $# -eq 1 ] || usage
-    get_target_by_tag "$1"
-    ;;
-  get-downloads)
-    [ $# -eq 1 ] || usage
-    get_downloads "$1"
-    ;;
-  *)
-    usage
-    ;;
+    get-tag-prefix)
+      [ $# -eq 1 ] || usage
+      get_scalar_field "$1" 'tag_prefix'
+      ;;
+    get-official-version)
+      [ $# -eq 1 ] || usage
+      get_official_version "$1"
+      ;;
+    get-env)
+      [ $# -eq 1 ] || usage
+      get_env "$1"
+      ;;
+    get-release-files)
+      [ $# -eq 1 ] || usage
+      get_release_files "$1"
+      ;;
+    get-downloads)
+      [ $# -eq 1 ] || usage
+      get_downloads "$1"
+      ;;
+    *)
+      usage
+      ;;
   esac
 }
 

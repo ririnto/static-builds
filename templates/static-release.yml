@@ -21,7 +21,7 @@ spec:
     BUILD_OUTPUT_DEST: "$CI_PROJECT_DIR/.out/$[[ inputs.target ]]"
   script:
     - sh scripts/download.sh "$[[ inputs.target ]]"
-    - sh scripts/build-rootless.sh "$[[ inputs.target ]]"
+    - sh .gitlab/scripts/build-rootless.sh "$[[ inputs.target ]]"
     - sh scripts/package-release.sh "$[[ inputs.target ]]" "$[[ inputs.package_name ]]"
   artifacts:
     paths:

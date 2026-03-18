@@ -25,72 +25,50 @@ portable, minimal container deployments.
 make build <target>
 ```
 
-### Makefile Commands
-
-```bash
-make help
-make list-targets
-make build nginx
-```
-
 Build artifacts are written to `.out/<target>/` by default for both
 local and CI builds. You can override this with `BUILD_OUTPUT_DEST`.
+
+### Running haproxy binary image
+
+```bash
+docker run --rm \
+  -v "$(pwd)/haproxy.cfg:/etc/haproxy/haproxy.cfg:ro" \
+  <image> -c -f /etc/haproxy/haproxy.cfg
+```
 
 ## Project Structure
 
 ```text
 .
-├── metadata.json         # Canonical build/release metadata
-├── scripts/
-│   ├── build.sh          # Main build entry point
-│   ├── build-rootless.sh # Rootless BuildKit build entry
-│   ├── download.sh       # Download dispatcher
-│   ├── common.sh         # Shared common functions
-│   ├── metadata.sh       # Metadata query helper
-│   ├── package-release.sh # Release package helper
-│   ├── release-guard.sh  # Release tag validator
-│   └── generate-gitlab-child-pipeline.sh # GitLab child pipeline generator
-├── templates/            # GitLab CI components
-│   └── static-release.yaml
+├── metadata.json           # Canonical build/release metadata
+├── Makefile                # Local development build orchestration
+├── .gitlab-ci.yml          # GitLab CI configuration
+├── scripts/                # Shared build/release scripts
+│   ├── download.sh         # Source download dispatcher
+│   ├── metadata.sh         # Metadata query helper
+│   └── package-release.sh  # Release package helper
 ├── .github/
+│   ├── scripts/
+│   │   ├── build.sh        # Docker Buildx build entry
+│   │   └── release-guard.sh # Release tag validator
 │   └── workflows/
-│       └── ...
-├── .tmp/                 # Downloaded source cache (gitignored)
-├── .out/                 # Build outputs (gitignored)
-│   └── <target>/         # Local artifacts (for example `sbin/`, `bin/`)
-└── <target>/             # Build target directory
-    ├── Dockerfile        # Multi-stage build definition
-    └── ...               # CI/release artifacts under `<target>/`
+│       ├── release-from-tag.yaml
+│       └── template-release.yaml
+├── .gitlab/
+│   ├── ci/
+│   │   └── package-pipeline.jsonnet # GitLab child pipeline generator
+│   └── scripts/
+│       └── build-rootless.sh        # Rootless BuildKit build entry
+├── templates/              # GitLab CI components
+│   └── static-release.yml
+├── .tmp/                   # Downloaded source cache (gitignored)
+├── .cache/                 # Build cache (gitignored)
+├── .out/                   # Build outputs (gitignored)
+│   └── <target>/           # Local artifacts (for example `sbin/`, `bin/`)
+└── <target>/               # Build target directory
+    ├── Dockerfile          # Multi-stage build definition
+    └── ...
 ```
-
-## Adding a New Target
-
-1. Create a new directory with your target name
-2. Add target metadata in `metadata.json`:
-
-   ```json
-   {
-     "your-target": {
-        "tag_prefix": "your-target",
-        "version_env_var": "YOUR_SOFTWARE_VERSION",
-        "release_files": [
-          "bin/your-target"
-        ],
-       "env": {
-         "ALPINE_VERSION": "3.23",
-         "YOUR_SOFTWARE_VERSION": "1.0.0",
-         "UBI9_MICRO_VERSION": "9.5"
-       }
-     }
-   }
-   ```
-
-3. Add a `Dockerfile` with your multi-stage build configuration
-4. Add each target's `downloads` metadata in `metadata.json`. The downloader stores those files under root `.tmp/`.
-
-> [!TIP]
-> Check existing targets (`nginx/`, `haproxy/`, `apache-httpd/`)
-> for reference implementations.
 
 ## Developer Guide
 
@@ -114,11 +92,11 @@ Each target must follow this structure:
    ```json
    {
      "your-target": {
-        "tag_prefix": "your-target",
-        "version_env_var": "YOUR_TARGET_VERSION",
-        "release_files": [
-          "bin/your-target"
-        ],
+       "tag_prefix": "your-target",
+       "version_env_var": "YOUR_TARGET_VERSION",
+       "release_files": [
+         "bin/your-target"
+       ],
        "env": {
          "ALPINE_VERSION": "3.23",
          "YOUR_TARGET_VERSION": "1.0.0",
@@ -151,32 +129,35 @@ Each target must follow this structure:
 
 4. Add download metadata: Define each upstream resource directly in `metadata.json`:
 
-    ```json
-    {
-      "your-target": {
-        "downloads": [
-          {
-            "url": "https://example.com/your-target-{YOUR_TARGET_VERSION}.tar.gz",
-            "name": "your-target-{YOUR_TARGET_VERSION}.tar.gz"
-          }
-        ]
-      }
-    }
-    ```
+   ```json
+   {
+     "your-target": {
+       "downloads": [
+         {
+           "url": "https://example.com/your-target-{YOUR_TARGET_VERSION}.tar.gz",
+           "name": "your-target-{YOUR_TARGET_VERSION}.tar.gz"
+         }
+       ]
+     }
+   }
+   ```
 
-5. Verify `make list-targets`: Targets are loaded from `metadata.json`, so no manual Makefile edit is needed.
+5. Verify: Targets are loaded from `metadata.json`.
 
 6. Update release trigger mapping: Add the tag trigger and target selection case in `.github/workflows/release-from-tag.yaml`. Release file selection and official versions now come from `metadata.json`.
 
-    ```yaml
-    on:
-      push:
-        tags:
-          - 'your-target-*'
+   ```yaml
+   on:
+     push:
+       tags:
+         - 'your-target-*'
 
-    with:
-    - startsWith(github.ref_name, 'your-target-') && 'your-target'
-    ```
+   jobs:
+     release:
+       with:
+         target: >-
+           startsWith(github.ref_name, 'your-target-') && 'your-target'
+   ```
 
 7. Validate: Run `make build your-target` to verify the download and build flow works
 
@@ -205,9 +186,9 @@ in builder image, release contents, or runtime packaging.
 
 ### Creating a Release
 
-Releases are triggered by Git tags following the pattern `<target>-<version>.<revision>`:
+Releases are triggered by Git tags following the pattern `<target>-<version>[-<prerelease>].<revision>`:
 
-- Format: `{target}-{official_version}.{revision}`
+- Format: `{target}-{official_version}[-{prerelease}].{revision}`
 - Example: `nginx-1.28.2.18` (target: nginx, version: 1.28.2, revision: 18)
 - Validation: Release tags are validated against `metadata.json`
 
@@ -238,10 +219,10 @@ now come from `metadata.json`.
 
 3. Commit changes: Commit version updates:
 
-    ```bash
-    git add metadata.json
-    git commit -m "Update your-target to 2.0.0"
-    ```
+   ```bash
+   git add metadata.json
+   git commit -m "Update your-target to 2.0.0"
+   ```
 
 4. Create tag: Create and push release tag. Use the target name as the
    tag prefix, except `apache-httpd`, which uses `httpd-`:
@@ -262,24 +243,27 @@ now come from `metadata.json`.
 
 Tags MUST follow this format:
 
-- `{target}-{version}.{revision}`
+- `{target}-{version}[-{prerelease}].{revision}`
 - target: Target tag prefix (e.g., nginx, haproxy, httpd)
 - version: Official version from `metadata.json` (e.g., 1.28.2)
+- prerelease: Optional pre-release suffix (e.g., beta, rc1)
 - revision: Release revision suffix starting at 0, incrementing for rebuilds (e.g., 18)
 
 Valid examples:
+
 - `nginx-1.28.2.18` (nginx version 1.28.2, revision 18)
 - `httpd-2.4.66.5` (apache-httpd version 2.4.66, revision 5)
-- `haproxy-3.2.13.0` (haproxy version 3.2.13, revision 0)
+- `haproxy-3.2.13-beta.0` (haproxy version 3.2.13-beta, revision 0)
 
 Invalid examples:
+
 - `nginx-1.28.2` (missing revision suffix)
 - `custom-1.0.0.0` (unknown target)
 - `nginx-1.28.2.x` (non-numeric revision)
 
 ## How It Works
 
-1. The `Makefile` invokes `scripts/download.sh`, which resolves each target's download resources from `metadata.json`, then calls `scripts/build.sh`
+1. `scripts/download.sh` resolves each target's download resources from `metadata.json`, then the build script runs Docker Buildx
 2. Docker BuildKit executes the multi-stage Dockerfile via
    `docker buildx build`
 3. Built artifacts go to `.out/<target>/` for both local builds and CI
@@ -320,54 +304,12 @@ Selected release contents:
 > [!NOTE]
 > `apache-httpd` releases include both `bin/httpd` and
 > `bin/rotatelogs` for piped logging support.
-
-### Piped logging with rotatelogs
-
-The `rotatelogs` utility is included in apache-httpd releases and
-can be used for log rotation:
-
-1. External rotatelogs: Use a system-installed `rotatelogs` or
-   provide it separately
-2. Alternative rotation tools: Use `logrotate`, `multilog`,
-   or other log rotation solutions
-3. Application-level logging: Configure applications to write
-   directly to files managed by external rotation
-
-### Container-native logging alternatives
-
-For containerized deployments, leverage Docker's native logging
-drivers:
-
-```bash
-# Example: Use Docker's built-in log rotation
-docker run --log-driver json-file --log-opt max-size=10m --log-opt
-  max-file=3 <image>
-
-# Or use external logging drivers
-docker run --log-driver fluentd --log-opt
-  fluentd-address=fluentd:24224 <image>
-```
-
-Docker automatically handles log rotation and can forward logs to
-external systems like ELK, Splunk, or cloud logging services.
-
-### For full details
-
-See [apache-httpd/AGENTS.md](apache-httpd/AGENTS.md) for
-complete decision rationale and implementation guidance.
-
-### Running haproxy binary image
-
-```bash
-docker run --rm \
-  -v "$(pwd)/haproxy.cfg:/etc/haproxy/haproxy.cfg:ro" \
-  <image> -c -f /etc/haproxy/haproxy.cfg
-```
-
+> For details, see [apache-httpd/AGENTS.md](apache-httpd/AGENTS.md).
 
 ## GitLab CI
 
-- GitLab pipelines on `main` and `feature/*` expose one manual package job that generates a child pipeline with `scripts/generate-gitlab-child-pipeline.sh`.
-- Manual runs provide `TARGET` and optional `PACKAGE_VERSION`. If `PACKAGE_VERSION` is omitted, the child pipeline uses the official version from `metadata.json` and creates `<target>-<version>.tar.gz` without any extra revision suffix.
-- The generated child pipeline includes the local component at `templates/static-release.yaml`.
+- GitLab pipelines on `main` and `feature/*` expose manual package jobs that generate a child pipeline with `.gitlab/ci/package-pipeline.jsonnet`.
+- `feature/*` branches append `-beta` to the package version.
+- GitLab uploads to Package Registry only. GitHub uploads to Release only.
+- The generated child pipeline includes the local component at `templates/static-release.yml`.
 - GitHub release packaging and GitLab package generation both reuse `scripts/package-release.sh`.

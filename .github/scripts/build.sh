@@ -1,7 +1,12 @@
 #!/usr/bin/env sh
 set -eu
-ROOT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
+ROOT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)"
 METADATA_SCRIPT="${ROOT_DIR}/scripts/metadata.sh"
+
+## Print usage information and exit.
+##
+## :returns: Does not return (exits with code 1).
+## :rtype: None
 usage() {
   echo "Usage: $0 <target> [buildx args...]"
   echo ""
@@ -45,11 +50,11 @@ fi
 TARGET="$1"
 shift
 case "${TARGET}" in
-*[!A-Za-z0-9._-]*)
-  echo "Error: Invalid target '${TARGET}'"
-  echo "Allowed characters: letters, numbers, dot, underscore, hyphen"
-  exit 1
-  ;;
+  *[!A-Za-z0-9._-]*)
+    echo "Error: Invalid target '${TARGET}'"
+    echo "Allowed characters: letters, numbers, dot, underscore, hyphen"
+    exit 1
+    ;;
 esac
 if [ ! -d "${ROOT_DIR}/${TARGET}" ]; then
   echo "Error: Target directory '${TARGET}' not found"
@@ -63,35 +68,35 @@ BUILDKIT_PLATFORM="${BUILDKIT_PLATFORM:-linux/amd64}"
 BUILDKIT_CACHE_BACKEND="${BUILDKIT_CACHE_BACKEND:-local}"
 BUILDKIT_NETWORK="${BUILDKIT_NETWORK:-default}"
 case "${BUILDKIT_CACHE_BACKEND}" in
-local)
-  mkdir -p "${ROOT_DIR}/.cache/${TARGET}"
-  CACHE_FROM="type=local,src=${ROOT_DIR}/.cache/${TARGET}"
-  CACHE_TO="type=local,dest=${ROOT_DIR}/.cache/${TARGET},mode=max"
-  ;;
-gha)
-  CACHE_FROM="type=gha,scope=${TARGET}"
-  CACHE_TO="type=gha,mode=max,scope=${TARGET}"
-  ;;
-*)
-  echo "Error: Invalid BUILDKIT_CACHE_BACKEND '${BUILDKIT_CACHE_BACKEND}'"
-  echo "Allowed values: local, gha"
-  exit 1
-  ;;
+  local)
+    mkdir -p "${ROOT_DIR}/.cache/${TARGET}"
+    CACHE_FROM="type=local,src=${ROOT_DIR}/.cache/${TARGET}"
+    CACHE_TO="type=local,dest=${ROOT_DIR}/.cache/${TARGET},mode=max"
+    ;;
+  gha)
+    CACHE_FROM="type=gha,scope=${TARGET}"
+    CACHE_TO="type=gha,mode=max,scope=${TARGET}"
+    ;;
+  *)
+    echo "Error: Invalid BUILDKIT_CACHE_BACKEND '${BUILDKIT_CACHE_BACKEND}'"
+    echo "Allowed values: local, gha"
+    exit 1
+    ;;
 esac
 BUILD_OUTPUT_DEST="${BUILD_OUTPUT_DEST:-${ROOT_DIR}/.out/${TARGET}}"
 mkdir -p "${BUILD_OUTPUT_DEST}"
 while IFS='=' read -r key value || [ -n "${key}" ]; do
   case "${key}" in
-  '' | \#*) continue ;;
+    '' | \#*) continue ;;
   esac
   if [ -z "${value}" ]; then
     continue
   fi
   value=$(printf '%s\n' "${value}" | tr -d '\r')
   case "${key}" in
-  *[!A-Z0-9_]*)
-    continue
-    ;;
+    *[!A-Z0-9_]*)
+      continue
+      ;;
   esac
   set -- "--build-arg=${key}=${value}" "$@"
 done <<EOF

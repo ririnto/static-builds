@@ -10,27 +10,31 @@ monit using musl libc.
 
 ```text
 static-builds/
-├── metadata.json         # Canonical build/release metadata
-├── scripts/              # Project-owned build/release scripts
-│   ├── build.sh          # Main build entry
-│   ├── build-rootless.sh # Rootless BuildKit build entry
-│   ├── download.sh       # Source download dispatcher
-│   ├── common.sh         # Shared shell helpers
-│   ├── metadata.sh       # Metadata query helper
-│   ├── package-release.sh # Release package helper
-│   ├── release-guard.sh  # Release tag validator
-│   └── generate-gitlab-child-pipeline.sh # GitLab child pipeline generator
-├── templates/            # GitLab CI components
-│   └── static-release.yml
-├── Makefile              # Build orchestration (7 targets)
+├── metadata.json           # Canonical build/release metadata
+├── Makefile                # Local development build orchestration
+├── .gitlab-ci.yml          # GitLab CI configuration
+├── scripts/                # Shared build/release scripts
+│   ├── download.sh         # Source download dispatcher
+│   ├── metadata.sh         # Metadata query helper
+│   └── package-release.sh  # Release package helper
 ├── .github/
-│   └── workflows/        # GitHub Actions workflows
-│       ├── build-package.yaml
+│   ├── scripts/
+│   │   ├── build.sh        # Docker Buildx build entry
+│   │   └── release-guard.sh # Release tag validator
+│   └── workflows/
 │       ├── release-from-tag.yaml
 │       └── template-release.yaml
-├── .tmp/                 # Downloaded source cache (gitignored)
-├── .out/                 # Build outputs (gitignored)
-├── nginx/                # Target dirs: Dockerfile + outputs
+├── .gitlab/
+│   ├── ci/
+│   │   └── package-pipeline.jsonnet # GitLab child pipeline generator
+│   └── scripts/
+│       └── build-rootless.sh        # Rootless BuildKit build entry
+├── templates/              # GitLab CI components
+│   └── static-release.yml
+├── .cache/                 # Build cache (gitignored)
+├── .tmp/                   # Downloaded source cache (gitignored)
+├── .out/                   # Build outputs (gitignored)
+├── nginx/                  # Target dirs: Dockerfile + outputs
 ├── haproxy/
 ├── apache-httpd/
 ├── coredns/
@@ -44,7 +48,7 @@ static-builds/
 | Task | Location | Notes |
 | --- | --- | --- |
 | Add new target | Root + create dir | Follow nginx/ pattern |
-| CI release config | .github/workflows/, .gitlab-ci.yml, templates/ | GitHub workflows + GitLab component pipeline |
+| CI release config | .github/workflows/, .gitlab-ci.yml, .gitlab/ci/, templates/ | GitHub workflows + GitLab component pipeline |
 | Build definition | */Dockerfile | Multi-stage target build |
 | Build metadata | metadata.json | tag_prefix, release_files, env, downloads |
 
@@ -59,24 +63,17 @@ static-builds/
   contain README.md or AGENTS.md for target-specific documentation.
 
 - EditorConfig: 4-space indent (2 for .sh/.yaml)
-- Makefile targets: nginx, haproxy, apache-httpd, coredns,
-  dnsmasq, vector, monit
 - `metadata.json` MUST be the canonical source of build and
   release metadata for all targets.
-- Target dir: Must have Dockerfile for the standard `make build
-  <target>` flow. Target-specific download metadata MUST live under that
+- Target dir: MUST have Dockerfile. Target-specific download metadata MUST live under that
   target's `metadata.json` `downloads` entries, and downloader output MUST land directly under root `.tmp/`.
 - Upstream source downloads MUST NOT enforce checksum verification/pinning because some upstreams do not publish checksum files. Consumers SHOULD validate sources independently when possible.
 - Release workflow MUST use `.github/workflows/release-from-tag.yaml`
   as the only tag-triggered entrypoint and MUST delegate build/release
   logic to `.github/workflows/template-release.yaml`.
-- Manual build workflow MUST use
-  `.github/workflows/build-package.yaml` and reuse the same template.
 - Release target mapping, release-file selection, and tag-prefix
-  exceptions MUST be maintained as one logical source of truth. Until
-  that data is centralized into target metadata or a Makefile/script-
-  driven source of truth, every mirrored location MUST be updated in
-  the same change.
+  exceptions MUST be maintained in `metadata.json` as the single
+  source of truth.
 - Release workflow MUST run Trivy filesystem scanning and MUST upload
   SARIF results to GitHub Security.
 - Release jobs MUST request the minimum required GitHub permission.
@@ -91,9 +88,12 @@ static-builds/
   treat those differences as approved target profiles, not as
   undocumented exceptions.
 - Shell scripts (`*.sh` and files with a `sh`/`bash` shebang) MUST NOT contain comments except:
+
   - The shebang line (the first line starting with `#!`).
   - Function documentation comment blocks that are placed immediately above a function definition.
+
 - Function documentation comment blocks MUST:
+
   - Be contiguous lines starting with `#` (or `##`).
   - Have no blank line between the comment block and the function definition.
   - Describe purpose and expected inputs/outputs/return codes.
@@ -131,31 +131,35 @@ upstream source downloads.
 ## UNIQUE STYLES
 
 - Tag-triggered release: `nginx-1.28.2.18` → builds + uploads artifact
-- Release tags MUST follow `<target>-<official_version>.<x>`.
+- Release tags MUST follow `<target>-<official_version>[-<prerelease>].<x>`.
+
   - `official_version`: version from `metadata.json`
     (for example `NGINX_VERSION`, `HTTPD_VERSION`,
     `HAPROXY_VERSION`)
+  - `prerelease`: optional pre-release suffix (for example `-beta`, `-rc1`)
   - `x`: release revision suffix starting at `0` and
     incrementing (`.0`, `.1`, `.2`, ...)
-  - examples: `nginx-1.28.2.18`, `httpd-2.4.66.5`, `haproxy-3.2.13.0`
+  - examples: `nginx-1.28.2.18`, `httpd-2.4.66.5`,
+    `haproxy-3.2.13-beta.0`
+
 - Unified caller workflow + reusable template pattern
+
   - caller: `.github/workflows/release-from-tag.yaml`
   - template: `.github/workflows/template-release.yaml`
 - Artifacts: local builds and CI/release builds both output under `.out/<target>/...`.
 - GitLab package pipelines on `main` and `feature/*` SHOULD use a
-  single manual parent job that generates a child pipeline and reuses
+  single manual parent job that generates a child pipeline via
+  `.gitlab/ci/package-pipeline.jsonnet` and reuses
   `templates/static-release.yml`.
-- GitLab tag-triggered release pipelines MUST automatically build,
-  upload to Package Registry, and create a GitLab Release.
+- GitLab pipelines MUST upload to Package Registry only.
+  `feature/*` branches MUST append `-beta` to the package version.
 
 ## COMMANDS
 
 ```bash
-make help
 make list-targets
 make build nginx
 make download nginx
-make validate-tag nginx nginx-1.28.2.0
 ```
 
 ## NOTES
