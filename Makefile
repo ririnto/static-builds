@@ -35,7 +35,7 @@ build: download
 		"--cache-to=type=local,dest=$(CACHE_DIR),mode=max" \
 		$$(sh "$(METADATA_SCRIPT)" get-env "$(TARGET)" | while IFS='=' read -r k v; do \
 			case "$$k" in \
-			*[!A-Z0-9_]*) \
+			(*[!A-Z0-9_]*) \
 				continue \
 				;; \
 			esac; \
