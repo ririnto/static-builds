@@ -4,8 +4,10 @@ stages:
 
 generate-package-pipeline:
   stage: prepare
-  image: akamai/jsonnet
+  image: golang:1.26.2
   script:
+    - export PATH="/usr/local/go/bin:${GOPATH:-/go}/bin:$PATH"
+    - go install github.com/google/go-jsonnet/cmd/jsonnet@latest
     - |-
       jsonnet -S \
         --ext-str "branch=${CI_COMMIT_BRANCH:-}" \
