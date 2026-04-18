@@ -1,7 +1,7 @@
 # Lua Runtime Modules
 
-This build keeps nginx and C modules statically linked, and ships Lua
-modules as runtime files inside the release artifact/image.
+This build keeps nginx and C modules statically linked and ships only
+the runtime Lua files needed for `lua-resty-upstream-healthcheck`.
 
 ## Modules and Features
 
@@ -23,8 +23,7 @@ modules as runtime files inside the release artifact/image.
 ### Runtime/Packaging Snapshot
 
 - Lua runtime files are shipped under `${TARGET_PREFIX}/lualib`
-  (`resty/core.lua`, `resty/core/*`, and
-  `resty/upstream/healthcheck.lua`).
+  as a healthcheck-specific runtime bundle.
 - Runtime configure arguments are captured in
   [Runtime Introspection Output](#runtime-introspection-output) via
   `nginx -V`.
@@ -36,7 +35,9 @@ modules as runtime files inside the release artifact/image.
 - Release contents intentionally include both `sbin/nginx` and
   the packaged Lua runtime paths required by
   `resty.upstream.healthcheck`.
-- Verify-stage checks intentionally include Lua packaging assertions in
+- Verify-stage checks intentionally execute a verify-only nginx config
+  that loads the packaged `resty.core` bridge runtime and healthcheck module and
+  probes the supported runtime contract in
   addition to the shared static ELF checks used by other targets.
 
 ## How to Verify
@@ -51,9 +52,9 @@ modules as runtime files inside the release artifact/image.
 ## Runtime Introspection Output
 
 ```text
-nginx version: nginx/1.28.2
+nginx version: nginx/1.28.3
 built by gcc 15.2.0 (Alpine 15.2.0) 
-built with OpenSSL 3.5.5 27 Jan 2026
+built with OpenSSL 3.5.6 7 Apr 2026
 TLS SNI support enabled
 configure arguments:
   --prefix=/home/nobody --with-threads --with-file-aio
@@ -66,8 +67,9 @@ configure arguments:
   --without-http_memcached_module --without-http_empty_gif_module
   --without-http_browser_module --with-stream --with-stream_ssl_module
   --with-stream_realip_module --with-stream_ssl_preread_module
-  --add-module=nginx-module-vts-0.2.5 --add-module=lua-nginx-module-0.10.29
+  --add-module=nginx-module-vts-0.2.5 --add-module=lua-nginx-module-0.10.29R2
   --add-module=lua-upstream-nginx-module-0.07
+  --add-module=ngx_http_lua_resty_core_bridge_module
   --with-cc-opt='-O2 -pipe -fPIE -fstack-protector-strong -fstack-clash-protection
     -ffunction-sections -fdata-sections -fno-delete-null-pointer-checks
     -fno-strict-overflow -fno-strict-aliasing -ftrivial-auto-var-init=zero
@@ -79,7 +81,9 @@ configure arguments:
 
 ## What Is Shipped
 
-The build installs Lua runtime files under `nginx/lualib`:
+The build installs the healthcheck runtime bundle under `nginx/lualib`.
+
+Key paths are:
 
 - `lualib/resty/core.lua`
 - `lualib/resty/core/`
@@ -88,19 +92,32 @@ The build installs Lua runtime files under `nginx/lualib`:
 `LUA_PATH` is configured to load modules from `${TARGET_PREFIX}/lualib`
 at runtime.
 
+`lualib/resty/core.lua` and `lualib/resty/core/*.lua` are a
+repository-owned minimal `resty.core` runtime for this target. Shared
+dict methods and the narrow `ngx.re.find` compatibility shim are backed
+by a local nginx module that registers a Lua preload bridge and exposes
+FFI-safe function pointers instead of relying on `ffi.C` symbol lookup
+from the static PIE main binary. `ngx.re.find` still supports only the
+healthcheck module's current regex literals, but it now executes them
+through bridged original compile/exec/destroy regex machinery instead of
+Lua `string.find`.
+
 ## Build and Runtime Model
 
 1. nginx is built as static PIE with statically linked C dependencies
    and nginx modules.
-2. `lua-resty-core` and `lua-resty-upstream-healthcheck` Lua files are
-   copied into `${TARGET_PREFIX}/lualib` during image build.
-3. Runtime `require "resty.upstream.healthcheck"` loads from packaged
-   Lua files instead of embedded bytecode.
+2. A repository-owned `resty.core` bridge runtime, the local
+   `ngx_http_lua_resty_core_bridge_module`, and the upstream
+   `lua-resty-upstream-healthcheck` module are built/copied into
+   `${TARGET_PREFIX}/lualib` during image build.
+3. Runtime `require "resty.core"` and
+   `require "resty.upstream.healthcheck"` load from the packaged
+   healthcheck-specific Lua files.
 
 ## Scope
 
-This target packages the runtime Lua modules required for
-`resty.upstream.healthcheck` operation while preserving static
+This target packages only the runtime Lua files required for
+`lua-resty-upstream-healthcheck` operation while preserving static
 nginx/module builds.
 
 ## Prefix and Path Resolution
@@ -289,4 +306,3 @@ backend health status.
 
 - [lua-nginx-module: lua_package_path](https://github.com/openresty/lua-nginx-module#lua_package_path)
 - [lua-resty-upstream-healthcheck](https://github.com/openresty/lua-resty-upstream-healthcheck)
-- [lua-resty-core](https://github.com/openresty/lua-resty-core)
