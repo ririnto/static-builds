@@ -3,6 +3,7 @@ name: Release From Tag
 on:
   push:
     tags:
+      - 'nginx-resty-upstream-healthcheck-*'
       - 'nginx-*'
       - 'haproxy-*'
       - 'httpd-*'
@@ -19,13 +20,14 @@ jobs:
     with:
       target: >-
         ${{ github.ref_type == 'tag'
-        && startsWith(github.ref_name, 'nginx-') && 'nginx'
+        && (startsWith(github.ref_name, 'nginx-resty-upstream-healthcheck-') && 'nginx-resty-upstream-healthcheck'
+        || startsWith(github.ref_name, 'nginx-') && 'nginx'
         || startsWith(github.ref_name, 'haproxy-') && 'haproxy'
         || startsWith(github.ref_name, 'httpd-') && 'apache-httpd'
         || startsWith(github.ref_name, 'coredns-') && 'coredns'
         || startsWith(github.ref_name, 'dnsmasq-') && 'dnsmasq'
         || startsWith(github.ref_name, 'vector-') && 'vector'
-        || startsWith(github.ref_name, 'monit-') && 'monit'
+        || startsWith(github.ref_name, 'monit-') && 'monit')
         || '' }}
       tag: ${{ github.ref_name }}
       upload_release: true

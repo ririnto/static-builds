@@ -2,21 +2,23 @@
 set -eu
 ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 
-# Print error message to stderr.
-# :param str message: Error message to print.
-# :returns: Nothing (prints to stderr).
+# :description: Print an error message to stderr.
+# :param message: Error message to print.
+# :return: Nothing.
 # :rtype: None
 err() {
   printf '%s\n' "$*" >&2
 }
 
-# Parse version and revision from tag using last-dot split.
-# :param str tag: Release tag in format <target>-<version>.<revision>.
-# :returns: Version string (without revision) printed to stdout.
+# :description: Parse a version from a tag using the metadata tag prefix.
+# :param tag: Release tag in format <target>-<version>.<revision>.
+# :param tag_prefix: Target tag prefix from metadata.
+# :return: Version string without revision printed to stdout.
 # :rtype: str
 parse_tag() {
   tag="$1"
-  version_revision="${tag#*-}"
+  tag_prefix="$2"
+  version_revision="${tag#${tag_prefix}-}"
   version="${version_revision%.*}"
   revision="${version_revision##*.}"
   if ! [ "$revision" -eq "$revision" ] 2>/dev/null; then
@@ -26,9 +28,9 @@ parse_tag() {
   printf '%s' "$version"
 }
 
-# Get official version from centralized metadata.
-# :param str target: Build target name.
-# :returns: Official version string printed to stdout.
+# :description: Get the official version from centralized metadata.
+# :param target: Build target name.
+# :return: Official version string printed to stdout.
 # :rtype: str
 get_official_version() {
   target="$1"
@@ -41,10 +43,10 @@ get_official_version() {
   printf '%s' "$version"
 }
 
-# Main entry point for tag validation.
-# :param str target: Target name (e.g., nginx, haproxy, apache-httpd).
-# :param str tag: Release tag (e.g., nginx-1.28.2.18).
-# :returns: Exit code 0 on success, 1 on validation failure.
+# :description: Validate a release tag against target metadata.
+# :param target: Target name (for example nginx, haproxy, apache-httpd).
+# :param tag: Release tag (for example nginx-1.28.2.18).
+# :return: Exit code 0 on success, 1 on validation failure.
 # :rtype: int
 main() {
   if [ $# -ne 2 ]; then
@@ -61,7 +63,7 @@ main() {
     err "Example: ${tag_prefix}-1.28.2.18"
     exit 1
   fi
-  tag_version=$(parse_tag "$tag") || exit 1
+  tag_version=$(parse_tag "$tag" "$tag_prefix") || exit 1
   official_version=$(get_official_version "$target") || exit 1
   case "$tag_version" in
     "${official_version}" | "${official_version}"-*) ;;

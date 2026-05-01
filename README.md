@@ -1,18 +1,13 @@
 # static-builds
 
-Build statically-linked binaries using Docker multi-stage builds for
-portable, minimal container deployments.
+Build statically-linked binaries using Docker multi-stage builds for portable, minimal container deployments.
 
 ## Features
 
-- Static Linking - Produce fully statically-linked binaries using
-  musl libc
-- Multi-stage Builds - Leverage Docker BuildKit for efficient,
-  cacheable builds
-- Minimal Outputs - Use a UBI9 Micro verify stage for runtime checks and
-  package final artifacts from a `scratch` stage
-- Extensible - Add new build targets by following a simple directory
-  structure
+- Static Linking - Produce fully statically-linked binaries using musl libc
+- Multi-stage Builds - Leverage Docker BuildKit for efficient, cacheable builds
+- Minimal Outputs - Use a UBI9 Micro verify stage for runtime checks and package final artifacts from a `scratch` stage
+- Extensible - Add new build targets by following a simple directory structure
 - Reproducible - Version-controlled configurations via `metadata.json`
 
 ## Prerequisites
@@ -25,8 +20,7 @@ portable, minimal container deployments.
 make build <target>
 ```
 
-Build artifacts are written to `.out/<target>/` by default for both
-local and CI builds. You can override this with `BUILD_OUTPUT_DEST`.
+Build artifacts are written to `.out/<target>/` by default for both local and CI builds. You can override this with `BUILD_OUTPUT_DEST`.
 
 ### Running haproxy binary image
 
@@ -163,23 +157,18 @@ Each target must follow this structure:
 
 ### Allowed Target-Specific Variations
 
-Targets share the same root contract, but some targets intentionally vary
-in builder image, release contents, or runtime packaging.
+Targets share the same root contract, but some targets intentionally vary in builder image, release contents, or runtime packaging.
 
-- Document approved target-specific variations in that target's
-  `README.md`.
+- Document approved target-specific variations in that target's `README.md`.
 - Keep the root `README.md` focused on shared repository behavior.
-- Treat `nginx`, `apache-httpd`, `coredns`, `vector`, `haproxy`,
-  `dnsmasq`, and `monit` differences as documented target profiles,
-  not as undocumented exceptions.
+- Treat `nginx`, `nginx-resty-upstream-healthcheck`, `apache-httpd`, `coredns`, `vector`, `haproxy`, `dnsmasq`, and `monit` differences as documented target profiles, not as undocumented exceptions.
 
 ### Best Practices
 
 - Security hardening: Use static PIE builds (`-fPIE -pie`)
 - Verification: Always include a verify stage with ELF checks, static linking verification, and strace validation
 - Caching: Use `--mount=type=cache` for Alpine/DNF caches
-- Documentation: Document approved target-specific variations in each
-  target `README.md`; use `AGENTS.md` for repository-wide policy
+- Documentation: Document approved target-specific variations in each target `README.md`; use `AGENTS.md` for repository-wide policy
 - Version variables: Follow naming convention `{TARGET}_VERSION` for consistency inside `metadata.json`
 
 ## Release Process
@@ -192,10 +181,7 @@ Releases are triggered by Git tags following the pattern `<target>-<version>[-<p
 - Example: `nginx-1.28.2.18` (target: nginx, version: 1.28.2, revision: 18)
 - Validation: Release tags are validated against `metadata.json`
 
-Current release tag triggers and target selection still live in
-`.github/workflows/release-from-tag.yaml` because GitHub event filters
-must stay static, but release-file selection and tag-version validation
-now come from `metadata.json`.
+Current release tag triggers and target selection still live in `.github/workflows/release-from-tag.yaml` because GitHub event filters must stay static, but release-file selection and tag-version validation now come from `metadata.json`.
 
 ### Steps to Release
 
@@ -224,8 +210,7 @@ now come from `metadata.json`.
    git commit -m "Update your-target to 2.0.0"
    ```
 
-4. Create tag: Create and push release tag. Use the target name as the
-   tag prefix, except `apache-httpd`, which uses `httpd-`:
+4. Create tag: Create and push release tag. Use the target name as the tag prefix, except `apache-httpd`, which uses `httpd-`:
 
    ```bash
    git tag your-target-2.0.0.0
@@ -264,36 +249,26 @@ Invalid examples:
 ## How It Works
 
 1. `scripts/download.sh` resolves each target's download resources from `metadata.json`, then the build script runs Docker Buildx
-2. Docker BuildKit executes the multi-stage Dockerfile via
-   `docker buildx build`
+2. Docker BuildKit executes the multi-stage Dockerfile via `docker buildx build`
 3. Built artifacts go to `.out/<target>/` for both local builds and CI
-4. Verify stages run inside UBI9 Micro, and the final exported artifact
-   comes from the target's `scratch` stage
+4. Verify stages run inside UBI9 Micro, and the final exported artifact comes from the target's `scratch` stage
 
-Build caching is automatically handled via root `.cache/<target>/`
-directories.
+Build caching is automatically handled via root `.cache/<target>/` directories.
 
 ## CI Behavior
 
-- Archive upload includes selected release files as a workflow
-  artifact.
-- Release upload is optional and packages selected release files
-  into one `.tar.gz` per tag.
-- Tag push release uses unified workflow
-  `.github/workflows/release-from-tag.yaml`.
-- Workflow automatically determines the target from tag pattern and
-  calls reusable template `.github/workflows/template-release.yaml`.
-- Template builds mapped target, scans for vulnerabilities,
-  uploads the full `.out/<target>/` tree as artifact, then uploads `${tag}.tar.gz`
-  that contains selected release files.
+- Archive upload includes selected release files as a workflow artifact.
+- Release upload is optional and packages selected release files into one `.tar.gz` per tag.
+- Tag push release uses unified workflow `.github/workflows/release-from-tag.yaml`.
+- Workflow automatically determines the target from tag pattern and calls reusable template `.github/workflows/template-release.yaml`.
+- Template builds mapped target, scans for vulnerabilities, uploads the full `.out/<target>/` tree as artifact, then uploads `${tag}.tar.gz` that contains selected release files.
 
 Selected release contents:
 
-- `nginx`: `sbin/nginx`, `lualib/resty/core.lua`,
-  `lualib/resty/core/`, `lualib/resty/upstream/`
+- `nginx`: `sbin/nginx`
+- `nginx-resty-upstream-healthcheck`: `sbin/nginx`, `lualib/resty/core.lua`, `lualib/resty/core/`, `lualib/resty/upstream/`
 - `haproxy`: `sbin/haproxy`
-- `apache-httpd`: `bin/httpd`,
-  `bin/rotatelogs`
+- `apache-httpd`: `bin/httpd`, `bin/rotatelogs`
 - `coredns`: `coredns`
 - `dnsmasq`: `sbin/dnsmasq`
 - `vector`: `bin/vector`
@@ -302,8 +277,7 @@ Selected release contents:
 ## Logging Strategy
 
 > [!NOTE]
-> `apache-httpd` releases include both `bin/httpd` and
-> `bin/rotatelogs` for piped logging support.
+> `apache-httpd` releases include both `bin/httpd` and `bin/rotatelogs` for piped logging support.
 > For details, see [apache-httpd/AGENTS.md](apache-httpd/AGENTS.md).
 
 ## GitLab CI
