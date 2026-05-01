@@ -47,14 +47,60 @@
     ],
     "env": {
       "ALPINE_VERSION": "3.23.3",
-      "HAPROXY_VERSION": "3.2.15",
+      "HAPROXY_VERSION": "3.4-dev10",
       "UBI9_MICRO_VERSION": "9.7",
-      "HAPROXY_VERSION_SERIES": "3.2"
+      "HAPROXY_VERSION_SERIES": "3.4",
+      "HAPROXY_SOURCE_PATH": "devel/",
+      "OTEL_C_WRAPPER_VERSION": "1.0.2",
+      "OTEL_CPP_VERSION": "1.26.0",
+      "OTEL_PROTO_VERSION": "1.8.0",
+      "MS_GSL_VERSION": "4.2.1",
+      "RAPIDYAML_VERSION": "0.10.0",
+      "ABSEIL_CPP_VERSION": "20250127.1",
+      "PROTOBUF_VERSION": "29.5",
+      "RE2_VERSION": "2025-08-05",
+      "GRPC_VERSION": "1.70.2"
     },
     "downloads": [
       {
-        "url": "https://www.haproxy.org/download/{HAPROXY_VERSION_SERIES}/src/haproxy-{HAPROXY_VERSION}.tar.gz",
+        "url": "https://www.haproxy.org/download/{HAPROXY_VERSION_SERIES}/src/{HAPROXY_SOURCE_PATH}haproxy-{HAPROXY_VERSION}.tar.gz",
         "name": "haproxy-{HAPROXY_VERSION}.tar.gz"
+      },
+      {
+        "url": "https://github.com/haproxytech/opentelemetry-c-wrapper/archive/refs/tags/v{OTEL_C_WRAPPER_VERSION}.tar.gz",
+        "name": "opentelemetry-c-wrapper-{OTEL_C_WRAPPER_VERSION}.tar.gz"
+      },
+      {
+        "url": "https://github.com/open-telemetry/opentelemetry-cpp/archive/refs/tags/v{OTEL_CPP_VERSION}.tar.gz",
+        "name": "opentelemetry-cpp-{OTEL_CPP_VERSION}.tar.gz"
+      },
+      {
+        "url": "https://github.com/open-telemetry/opentelemetry-proto/archive/refs/tags/v{OTEL_PROTO_VERSION}.tar.gz",
+        "name": "opentelemetry-proto-{OTEL_PROTO_VERSION}.tar.gz"
+      },
+      {
+        "url": "https://github.com/microsoft/GSL/archive/refs/tags/v{MS_GSL_VERSION}.tar.gz",
+        "name": "ms-gsl-{MS_GSL_VERSION}.tar.gz"
+      },
+      {
+        "url": "https://github.com/biojppm/rapidyaml/releases/download/v{RAPIDYAML_VERSION}/rapidyaml-{RAPIDYAML_VERSION}-src.tgz",
+        "name": "rapidyaml-{RAPIDYAML_VERSION}-src.tgz"
+      },
+      {
+        "url": "https://github.com/abseil/abseil-cpp/archive/refs/tags/{ABSEIL_CPP_VERSION}.tar.gz",
+        "name": "abseil-cpp-{ABSEIL_CPP_VERSION}.tar.gz"
+      },
+      {
+        "url": "https://github.com/protocolbuffers/protobuf/archive/refs/tags/v{PROTOBUF_VERSION}.tar.gz",
+        "name": "protobuf-{PROTOBUF_VERSION}.tar.gz"
+      },
+      {
+        "url": "https://github.com/google/re2/archive/refs/tags/{RE2_VERSION}.tar.gz",
+        "name": "re2-{RE2_VERSION}.tar.gz"
+      },
+      {
+        "url": "https://github.com/grpc/grpc/archive/refs/tags/v{GRPC_VERSION}.tar.gz",
+        "name": "grpc-{GRPC_VERSION}.tar.gz"
       }
     ],
     "version_env_var": "HAPROXY_VERSION"
