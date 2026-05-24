@@ -6,7 +6,7 @@
     ],
     "env": {
       "ALPINE_VERSION": "3.23.3",
-      "NGINX_VERSION": "1.30.0",
+      "NGINX_VERSION": "1.30.2",
       "NGINX_VTS_MODULE_VERSION": "0.2.5",
       "UBI9_MICRO_VERSION": "9.7"
     },
@@ -35,7 +35,7 @@
       "NGINX_LUA_MODULE_VERSION": "0.10.29R2",
       "NGINX_LUA_RESTY_UPSTREAM_HEALTHCHECK_MODULE_VERSION": "0.08",
       "NGINX_LUA_UPSTREAM_MODULE_VERSION": "0.08",
-      "NGINX_VERSION": "1.30.0",
+      "NGINX_VERSION": "1.30.2",
       "NGINX_VTS_MODULE_VERSION": "0.2.5",
       "UBI9_MICRO_VERSION": "9.7"
     },
