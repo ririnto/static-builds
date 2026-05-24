@@ -16,6 +16,7 @@ jobs:
   release:
     permissions:
       contents: write
+      security-events: write
     uses: ./.github/workflows/template-release.yaml
     with:
       target: >-
