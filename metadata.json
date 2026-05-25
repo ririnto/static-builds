@@ -5,10 +5,10 @@
       "sbin/nginx"
     ],
     "env": {
-      "ALPINE_VERSION": "3.23.3",
+      "ALPINE_VERSION": "3.23.4",
       "NGINX_VERSION": "1.30.2",
       "NGINX_VTS_MODULE_VERSION": "0.2.5",
-      "UBI9_MICRO_VERSION": "9.7"
+      "UBI10_MINIMAL_VERSION": "10.1-1778576723"
     },
     "downloads": [
       {
@@ -31,13 +31,13 @@
       "lualib/resty/upstream"
     ],
     "env": {
-      "ALPINE_VERSION": "3.23.3",
+      "ALPINE_VERSION": "3.23.4",
       "NGINX_LUA_MODULE_VERSION": "0.10.29R2",
       "NGINX_LUA_RESTY_UPSTREAM_HEALTHCHECK_MODULE_VERSION": "0.09",
       "NGINX_LUA_UPSTREAM_MODULE_VERSION": "0.08",
       "NGINX_VERSION": "1.30.2",
       "NGINX_VTS_MODULE_VERSION": "0.2.5",
-      "UBI9_MICRO_VERSION": "9.7"
+      "UBI10_MINIMAL_VERSION": "10.1-1778576723"
     },
     "downloads": [
       {
@@ -69,9 +69,9 @@
       "sbin/haproxy"
     ],
     "env": {
-      "ALPINE_VERSION": "3.23.3",
-      "HAPROXY_VERSION": "3.2.15",
-      "UBI9_MICRO_VERSION": "9.7",
+      "ALPINE_VERSION": "3.23.4",
+      "HAPROXY_VERSION": "3.2.19",
+      "UBI10_MINIMAL_VERSION": "10.1-1778576723",
       "HAPROXY_VERSION_SERIES": "3.2"
     },
     "downloads": [
@@ -89,9 +89,9 @@
       "bin/rotatelogs"
     ],
     "env": {
-      "ALPINE_VERSION": "3.23.3",
-      "UBI9_MICRO_VERSION": "9.7",
-      "HTTPD_VERSION": "2.4.66",
+      "ALPINE_VERSION": "3.23.4",
+      "UBI10_MINIMAL_VERSION": "10.1-1778576723",
+      "HTTPD_VERSION": "2.4.67",
       "APR_VERSION": "1.7.6",
       "APR_UTIL_VERSION": "1.6.3"
     },
@@ -117,9 +117,9 @@
       "coredns"
     ],
     "env": {
-      "GOLANG_IMAGE_TAG": "1.26-alpine",
-      "COREDNS_VERSION": "1.14.2",
-      "UBI9_MICRO_VERSION": "9.7"
+      "GOLANG_IMAGE_TAG": "1.26.3-alpine",
+      "COREDNS_VERSION": "1.14.3",
+      "UBI10_MINIMAL_VERSION": "10.1-1778576723"
     },
     "downloads": [
       {
@@ -135,9 +135,9 @@
       "sbin/dnsmasq"
     ],
     "env": {
-      "ALPINE_VERSION": "3.23.3",
-      "DNSMASQ_VERSION": "2.92",
-      "UBI9_MICRO_VERSION": "9.7"
+      "ALPINE_VERSION": "3.23.4",
+      "DNSMASQ_VERSION": "2.92rel2",
+      "UBI10_MINIMAL_VERSION": "10.1-1778576723"
     },
     "downloads": [
       {
@@ -153,9 +153,9 @@
       "bin/vector"
     ],
     "env": {
-      "ALPINE_VERSION": "3.23.3",
-      "VECTOR_VERSION": "0.54.0",
-      "UBI9_MICRO_VERSION": "9.7"
+      "ALPINE_VERSION": "3.23.4",
+      "VECTOR_VERSION": "0.55.0",
+      "UBI10_MINIMAL_VERSION": "10.1-1778576723"
     },
     "downloads": [
       {
@@ -171,9 +171,9 @@
       "bin/monit"
     ],
     "env": {
-      "ALPINE_VERSION": "3.23.3",
+      "ALPINE_VERSION": "3.23.4",
       "MONIT_VERSION": "5.35.2",
-      "UBI9_MICRO_VERSION": "9.7"
+      "UBI10_MINIMAL_VERSION": "10.1-1778576723"
     },
     "downloads": [
       {

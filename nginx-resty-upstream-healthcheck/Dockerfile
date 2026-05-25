@@ -1,5 +1,5 @@
 ARG ALPINE_VERSION
-ARG UBI9_MICRO_VERSION
+ARG UBI10_MINIMAL_VERSION
 ARG TARGET_PREFIX=/home/nobody
 
 
@@ -181,7 +181,7 @@ RUN mkdir -p "${TARGET_PREFIX}/lualib/resty/upstream" "${TARGET_PREFIX}/lualib/r
        "${TARGET_PREFIX}/lualib/resty/upstream/healthcheck.lua"
 
 
-FROM redhat/ubi9-minimal:${UBI9_MICRO_VERSION} AS verify
+FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
 ARG TARGET_PREFIX
 ENV LUA_PATH="${TARGET_PREFIX}/lualib/?.lua;${TARGET_PREFIX}/lualib/?/init.lua;;"
 

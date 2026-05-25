@@ -92,3 +92,4 @@ bin/
 **/.omc/*
 **/.omx/*
 **/.sisyphus/*
+.omo/

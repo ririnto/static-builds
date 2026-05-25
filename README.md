@@ -94,7 +94,7 @@ Each target must follow this structure:
        "env": {
          "ALPINE_VERSION": "3.23",
          "YOUR_TARGET_VERSION": "1.0.0",
-         "UBI9_MICRO_VERSION": "9.5"
+          "UBI10_MINIMAL_VERSION": "10.1-1778576723"
        }
      }
    }
@@ -110,7 +110,7 @@ Each target must follow this structure:
    # ... build steps ...
 
    # Verify stage (optional but recommended)
-   FROM redhat/ubi9-minimal:${UBI9_MICRO_VERSION} AS verify
+   FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
    ARG YOUR_TARGET_VERSION
    COPY --from=build /your-target /target/your-target
    # ... verification steps (ELF check, static linking, strace) ...

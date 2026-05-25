@@ -1,5 +1,5 @@
 ARG GOLANG_IMAGE_TAG
-ARG UBI9_MICRO_VERSION
+ARG UBI10_MINIMAL_VERSION
 ARG TARGET_PREFIX=/home/nobody
 
 
@@ -21,7 +21,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
         BUILDOPTS="-v -trimpath"
 
 
-FROM redhat/ubi9-minimal:${UBI9_MICRO_VERSION} AS verify
+FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
 ARG COREDNS_VERSION
 ARG TARGET_PREFIX
 
