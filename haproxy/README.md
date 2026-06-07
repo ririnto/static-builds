@@ -17,7 +17,14 @@ This target builds a static PIE `haproxy` binary for musl-based deployments.
 
 - Default runtime tunables and enabled features are captured in [Runtime Introspection Output](#runtime-introspection-output) from `haproxy -vv`.
 - OpenTelemetry is provided by the external HAProxy OpenTelemetry addon. HAProxy's native `USE_OT` option is not enabled, so `Feature list` reports `-OT` while the runtime filter list includes `[OTEL] opentelemetry`.
+- `BACKTRACE` is inherited from the `linux-musl` target defaults. `USE_BACKTRACE` is not explicitly set in this target Dockerfile, but `Feature list` reports `+BACKTRACE`.
 - `THREAD_DUMP` is inherited from the `linux-musl` target defaults. `USE_THREAD_DUMP` is not explicitly set in this target Dockerfile, but `Feature list` reports `+THREAD_DUMP`.
+
+### Private Build Inputs
+
+- Source archives listed in root `metadata.json` are the `.tmp/` prefetch inputs for this target.
+- APK packages remain the package-registry inputs. `c-ares-dev`, `curl-dev`, `curl-static`, and `pkgconf` are consumed from APK packages, not from `.tmp/` source archives.
+- `pkg-config` only reads local `.pc` metadata from APK packages and `/opt/lib/pkgconfig`; it is not a source download path.
 
 ## Allowed Target-Specific Variations
 
@@ -47,7 +54,7 @@ Build options :
   TARGET  = linux-musl
   CC      = cc
   CFLAGS  = -O2 -pipe -fPIE -fstack-protector-strong -fstack-clash-protection -ffunction-sections -fdata-sections -fno-delete-null-pointer-checks -fno-strict-overflow -fno-strict-aliasing -ftrivial-auto-var-init=zero -Wformat -Wformat=2 -Werror=format-security -g -fwrapv -fvect-cost-model=very-cheap
-  OPTIONS = USE_EPOLL=1 USE_NETFILTER=1 USE_POLL=1 USE_THREAD=0 USE_PTHREAD_EMULATION=1 USE_BACKTRACE=1 USE_TPROXY=1 USE_LINUX_TPROXY=1 USE_LINUX_CAP=1 USE_LINUX_SPLICE=1 USE_LIBCRYPT=1 USE_CRYPT_H=1 USE_ENGINE=1 USE_GETADDRINFO=1 USE_OPENSSL=1 USE_LUA=1 USE_ACCEPT4=1 USE_CPU_AFFINITY=1 USE_TFO=1 USE_NS=1 USE_DL=1 USE_RT=1 USE_LIBATOMIC=1 USE_MATH=1 USE_PRCTL=1 USE_QUIC=1 USE_PROMEX=1 USE_SHM_OPEN=1 USE_PCRE2=1 USE_PCRE2_JIT=1 USE_QUIC_OPENSSL_COMPAT=1 USE_KTLS=1
+  OPTIONS = USE_EPOLL=1 USE_NETFILTER=1 USE_POLL=1 USE_THREAD=0 USE_PTHREAD_EMULATION=1 USE_TPROXY=1 USE_LINUX_TPROXY=1 USE_LINUX_CAP=1 USE_LINUX_SPLICE=1 USE_LIBCRYPT=1 USE_CRYPT_H=1 USE_ENGINE=1 USE_GETADDRINFO=1 USE_OPENSSL=1 USE_LUA=1 USE_ACCEPT4=1 USE_CPU_AFFINITY=1 USE_TFO=1 USE_NS=1 USE_DL=1 USE_RT=1 USE_LIBATOMIC=1 USE_MATH=1 USE_PRCTL=1 USE_QUIC=1 USE_PROMEX=1 USE_SHM_OPEN=1 USE_PCRE2=1 USE_PCRE2_JIT=1 USE_QUIC_OPENSSL_COMPAT=1 USE_KTLS=1
   DEBUG   =
 
 Feature list : -51DEGREES +ACCEPT4 +ACME +BACKTRACE -CLOSEFROM +CPU_AFFINITY +CRYPT_H -DEVICEATLAS +DL -ECH +ENGINE +EPOLL -EVPORTS +GETADDRINFO +HAVE_TCP_MD5SIG -KQUEUE +KTLS +LIBATOMIC +LIBCRYPT +LINUX_CAP +LINUX_SPLICE +LINUX_TPROXY +LUA +MATH -MEMORY_PROFILING +NETFILTER +NS -OBSOLETE_LINKER +OPENSSL -OPENSSL_AWSLC -OPENSSL_WOLFSSL -OT -PCRE +PCRE2 +PCRE2_JIT -PCRE_JIT +POLL +PRCTL -PROCCTL +PROMEX +PTHREAD_EMULATION +QUIC +QUIC_OPENSSL_COMPAT +RT +SHM_OPEN +SLZ +SSL -STATIC_PCRE -STATIC_PCRE2 +TFO -THREAD +THREAD_DUMP +TPROXY +TRACE -WURFL -ZLIB

@@ -284,7 +284,7 @@ RUN PKG_CONFIG_PATH=/opt/lib/pkgconfig make "-j$(nproc)" \
     USE_DL=1 \
     USE_MATH=1 \
     USE_RT=1 \
-    USE_BACKTRACE=1 \
+    # USE_BACKTRACE \
     USE_PROMEX=1 \
     # USE_DEVICEATLAS \
     # USE_51DEGREES \
