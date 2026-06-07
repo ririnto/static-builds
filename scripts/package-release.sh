@@ -1,5 +1,6 @@
 #!/usr/bin/env sh
-set -eu
+# -*- coding: utf-8 -*-
+set -e
 if [ "$#" -ne 2 ]; then
   printf 'Usage: %s <target> <package-name>\n' "$0" >&2
   exit 1

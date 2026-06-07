@@ -1,5 +1,6 @@
 #!/usr/bin/env sh
-set -eu
+# -*- coding: utf-8 -*-
+set -e
 if [ "$#" -lt 1 ]; then
   echo "Usage: $0 <target>"
   exit 1

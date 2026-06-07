@@ -1,8 +1,10 @@
 #!/usr/bin/env sh
-set -eu
+# -*- coding: utf-8 -*-
+set -e
 ROOT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)
 
 # Print an error message to stderr.
+#
 # @param message Error message to print.
 # @return Nothing.
 # @return-type None
@@ -11,6 +13,7 @@ err() {
 }
 
 # Parse a version from a tag using the metadata tag prefix.
+#
 # @param tag Release tag in format <target>-<version>.<revision>.
 # @param tag_prefix Target tag prefix from metadata.
 # @return Version string without revision printed to stdout.
@@ -29,6 +32,7 @@ parse_tag() {
 }
 
 # Get the official version from centralized metadata.
+#
 # @param target Build target name.
 # @return Official version string printed to stdout.
 # @return-type str
@@ -44,6 +48,7 @@ get_official_version() {
 }
 
 # Validate a release tag against target metadata.
+#
 # @param target Target name (for example nginx, haproxy, apache-httpd).
 # @param tag Release tag (for example nginx-1.28.2.18).
 # @return Exit code 0 on success, 1 on validation failure.

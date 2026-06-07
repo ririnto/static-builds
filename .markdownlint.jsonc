@@ -4,7 +4,10 @@
   "no-inline-html": {
     "allowed_elements": [
       "details",
-      "summary"
+      "summary",
+      "kbd",
+      "img",
+      "code"
     ],
     "table_allowed_elements": [
       "br"
@@ -12,5 +15,9 @@
   },
   "no-duplicate-heading": {
     "siblings_only": true
-  }
+  },
+  "code-block-style": {
+    "style": "fenced"
+  },
+  "no-emphasis-as-heading": true
 }

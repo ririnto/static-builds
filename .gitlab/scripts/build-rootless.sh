@@ -1,5 +1,6 @@
 #!/usr/bin/env sh
-set -eu
+# -*- coding: utf-8 -*-
+set -e
 ROOT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)
 METADATA_SCRIPT="${ROOT_DIR}/scripts/metadata.sh"
 if [ "$#" -lt 1 ]; then
