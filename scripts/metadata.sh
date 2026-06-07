@@ -1,22 +1,22 @@
 #!/usr/bin/env sh
 set -eu
 
-ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+ROOT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 
-## Print an error message to stderr and exit.
-##
-## :param str message: Error message body.
-## :returns: Does not return (exits with code 1).
-## :rtype: None
+# Print an error message to stderr and exit.
+#
+# @param message Error message body.
+# @return Does not return (exits with code 1).
+# @return-type None
 fail() {
   printf 'Error: %s\n' "$*" >&2
   exit 1
 }
 
-## Print usage information and exit.
-##
-## :returns: Does not return (exits with code 1).
-## :rtype: None
+# Print usage information and exit.
+#
+# @return Does not return (exits with code 1).
+# @return-type None
 usage() {
   script_name=$(basename "$0")
   printf 'Usage: %s <command> [args...]\n' "$script_name" >&2
@@ -30,10 +30,10 @@ usage() {
   exit 1
 }
 
-## Resolve the path to metadata.json.
-##
-## :returns: Absolute path to metadata.json printed to stdout.
-## :rtype: str
+# Resolve the path to metadata.json.
+#
+# @return Absolute path to metadata.json printed to stdout.
+# @return-type str
 resolve_metadata_path() {
   if [ "${METADATA_PATH_OVERRIDE:-}" ]; then
     printf '%s\n' "$METADATA_PATH_OVERRIDE"
@@ -42,10 +42,10 @@ resolve_metadata_path() {
   printf '%s/metadata.json\n' "$ROOT_DIR"
 }
 
-## Parse metadata.json into tab-separated records via AWK.
-##
-## :returns: Tab-separated records printed to stdout.
-## :rtype: str
+# Parse metadata.json into tab-separated records via AWK.
+#
+# @return Tab-separated records printed to stdout.
+# @return-type str
 parse_metadata_records() {
   metadata_path=$(resolve_metadata_path)
   if [ ! -f "$metadata_path" ]; then
@@ -57,7 +57,7 @@ function parser_error(message) {
   print "Error: invalid metadata schema: " message > "/dev/stderr"
   exit 1
 }
-function skip_ws(    c) {
+function skip_ws(c) {
   while (POS <= LEN) {
     c = substr(JSON, POS, 1)
     if (c == " " || c == "\n" || c == "\r" || c == "\t") {
@@ -82,7 +82,7 @@ function parse_literal(literal) {
   }
   POS += length(literal)
 }
-function parse_number(    c) {
+function parse_number(c) {
   skip_ws()
   c = substr(JSON, POS, 1)
   if (c == "-") {
@@ -123,7 +123,7 @@ function parse_number(    c) {
     }
   }
 }
-function parse_string(    c, esc, out, hex) {
+function parse_string(c, esc, out, hex) {
   skip_ws()
   if (substr(JSON, POS, 1) != "\"") {
     parser_error("expected string at byte " POS)
@@ -207,7 +207,7 @@ function parse_value() {
   }
   parse_number()
 }
-function parse_generic_object(    key, c) {
+function parse_generic_object(key, c) {
   expect_char("{")
   skip_ws()
   if (substr(JSON, POS, 1) == "}") {
@@ -232,10 +232,10 @@ function parse_generic_object(    key, c) {
       POS++
       return
     }
-    parser_error("expected ',' or '}' at byte " POS)
+    parser_error(sprintf("expected ',' or '%c' at byte %d", 125, POS))
   }
 }
-function parse_generic_array(    c) {
+function parse_generic_array(c) {
   expect_char("[")
   skip_ws()
   if (substr(JSON, POS, 1) == "]") {
@@ -417,7 +417,7 @@ function parse_target(target,    key, c) {
     parser_error("target '\''" target "'\'' must be an object")
   }
 }
-function parse_root(    target, c, count) {
+function parse_root(target, c, count) {
   count = 0
   expect_char("{")
   skip_ws()
@@ -447,7 +447,7 @@ function parse_root(    target, c, count) {
       POS++
       break
     }
-    parser_error("expected ',' or '}' at byte " POS)
+    parser_error(sprintf("expected ',' or '%c' at byte %d", 125, POS))
   }
   if (count == 0) {
     parser_error("metadata must be a non-empty object")
@@ -471,12 +471,12 @@ BEGIN {
 ' "$metadata_path"
 }
 
-## Get a scalar field value for a target.
-##
-## :param str target: Build target name.
-## :param str field_name: Scalar field name (e.g., tag_prefix).
-## :returns: Field value printed to stdout.
-## :rtype: str
+# Get a scalar field value for a target.
+#
+# @param target Build target name.
+# @param field_name Scalar field name (e.g., tag_prefix).
+# @return Field value printed to stdout.
+# @return-type str
 get_scalar_field() {
   target="$1"
   field_name="$2"
@@ -506,11 +506,11 @@ EOF
   printf '%s\n' "$value"
 }
 
-## Get environment variables for a target as KEY=VALUE lines.
-##
-## :param str target: Build target name.
-## :returns: KEY=VALUE pairs printed to stdout, one per line.
-## :rtype: str
+# Get environment variables for a target as KEY=VALUE lines.
+#
+# @param target Build target name.
+# @return KEY=VALUE pairs printed to stdout, one per line.
+# @return-type str
 get_env() {
   target="$1"
   records=$(parse_metadata_records)
@@ -537,11 +537,11 @@ EOF
   fi
 }
 
-## Get release file paths for a target.
-##
-## :param str target: Build target name.
-## :returns: Release file paths printed to stdout, one per line.
-## :rtype: str
+# Get release file paths for a target.
+#
+# @param target Build target name.
+# @return Release file paths printed to stdout, one per line.
+# @return-type str
 get_release_files() {
   target="$1"
   records=$(parse_metadata_records)
@@ -568,11 +568,11 @@ EOF
   fi
 }
 
-## Get the official version for a target from its version_env_var.
-##
-## :param str target: Build target name.
-## :returns: Official version string printed to stdout.
-## :rtype: str
+# Get the official version for a target from its version_env_var.
+#
+# @param target Build target name.
+# @return Official version string printed to stdout.
+# @return-type str
 get_official_version() {
   target="$1"
   records=$(parse_metadata_records)
@@ -614,14 +614,14 @@ EOF
   printf '%s\n' "$env_value"
 }
 
-## Look up an env value from parsed records.
-##
-## Requires $records to be set in the calling scope.
-##
-## :param str lookup_target: Build target name.
-## :param str lookup_key: Environment variable key.
-## :returns: 0 if found (sets LOOKUP_ENV_VALUE), 1 if not found.
-## :rtype: int
+# Look up an env value from parsed records.
+#
+# Requires $records to be set in the calling scope.
+#
+# @param lookup_target Build target name.
+# @param lookup_key Environment variable key.
+# @return 0 if found (sets LOOKUP_ENV_VALUE), 1 if not found.
+# @return-type int
 lookup_env_value() {
   lookup_target="$1"
   lookup_key="$2"
@@ -640,16 +640,16 @@ EOF
   [ "$LOOKUP_ENV_FOUND" -eq 1 ]
 }
 
-## Render a download URL or filename template by substituting env placeholders.
-##
-## Requires $records to be set in the calling scope.
-##
-## :param str render_target: Build target name.
-## :param str entry_index: Download entry index (for error messages).
-## :param str field_name: Field name being rendered (url or name).
-## :param str template: Template string with {PLACEHOLDER} references.
-## :returns: Rendered string printed to stdout.
-## :rtype: str
+# Render a download URL or filename template by substituting env placeholders.
+#
+# Requires $records to be set in the calling scope.
+#
+# @param render_target Build target name.
+# @param entry_index Download entry index (for error messages).
+# @param field_name Field name being rendered (url or name).
+# @param template Template string with {PLACEHOLDER} references.
+# @return Rendered string printed to stdout.
+# @return-type str
 render_download_template() {
   render_target="$1"
   entry_index="$2"
@@ -687,11 +687,11 @@ render_download_template() {
   printf '%s\n' "$rendered"
 }
 
-## Get rendered download URLs and filenames for a target.
-##
-## :param str target: Build target name.
-## :returns: Tab-separated URL and filename pairs printed to stdout.
-## :rtype: str
+# Get rendered download URLs and filenames for a target.
+#
+# @param target Build target name.
+# @return Tab-separated URL and filename pairs printed to stdout.
+# @return-type str
 get_downloads() {
   target="$1"
   records=$(parse_metadata_records)
@@ -735,12 +735,12 @@ $records
 EOF
 }
 
-## Main entry point for metadata query commands.
-##
-## :param str command: Subcommand to execute.
-## :param list args: Arguments for the subcommand.
-## :returns: Exit code 0 on success, 1 on failure.
-## :rtype: int
+# Main entry point for metadata query commands.
+#
+# @param command Subcommand to execute.
+# @param args Arguments for the subcommand.
+# @return Exit code 0 on success, 1 on failure.
+# @return-type int
 main() {
   if [ $# -lt 1 ]; then
     usage

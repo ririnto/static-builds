@@ -1,12 +1,12 @@
 #!/usr/bin/env sh
 set -eu
-ROOT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)"
+ROOT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)
 METADATA_SCRIPT="${ROOT_DIR}/scripts/metadata.sh"
 
-## Print usage information and exit.
-##
-## :returns: Does not return (exits with code 1).
-## :rtype: None
+# Print usage information and exit.
+#
+# @return Does not return (exits with code 1).
+# @return-type None
 usage() {
   echo "Usage: $0 <target> [buildx args...]"
   echo ""

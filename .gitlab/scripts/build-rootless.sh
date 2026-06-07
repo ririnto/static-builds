@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 set -eu
-ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
+ROOT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)
 METADATA_SCRIPT="${ROOT_DIR}/scripts/metadata.sh"
 if [ "$#" -lt 1 ]; then
   printf 'Usage: %s <target>\n' "$0" >&2

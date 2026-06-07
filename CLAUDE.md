@@ -1,5 +1,7 @@
 # PROJECT KNOWLEDGE BASE
 
+`AGENTS.md` is a symlink to this file. Update `CLAUDE.md` as the canonical source.
+
 ## OVERVIEW
 
 Docker multi-stage build system for statically-linked binaries.
@@ -74,10 +76,10 @@ static-builds/
 
 - Function documentation comment blocks MUST:
 
-  - Be contiguous lines starting with `#` (or `##`).
+  - Be contiguous lines starting with a single `#`.
   - Have no blank line between the comment block and the function definition.
   - Describe purpose and expected inputs/outputs/return codes.
-  - Use reST Docstring style with field lists, including `:param`, `:return:` (or `:returns:`) and `:rtype:` fields where applicable.
+  - Use `@param`, `@return`, and `@return-type` tag lines where applicable.
 - Inline comments, section header comments, and file header comment blocks MUST NOT be used.
 - If explanation is needed, refactor code into a function and document that function instead of adding inline comments.
 

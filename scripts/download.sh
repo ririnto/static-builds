@@ -12,14 +12,14 @@ case "${TARGET}" in
     exit 1
     ;;
 esac
-ROOT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
+ROOT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 
-## Download a tarball from a URL to a destination file with retry support.
-##
-## :param str url: URL to download from.
-## :param str dest_file: Destination file path.
-## :returns: 0 on success, 1 on failure.
-## :rtype: int
+# Download a tarball from a URL to a destination file with retry support.
+#
+# @param url URL to download from.
+# @param dest_file Destination file path.
+# @return 0 on success, 1 on failure.
+# @return-type int
 download_tarball() {
   if [ $# -ne 2 ]; then
     echo "Error: download_tarball expects 2 arguments: <url> <dest_file>" >&2

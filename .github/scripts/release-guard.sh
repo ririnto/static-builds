@@ -1,24 +1,24 @@
 #!/usr/bin/env sh
 set -eu
-ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
+ROOT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)
 
-# :description: Print an error message to stderr.
-# :param message: Error message to print.
-# :return: Nothing.
-# :rtype: None
+# Print an error message to stderr.
+# @param message Error message to print.
+# @return Nothing.
+# @return-type None
 err() {
   printf '%s\n' "$*" >&2
 }
 
-# :description: Parse a version from a tag using the metadata tag prefix.
-# :param tag: Release tag in format <target>-<version>.<revision>.
-# :param tag_prefix: Target tag prefix from metadata.
-# :return: Version string without revision printed to stdout.
-# :rtype: str
+# Parse a version from a tag using the metadata tag prefix.
+# @param tag Release tag in format <target>-<version>.<revision>.
+# @param tag_prefix Target tag prefix from metadata.
+# @return Version string without revision printed to stdout.
+# @return-type str
 parse_tag() {
   tag="$1"
   tag_prefix="$2"
-  version_revision="${tag#${tag_prefix}-}"
+  version_revision="${tag#"${tag_prefix}"-}"
   version="${version_revision%.*}"
   revision="${version_revision##*.}"
   if ! [ "$revision" -eq "$revision" ] 2>/dev/null; then
@@ -28,10 +28,10 @@ parse_tag() {
   printf '%s' "$version"
 }
 
-# :description: Get the official version from centralized metadata.
-# :param target: Build target name.
-# :return: Official version string printed to stdout.
-# :rtype: str
+# Get the official version from centralized metadata.
+# @param target Build target name.
+# @return Official version string printed to stdout.
+# @return-type str
 get_official_version() {
   target="$1"
   metadata_script="${ROOT_DIR}/scripts/metadata.sh"
@@ -43,11 +43,11 @@ get_official_version() {
   printf '%s' "$version"
 }
 
-# :description: Validate a release tag against target metadata.
-# :param target: Target name (for example nginx, haproxy, apache-httpd).
-# :param tag: Release tag (for example nginx-1.28.2.18).
-# :return: Exit code 0 on success, 1 on validation failure.
-# :rtype: int
+# Validate a release tag against target metadata.
+# @param target Target name (for example nginx, haproxy, apache-httpd).
+# @param tag Release tag (for example nginx-1.28.2.18).
+# @return Exit code 0 on success, 1 on validation failure.
+# @return-type int
 main() {
   if [ $# -ne 2 ]; then
     err "Usage: $0 <target> <tag>"
