@@ -22,7 +22,7 @@ This target builds a static PIE `dnsmasq` binary from source.
 
 ## Allowed Target-Specific Variations
 
-- This target intentionally follows upstream `dnsmasq` defaults for much
+- This target follows upstream `dnsmasq` defaults for much
   of its compile-time feature surface instead of passing many
   repository-specific feature toggles.
 - The approved release artifact for this target is the static
