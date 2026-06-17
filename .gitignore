@@ -93,3 +93,7 @@ bin/
 **/.omx/*
 **/.sisyphus/*
 .omo/
+
+# Claude Code worktrees and local overrides
+.claude/worktrees/
+*.local.*
