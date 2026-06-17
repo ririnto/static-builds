@@ -57,7 +57,7 @@ static-builds/
 ## CONVENTIONS
 
 - New top-level directories outside STRUCTURE MUST NOT be added (for example, `docs/`, `tests/`).
-- Documentation files MUST be limited to `README.md` and `AGENTS.md` at any directory level; other documentation filenames and directories (for example, `ARTIFACTS.md`, `docs/`) MUST NOT be added. Nested directories (for example, `apache-httpd/AGENTS.md`) MAY contain README.md or AGENTS.md for target-specific documentation.
+- Documentation files MUST be limited to `README.md` and `CLAUDE.md` at any directory level; `AGENTS.md` MUST be a symlink alias to `CLAUDE.md` when present. Other documentation filenames and directories (for example, `ARTIFACTS.md`, `docs/`) MUST NOT be added. Nested directories (for example, `apache-httpd/CLAUDE.md`) MAY contain README.md or CLAUDE.md for target-specific documentation.
 
 - EditorConfig: 4-space indent (2 for .sh/.yaml)
 - `metadata.json` MUST be the canonical source of build and release metadata for all targets.
