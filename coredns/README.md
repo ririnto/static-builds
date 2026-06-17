@@ -21,10 +21,10 @@ This target builds a static CoreDNS binary from source using Go.
 
 ## Allowed Target-Specific Variations
 
-- This target intentionally uses a Go builder image and a pure-Go build
+- This target uses a Go builder image and a pure-Go build
   path instead of the Alpine C toolchain pattern used by many other
   targets.
-- The packaged artifact is intentionally emitted as `coredns`
+- The packaged artifact is emitted as `coredns`
   instead of a `bin/` or `sbin/` path.
 - Plugin inventory and version reporting are the approved verification
   surface for this target.

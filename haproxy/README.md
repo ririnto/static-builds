@@ -28,10 +28,10 @@ This target builds a static PIE `haproxy` binary for musl-based deployments.
 
 ## Allowed Target-Specific Variations
 
-- This target intentionally enables `USE_THREAD=0` and ships a single-thread HAProxy profile.
+- This target enables `USE_THREAD=0` and ships a single-thread HAProxy profile.
 - OpenTelemetry support is provided by `haproxytech/haproxy-opentelemetry` plus `opentelemetry-c-wrapper` and `opentelemetry-cpp` static libraries.
 - Lua support, the Prometheus exporter, QUIC, KTLS, and shared-memory runtime support are approved parts of this target's runtime profile.
-- The release artifact for this target is intentionally limited to the static `sbin/haproxy` binary.
+- The release artifact for this target is limited to the static `sbin/haproxy` binary.
 
 ## How to Verify
 

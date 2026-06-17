@@ -19,8 +19,8 @@ This build keeps nginx and C modules statically linked and ships only the runtim
 ## Allowed Target-Specific Variations
 
 - This target MAY ship runtime Lua files under `lualib/` in addition to the static `nginx` binary.
-- Release contents intentionally include both `sbin/nginx` and the packaged Lua runtime paths required by `resty.upstream.healthcheck`.
-- Verify-stage checks intentionally execute a verify-only nginx config that loads the packaged `resty.core` bridge runtime and healthcheck module and probes the supported runtime contract in addition to the shared static ELF checks used by other targets.
+- Release contents include both `sbin/nginx` and the packaged Lua runtime paths required by `resty.upstream.healthcheck`.
+- Verify-stage checks execute a verify-only nginx config that loads the packaged `resty.core` bridge runtime and healthcheck module and probes the supported runtime contract in addition to the shared static ELF checks used by other targets.
 
 ## How to Verify
 

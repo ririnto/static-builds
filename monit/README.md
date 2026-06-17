@@ -21,7 +21,7 @@ libraries statically.
 
 ## Allowed Target-Specific Variations
 
-- This target intentionally relinks built object archives into a final
+- This target relinks built object archives into a final
   static PIE `bin/monit` binary instead of relying only on the default
   upstream install output.
 - Static linkage against OpenSSL and zlib archives is an approved part

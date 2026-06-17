@@ -22,11 +22,11 @@ binary as a static artifact.
 
 ## Allowed Target-Specific Variations
 
-- This target intentionally repackages the upstream musl release tarball
+- This target repackages the upstream musl release tarball
   instead of compiling Vector from source inside this repository.
 - The approved release artifact for this target is `bin/vector`.
 - The available sources, transforms, sinks, and enrichment tables are
-  intentionally defined by the upstream release selected in
+  defined by the upstream release selected in
   `metadata.json`.
 
 ## How to Verify

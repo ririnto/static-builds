@@ -12,7 +12,7 @@ This target builds plain static nginx with the repository's standard non-resty n
 ## Allowed Target-Specific Variations
 
 - This target ships only `sbin/nginx`.
-- This target intentionally does not package Lua, resty, or upstream healthcheck runtime files.
+- This target does not package Lua, resty, or upstream healthcheck runtime files.
 
 ## How to Verify
 
