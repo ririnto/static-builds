@@ -5,7 +5,7 @@ Build statically-linked binaries using Docker multi-stage builds for portable, m
 ## Features
 
 - Static Linking - Produce fully statically-linked binaries using musl libc
-- Multi-stage Builds - Leverage Docker BuildKit for efficient, cacheable builds
+- Multi-stage Builds - Use Docker BuildKit for efficient, cacheable builds
 - Minimal Outputs - Use a UBI9 Micro verify stage for runtime checks and package final artifacts from a `scratch` stage
 - Extensible - Add new build targets by following a simple directory structure
 - Reproducible - Version-controlled configurations via `metadata.json`
@@ -74,7 +74,7 @@ Each target must follow this structure:
 <target>/
 ├── Dockerfile        # Multi-stage build definition (required)
 ├── README.md         # Target-specific documentation (optional)
-└── AGENTS.md         # Target-specific conventions (optional)
+└── CLAUDE.md         # Target-specific conventions (optional); AGENTS.md is a symlink alias
 ```
 
 ### Adding a New Target
@@ -157,7 +157,7 @@ Each target must follow this structure:
 
 ### Allowed Target-Specific Variations
 
-Targets share the same root contract, but some targets intentionally vary in builder image, release contents, or runtime packaging.
+Targets share the same root contract, but some targets vary in builder image, release contents, or runtime packaging.
 
 - Document approved target-specific variations in that target's `README.md`.
 - Keep the root `README.md` focused on shared repository behavior.
@@ -168,7 +168,7 @@ Targets share the same root contract, but some targets intentionally vary in bui
 - Security hardening: Use static PIE builds (`-fPIE -pie`)
 - Verification: Always include a verify stage with ELF checks, static linking verification, and strace validation
 - Caching: Use `--mount=type=cache` for Alpine/DNF caches
-- Documentation: Document approved target-specific variations in each target `README.md`; use `AGENTS.md` for repository-wide policy
+- Documentation: Document approved target-specific variations in each target `README.md`; use `CLAUDE.md` for repository-wide policy (AGENTS.md is a symlink alias)
 - Version variables: Follow naming convention `{TARGET}_VERSION` for consistency inside `metadata.json`
 
 ## Release Process
@@ -253,7 +253,7 @@ Invalid examples:
 3. Built artifacts go to `.out/<target>/` for both local builds and CI
 4. Verify stages run inside UBI9 Micro, and the final exported artifact comes from the target's `scratch` stage
 
-Build caching is automatically handled via root `.cache/<target>/` directories.
+Build caching uses the root `.cache/<target>/` directories.
 
 ## CI Behavior
 
@@ -278,7 +278,7 @@ Selected release contents:
 
 > [!NOTE]
 > `apache-httpd` releases include both `bin/httpd` and `bin/rotatelogs` for piped logging support.
-> For details, see [apache-httpd/AGENTS.md](apache-httpd/AGENTS.md).
+> For details, see [apache-httpd/CLAUDE.md](apache-httpd/CLAUDE.md).
 
 ## GitLab CI
 
