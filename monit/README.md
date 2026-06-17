@@ -1,39 +1,30 @@
 # Monit Static Build
 
-This target builds a static PIE `monit` binary and links required
-libraries statically.
+This target builds a static PIE `monit` binary and links required libraries statically.
 
 ## Modules and Features
 
 ### Build Options (Explicit)
 
 - Configure options: `--without-pam` and `--with-largefiles`.
-- Build output is a static PIE `${TARGET_PREFIX}/bin/monit` from
-  `src` and `libmonit/src` archives.
-- Static linkage explicitly includes OpenSSL (`libssl.a`,
-  `libcrypto.a`) and zlib (`libz.a`).
+- Build output is a static PIE `${TARGET_PREFIX}/bin/monit` from `src` and `libmonit/src` archives.
+- Static linkage explicitly includes OpenSSL (`libssl.a`, `libcrypto.a`) and zlib (`libz.a`).
 
 ### Runtime/Packaging Snapshot
 
-- Build-feature summary and command surface are captured in
-  [Runtime Introspection Output](#runtime-introspection-output) with
-  `monit -V` and `monit -h`.
+- Build-feature summary and command surface are captured in [Runtime Introspection Output](#runtime-introspection-output) with `monit -V` and `monit -h`.
 
 ## Allowed Target-Specific Variations
 
-- This target relinks built object archives into a final
-  static PIE `bin/monit` binary instead of relying only on the default
-  upstream install output.
-- Static linkage against OpenSSL and zlib archives is an approved part
-  of this target profile.
+- This target relinks built object archives into a final static PIE `bin/monit` binary instead of relying only on the default upstream install output.
+- Static linkage against OpenSSL and zlib archives is an approved part of this target profile.
 - The approved release artifact for this target is `bin/monit`.
 
 ## Runtime Defaults
 
 Build features (confirmed from `monit -V` output):
 
-- `Built with ssl, with ipv6, with compression, without pam and with
-  large files`
+- `Built with ssl, with ipv6, with compression, without pam and with large files`
 
 Command line options and services (from `monit -h`):
 
@@ -49,14 +40,11 @@ Command line options and services (from `monit -h`):
 - Syntax check via `-t` flag
 - Verbose modes: `-v` and `-vv`
 
-Commands include: `start`, `stop`, `restart`, `monitor`, `unmonitor`,
-`reload`, `status`, `summary`, `report`, `quit`, `validate`, and
-`procmatch`.
+Commands include: `start`, `stop`, `restart`, `monitor`, `unmonitor`, `reload`, `status`, `summary`, `report`, `quit`, `validate`, and `procmatch`.
 
 ## Runtime Introspection Output
 
-The following sections show the exact runtime introspection outputs from
-the built binary.
+The following sections show the exact runtime introspection outputs from the built binary.
 
 ### monit -V
 
@@ -118,10 +106,7 @@ CI= GITHUB_ACTIONS= make build monit
 ./.out/monit/bin/monit -h
 ```
 
-The `-V` flag shows the build feature summary, and `-h` shows all
-available command line options and commands. See the [Runtime
-Introspection Output](#runtime-introspection-output) section above
-for the actual output.
+The `-V` flag shows the build feature summary, and `-h` shows all available command line options and commands. See the [Runtime Introspection Output](#runtime-introspection-output) section above for the actual output.
 
 ## How to Verify
 

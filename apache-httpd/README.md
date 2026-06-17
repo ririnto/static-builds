@@ -1,40 +1,26 @@
 # Apache HTTPd Static Build
 
-This target builds Apache HTTPd as static PIE with selected modules
-compiled in.
+This target builds Apache HTTPd as static PIE with selected modules compiled in.
 
 ## Modules and Features
 
 ### Build Options (Explicit)
 
-- Core protocol/security: `--enable-http`, `--enable-ssl`,
-  `--enable-http2`, `--enable-proxy-http2`, `--enable-remoteip`, and
-  `--enable-rewrite`.
+- Core protocol/security: `--enable-http`, `--enable-ssl`, `--enable-http2`, `--enable-proxy-http2`, `--enable-remoteip`, and `--enable-rewrite`.
 - Compression: `--enable-deflate` and `--enable-brotli`.
-- Proxy/load-balancer stack: `--enable-proxy`,
-  `--enable-proxy-http`, `--enable-proxy-balancer`,
-  `--enable-proxy-hcheck`, `--enable-lbmethod-byrequests`,
-  `--enable-lbmethod-bytraffic`, and `--enable-lbmethod-bybusyness`.
-- Static packaging policy: `--enable-so=no`,
-  `--enable-mods-static=few`, and `--disable-autoindex`.
-- Utility inclusion: `rotatelogs` is enabled with
-  `--enable-static-rotatelogs`.
+- Proxy/load-balancer stack: `--enable-proxy`, `--enable-proxy-http`, `--enable-proxy-balancer`, `--enable-proxy-hcheck`, `--enable-lbmethod-byrequests`, `--enable-lbmethod-bytraffic`, and `--enable-lbmethod-bybusyness`.
+- Static packaging policy: `--enable-so=no`, `--enable-mods-static=few`, and `--disable-autoindex`.
+- Utility inclusion: `rotatelogs` is enabled with `--enable-static-rotatelogs`.
 
 ### Runtime/Packaging Snapshot
 
-- Compiled settings and module inventory are captured in
-  [Runtime Introspection Output](#runtime-introspection-output) using
-  `httpd -V`, `httpd -l`, and `httpd -M`.
+- Compiled settings and module inventory are captured in [Runtime Introspection Output](#runtime-introspection-output) using `httpd -V`, `httpd -l`, and `httpd -M`.
 
 ## Allowed Target-Specific Variations
 
-- This target MAY release both `bin/httpd` and
-  `bin/rotatelogs` as one approved packaging profile.
-- The target directory name remains `apache-httpd`, but release tags
-  use the `httpd-` prefix.
-- Verify output from `httpd -M` MAY contain only the expected FQDN
-  warning in some environments; treat `httpd -l` as the authoritative
-  compiled-module inventory for this target.
+- This target MAY release both `bin/httpd` and `bin/rotatelogs` as one approved packaging profile.
+- The target directory name remains `apache-httpd`, but release tags use the `httpd-` prefix.
+- Verify output from `httpd -M` MAY contain only the expected FQDN warning in some environments; treat `httpd -l` as the authoritative compiled-module inventory for this target.
 
 ## How to Verify
 
@@ -136,6 +122,4 @@ AH00558: httpd: Could not reliably determine the server's fully qualified
 ```
 
 > [!NOTE]
-> The `httpd -M` output in this environment is only an FQDN warning and
-> does not list modules. Treat `httpd -l` as the authoritative compiled-in
-> module list for this static build.
+> The `httpd -M` output in this environment is only an FQDN warning and does not list modules. Treat `httpd -l` as the authoritative compiled-in module list for this static build.

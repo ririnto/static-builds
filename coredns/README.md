@@ -7,27 +7,19 @@ This target builds a static CoreDNS binary from source using Go.
 ### Build Options (Explicit)
 
 - Build command: `make coredns CGO_ENABLED=0 BUILDOPTS="-v -trimpath"`.
-- `CGO_ENABLED=0` forces a pure-Go build without libc runtime
-  dependencies.
+- `CGO_ENABLED=0` forces a pure-Go build without libc runtime dependencies.
 - No repository-specific plugin patching is applied during build.
 
 ### Runtime/Packaging Snapshot
 
-- Plugin inventory is captured in
-  [Runtime Introspection Output](#runtime-introspection-output) using
-  `coredns -plugins`.
-- Binary version/platform metadata is captured with
-  `coredns -version`.
+- Plugin inventory is captured in [Runtime Introspection Output](#runtime-introspection-output) using `coredns -plugins`.
+- Binary version/platform metadata is captured with `coredns -version`.
 
 ## Allowed Target-Specific Variations
 
-- This target uses a Go builder image and a pure-Go build
-  path instead of the Alpine C toolchain pattern used by many other
-  targets.
-- The packaged artifact is emitted as `coredns`
-  instead of a `bin/` or `sbin/` path.
-- Plugin inventory and version reporting are the approved verification
-  surface for this target.
+- This target uses a Go builder image and a pure-Go build path instead of the Alpine C toolchain pattern used by many other targets.
+- The packaged artifact is emitted as `coredns` instead of a `bin/` or `sbin/` path.
+- Plugin inventory and version reporting are the approved verification surface for this target.
 
 ## How to Verify
 
