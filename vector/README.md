@@ -1,33 +1,25 @@
 # Vector Static Build
 
-This target packages the upstream `x86_64-unknown-linux-musl` Vector
-binary as a static artifact.
+This target packages the upstream `x86_64-unknown-linux-musl` Vector binary as a static artifact.
 
 ## Modules and Features
 
 ### Build Options (Explicit)
 
-- `vector/Dockerfile` does not compile from source; it unpacks the
-  upstream `x86_64-unknown-linux-musl` release tarball.
+- `vector/Dockerfile` does not compile from source; it unpacks the upstream `x86_64-unknown-linux-musl` release tarball.
 - Packaged binary path is `${TARGET_PREFIX}/bin/vector`.
-- Because the upstream release binary is reused, source/transform/sink
-  availability is determined by that release.
+- Because the upstream release binary is reused, source/transform/sink availability is determined by that release.
 
 ### Runtime/Packaging Snapshot
 
-- Version/platform metadata is captured in
-  [Runtime Introspection Output](#runtime-introspection-output) with
-  `vector --version`.
+- Version/platform metadata is captured in [Runtime Introspection Output](#runtime-introspection-output) with `vector --version`.
 - Component inventory is captured with `vector list`.
 
 ## Allowed Target-Specific Variations
 
-- This target repackages the upstream musl release tarball
-  instead of compiling Vector from source inside this repository.
+- This target repackages the upstream musl release tarball instead of compiling Vector from source inside this repository.
 - The approved release artifact for this target is `bin/vector`.
-- The available sources, transforms, sinks, and enrichment tables are
-  defined by the upstream release selected in
-  `metadata.json`.
+- The available sources, transforms, sinks, and enrichment tables are defined by the upstream release selected in `metadata.json`.
 
 ## How to Verify
 

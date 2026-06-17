@@ -6,29 +6,19 @@ This target builds a static PIE `dnsmasq` binary from source.
 
 ### Build Options (Explicit)
 
-- Build uses upstream `make install` with hardened static flags
-  (`-static -static-pie`) from `dnsmasq/Dockerfile`.
-- No repository-specific feature toggles are passed to `dnsmasq`
-  `make`; compile-time capabilities follow upstream defaults for the
-  selected release.
+- Build uses upstream `make install` with hardened static flags (`-static -static-pie`) from `dnsmasq/Dockerfile`.
+- No repository-specific feature toggles are passed to `dnsmasq` `make`; compile-time capabilities follow upstream defaults for the selected release.
 
 ### Runtime/Packaging Snapshot
 
-- Enabled compile-time options are captured in
-  [Runtime Introspection Output](#runtime-introspection-output) via
-  `dnsmasq -v`.
-- Full option surface and default-related hints are captured via
-  `dnsmasq --help`.
+- Enabled compile-time options are captured in [Runtime Introspection Output](#runtime-introspection-output) via `dnsmasq -v`.
+- Full option surface and default-related hints are captured via `dnsmasq --help`.
 
 ## Allowed Target-Specific Variations
 
-- This target follows upstream `dnsmasq` defaults for much
-  of its compile-time feature surface instead of passing many
-  repository-specific feature toggles.
-- The approved release artifact for this target is the static
-  `sbin/dnsmasq` binary.
-- Treat `dnsmasq -v` and `dnsmasq --help` as the authoritative runtime
-  contract for this target's allowed feature set.
+- This target follows upstream `dnsmasq` defaults for much of its compile-time feature surface instead of passing many repository-specific feature toggles.
+- The approved release artifact for this target is the static `sbin/dnsmasq` binary.
+- Treat `dnsmasq -v` and `dnsmasq --help` as the authoritative runtime contract for this target's allowed feature set.
 
 ## How to Verify
 
