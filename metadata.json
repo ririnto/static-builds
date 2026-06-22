@@ -127,6 +127,25 @@
     ],
     "version_env_var": "HAPROXY_VERSION"
   },
+  "haproxy-2.4": {
+    "tag_prefix": "haproxy-2.4",
+    "release_files": [
+      "sbin/haproxy"
+    ],
+    "env": {
+      "ALPINE_VERSION": "3.23.4",
+      "HAPROXY_VERSION": "2.4.35",
+      "HAPROXY_VERSION_SERIES": "2.4",
+      "UBI10_MINIMAL_VERSION": "10.1-1778576723"
+    },
+    "downloads": [
+      {
+        "url": "https://www.haproxy.org/download/{HAPROXY_VERSION_SERIES}/src/haproxy-{HAPROXY_VERSION}.tar.gz",
+        "name": "haproxy-{HAPROXY_VERSION}.tar.gz"
+      }
+    ],
+    "version_env_var": "HAPROXY_VERSION"
+  },
   "apache-httpd": {
     "tag_prefix": "httpd",
     "release_files": [

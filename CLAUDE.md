@@ -5,7 +5,7 @@
 ## OVERVIEW
 
 Docker multi-stage build system for statically-linked binaries.
-Builds nginx, nginx-resty-upstream-healthcheck, haproxy, apache-httpd, coredns, dnsmasq, vector, monit using musl libc.
+Builds nginx, nginx-resty-upstream-healthcheck, haproxy, haproxy-2.4, apache-httpd, coredns, dnsmasq, vector, monit using musl libc.
 
 ## STRUCTURE
 
@@ -38,6 +38,7 @@ static-builds/
 ├── nginx/                  # Plain nginx target
 ├── nginx-resty-upstream-healthcheck/ # Resty healthcheck nginx target
 ├── haproxy/
+├── haproxy-2.4/
 ├── apache-httpd/
 ├── coredns/
 ├── dnsmasq/
