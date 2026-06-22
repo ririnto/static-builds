@@ -1,32 +1,32 @@
 # HAProxy 2.4 Static Build
 
-This target builds a static `haproxy` binary from the 2.4 LTS branch for musl-based deployments.
+This target builds HAProxy 2.4 LTS as a static musl binary.
 
 ## Modules and Features
 
 ### Build Options (Explicit)
 
-- TLS stack: `USE_OPENSSL=1` with static OpenSSL from Alpine.
-- Regex stack: `USE_PCRE2=1` and `USE_PCRE2_JIT=1`.
-- Embedded subsystems: `USE_LUA=1` and `USE_PROMEX=1` for Lua scripting and the Prometheus exporter.
+- TLS: `USE_OPENSSL=1` links static OpenSSL from Alpine.
+- Regex: `USE_PCRE2=1` and `USE_PCRE2_JIT=1` enable PCRE2 with JIT.
+- Embedded services: `USE_LUA=1` and `USE_PROMEX=1` enable Lua scripting and the Prometheus exporter.
 - Linux runtime features: `USE_EPOLL=1`, `USE_TPROXY=1`, `USE_LINUX_TPROXY=1`, `USE_LINUX_SPLICE=1`, `USE_TFO=1`, and `USE_CPU_AFFINITY=1`.
-- Threading: `THREAD` is inherited from the `linux-musl` target defaults; `USE_THREAD_DUMP=1` keeps the advanced thread dump path explicit.
+- Threading: `linux-musl` enables `THREAD`; `USE_THREAD_DUMP=1` keeps the advanced thread dump path visible in build options.
 
 ### Runtime/Packaging Profile
 
-- Default runtime tunables and enabled features are captured in [Runtime Introspection Output](#runtime-introspection-output) from `haproxy -vv`.
-- This target links HAProxy as static non-PIE with `-fno-PIE` and `-static -no-pie`; HAProxy 2.4 crashes during Lua initialization under static PIE.
-- QUIC is not enabled. HAProxy 2.4 ships an experimental QUIC implementation that requires the quictls OpenSSL fork; this target uses stock OpenSSL for universal compatibility.
-- OpenTelemetry is not available on the 2.4 branch. The HAProxy OpenTelemetry addon requires HAProxy 2.6 or later.
-- Lua 5.4 links against Alpine's `lua5.4-dev` static archive at `/usr/lib/lua5.4/liblua.a`.
-- `LIBATOMIC` is not enabled in this build profile.
+- [Runtime Introspection Output](#runtime-introspection-output) records the `haproxy -vv` output used to verify this target.
+- HAProxy 2.4 uses static non-PIE flags: `-fno-PIE` and `-static -no-pie`. The Lua initialization path crashes under static PIE.
+- QUIC stays disabled. HAProxy 2.4 requires the quictls OpenSSL fork for its experimental QUIC support; this target uses stock OpenSSL.
+- OpenTelemetry stays disabled. The HAProxy OpenTelemetry addon requires HAProxy 2.6 or newer.
+- Lua 5.4 comes from Alpine's `lua5.4-dev` package. HAProxy links `/usr/lib/lua5.4/liblua.a`.
+- `LIBATOMIC` stays disabled.
 
 ## Allowed Target-Specific Variations
 
-- This target builds from the 2.4 LTS branch and intentionally omits features that require HAProxy 2.6+ or non-stock TLS libraries.
-- This target uses static non-PIE linkage instead of static PIE to keep Lua initialization stable on HAProxy 2.4. `USE_THREAD=0`, `USE_PTHREAD_EMULATION=1`, and `USE_LIBATOMIC=1` still crash with exit 139 under static PIE on `haproxy -vv`.
-- Lua support is part of this target's universal runtime profile.
-- The release artifact for this target is limited to the static `sbin/haproxy` binary.
+- This target omits features that require HAProxy 2.6+ or non-stock TLS libraries.
+- This target uses static non-PIE linkage because `USE_THREAD=0`, `USE_PTHREAD_EMULATION=1`, and `USE_LIBATOMIC=1` still crash with exit 139 under static PIE on `haproxy -vv`.
+- The runtime profile includes Lua support.
+- Releases publish the static `sbin/haproxy` binary.
 
 ## How to Verify
 
