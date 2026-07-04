@@ -46,9 +46,9 @@ This target builds a static PIE `haproxy` binary for musl-based deployments.
 ## Runtime Introspection Output
 
 ```text
-HAProxy version 3.4.0-64a335366 2026/06/03 - https://haproxy.org/
+HAProxy version 3.4.2-9feeb3287 2026/07/03 - https://haproxy.org/
 Status: long-term supported branch - will stop receiving fixes around Q2 2031.
-Known bugs: http://www.haproxy.org/bugs/bugs-3.4.0.html
+Known bugs: http://www.haproxy.org/bugs/bugs-3.4.2.html
 Running on: Linux 6.6.87.2-microsoft-standard-WSL2 #1 SMP PREEMPT_DYNAMIC Thu Jun  5 18:30:46 UTC 2025 x86_64
 Build options :
   TARGET  = linux-musl

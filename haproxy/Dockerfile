@@ -237,9 +237,7 @@ RUN --mount=type=cache,target=/var/cache/apk \
 ADD ".tmp/haproxy-${HAPROXY_VERSION}.tar.gz" /build/
 ADD ".tmp/haproxy-opentelemetry-${HAPROXY_OTEL_ADDON_REF}.tar.gz" /build/
 COPY --from=otel-cpp /opt /opt
-COPY haproxy/thread-use-thread-guard.patch /build/thread-use-thread-guard.patch
 WORKDIR "/build/haproxy-${HAPROXY_VERSION}"
-RUN patch -p1 < /build/thread-use-thread-guard.patch
 RUN PKG_CONFIG_PATH=/opt/lib/pkgconfig make "-j$(nproc)" \
     TARGET=linux-musl \
     EXTRA_MAKE="/build/haproxy-opentelemetry-${HAPROXY_OTEL_ADDON_REF}" \
