@@ -161,7 +161,7 @@ Targets share the same root contract, but some targets vary in builder image, re
 
 - Document approved target-specific variations in that target's `README.md`.
 - Keep the root `README.md` focused on shared repository behavior.
-- Treat `nginx`, `nginx-resty-upstream-healthcheck`, `apache-httpd`, `coredns`, `vector`, `haproxy`, `dnsmasq`, and `monit` differences as documented target profiles, not as undocumented exceptions.
+- Treat `nginx`, `nginx-resty-upstream-healthcheck`, `apache-exporter`, `apache-httpd`, `coredns`, `vector`, `haproxy`, `dnsmasq`, and `monit` differences as documented target profiles, not as undocumented exceptions.
 
 ### Best Practices
 
@@ -268,6 +268,7 @@ Selected release contents:
 - `nginx`: `sbin/nginx`
 - `nginx-resty-upstream-healthcheck`: `sbin/nginx`, `lualib/resty/core.lua`, `lualib/resty/core/`, `lualib/resty/upstream/`
 - `haproxy`: `sbin/haproxy`
+- `apache-exporter`: `bin/apache-exporter`
 - `apache-httpd`: `bin/httpd`, `bin/rotatelogs`
 - `coredns`: `coredns`
 - `dnsmasq`: `sbin/dnsmasq`
