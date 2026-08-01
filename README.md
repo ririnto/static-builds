@@ -34,34 +34,34 @@ docker run --rm \
 
 ```text
 .
-├── metadata.json           # Canonical build/release metadata
-├── Makefile                # Local development build orchestration
-├── .gitlab-ci.yml          # GitLab CI configuration
-├── scripts/                # Shared build/release scripts
-│   ├── download.sh         # Source download dispatcher
-│   ├── metadata.sh         # Metadata query helper
-│   └── package-release.sh  # Release package helper
-├── .github/
-│   ├── scripts/
-│   │   ├── build.sh        # Docker Buildx build entry
-│   │   └── release-guard.sh # Release tag validator
-│   └── workflows/
-│       ├── release-from-tag.yaml
-│       └── template-release.yaml
-├── .gitlab/
-│   ├── ci/
-│   │   └── package-pipeline.jsonnet # GitLab child pipeline generator
-│   └── scripts/
-│       └── build-rootless.sh        # Rootless BuildKit build entry
-├── templates/              # GitLab CI components
-│   └── static-release.yml
-├── .tmp/                   # Downloaded source cache (gitignored)
-├── .cache/                 # Build cache (gitignored)
-├── .out/                   # Build outputs (gitignored)
-│   └── <target>/           # Local artifacts (for example `sbin/`, `bin/`)
-└── <target>/               # Build target directory
-    ├── Dockerfile          # Multi-stage build definition
-    └── ...
++-- metadata.json           # Canonical build/release metadata
++-- Makefile                # Local development build orchestration
++-- .gitlab-ci.yml          # GitLab CI configuration
++-- scripts/                # Shared build/release scripts
+|   +-- download.sh         # Source download dispatcher
+|   +-- metadata.sh         # Metadata query helper
+|   +-- package-release.sh  # Release package helper
++-- .github/
+|   +-- scripts/
+|   |   +-- build.sh        # Docker Buildx build entry
+|   |   +-- release-guard.sh # Release tag validator
+|   +-- workflows/
+|       +-- release-from-tag.yaml
+|       +-- template-release.yaml
++-- .gitlab/
+|   +-- ci/
+|   |   +-- package-pipeline.jsonnet # GitLab child pipeline generator
+|   +-- scripts/
+|       +-- build-rootless.sh        # Rootless BuildKit build entry
++-- templates/              # GitLab CI components
+|   +-- static-release.yml
++-- .tmp/                   # Downloaded source cache (gitignored)
++-- .cache/                 # Build cache (gitignored)
++-- .out/                   # Build outputs (gitignored)
+|   +-- <target>/           # Local artifacts (for example `sbin/`, `bin/`)
++-- <target>/               # Build target directory
+    +-- Dockerfile          # Multi-stage build definition
+    +-- ...
 ```
 
 ## Developer Guide
@@ -72,9 +72,8 @@ Each target must follow this structure:
 
 ```text
 <target>/
-├── Dockerfile        # Multi-stage build definition (required)
-├── README.md         # Target-specific documentation (optional)
-└── CLAUDE.md         # Target-specific conventions (optional); AGENTS.md is a symlink alias
++-- Dockerfile        # Multi-stage build definition (required)
++-- README.md         # Target-specific documentation (optional)
 ```
 
 ### Adding a New Target
@@ -161,14 +160,14 @@ Targets share the same root contract, but some targets vary in builder image, re
 
 - Document approved target-specific variations in that target's `README.md`.
 - Keep the root `README.md` focused on shared repository behavior.
-- Treat `nginx`, `nginx-resty-upstream-healthcheck`, `apache-httpd`, `coredns`, `vector`, `haproxy`, `dnsmasq`, and `monit` differences as documented target profiles, not as undocumented exceptions.
+- Treat `nginx`, `nginx-resty-upstream-healthcheck`, `apache-exporter`, `apache-httpd`, `coredns`, `vector`, `haproxy`, `dnsmasq`, and `monit` differences as documented target profiles, not as undocumented exceptions.
 
 ### Best Practices
 
 - Security hardening: Use static PIE builds (`-fPIE -pie`)
 - Verification: Always include a verify stage with ELF checks, static linking verification, and strace validation
 - Caching: Use `--mount=type=cache` for Alpine/DNF caches
-- Documentation: Document approved target-specific variations in each target `README.md`; use `CLAUDE.md` for repository-wide policy (AGENTS.md is a symlink alias)
+- Documentation: Document approved target-specific variations in each target `README.md`
 - Version variables: Follow naming convention `{TARGET}_VERSION` for consistency inside `metadata.json`
 
 ## Release Process
@@ -268,6 +267,7 @@ Selected release contents:
 - `nginx`: `sbin/nginx`
 - `nginx-resty-upstream-healthcheck`: `sbin/nginx`, `lualib/resty/core.lua`, `lualib/resty/core/`, `lualib/resty/upstream/`
 - `haproxy`: `sbin/haproxy`
+- `apache-exporter`: `bin/apache-exporter`
 - `apache-httpd`: `bin/httpd`, `bin/rotatelogs`
 - `coredns`: `coredns`
 - `dnsmasq`: `sbin/dnsmasq`
@@ -278,7 +278,6 @@ Selected release contents:
 
 > [!NOTE]
 > `apache-httpd` releases include both `bin/httpd` and `bin/rotatelogs` for piped logging support.
-> For details, see [apache-httpd/CLAUDE.md](apache-httpd/CLAUDE.md).
 
 ## GitLab CI
 

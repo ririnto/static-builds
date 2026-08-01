@@ -127,6 +127,24 @@
     ],
     "version_env_var": "HAPROXY_VERSION"
   },
+  "apache-exporter": {
+    "tag_prefix": "apache-exporter",
+    "release_files": [
+      "bin/apache-exporter"
+    ],
+    "env": {
+      "GO_VERSION": "1.25.11",
+      "APACHE_EXPORTER_VERSION": "1.1.1",
+      "UBI10_MINIMAL_VERSION": "10.1-1778576723"
+    },
+    "downloads": [
+      {
+        "url": "https://github.com/Lusitaniae/apache_exporter/archive/refs/tags/v{APACHE_EXPORTER_VERSION}.tar.gz",
+        "name": "apache-exporter-{APACHE_EXPORTER_VERSION}.tar.gz"
+      }
+    ],
+    "version_env_var": "APACHE_EXPORTER_VERSION"
+  },
   "apache-httpd": {
     "tag_prefix": "httpd",
     "release_files": [
