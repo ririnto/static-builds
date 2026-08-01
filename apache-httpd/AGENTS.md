@@ -20,7 +20,7 @@ Including `rotatelogs` provides users with a built-in solution for log rotation 
 
 The `apache-httpd/Dockerfile` enables a static rotatelogs build:
 
-```
+```text
 --enable-static-rotatelogs \
 ```
 
