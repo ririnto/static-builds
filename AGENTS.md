@@ -1,7 +1,5 @@
 # PROJECT KNOWLEDGE BASE
 
-`AGENTS.md` is a symlink to this file. Update `CLAUDE.md` as the canonical source.
-
 ## OVERVIEW
 
 Docker multi-stage build system for statically-linked binaries.
@@ -11,39 +9,39 @@ Builds nginx, nginx-resty-upstream-healthcheck, haproxy, apache-exporter, apache
 
 ```text
 static-builds/
-├── metadata.json           # Canonical build/release metadata
-├── Makefile                # Local development build orchestration
-├── .gitlab-ci.yml          # GitLab CI configuration
-├── scripts/                # Shared build/release scripts
-│   ├── download.sh         # Source download dispatcher
-│   ├── metadata.sh         # Metadata query helper
-│   └── package-release.sh  # Release package helper
-├── .github/
-│   ├── scripts/
-│   │   ├── build.sh        # Docker Buildx build entry
-│   │   └── release-guard.sh # Release tag validator
-│   └── workflows/
-│       ├── release-from-tag.yaml
-│       └── template-release.yaml
-├── .gitlab/
-│   ├── ci/
-│   │   └── package-pipeline.jsonnet # GitLab child pipeline generator
-│   └── scripts/
-│       └── build-rootless.sh        # Rootless BuildKit build entry
-├── templates/              # GitLab CI components
-│   └── static-release.yml
-├── .cache/                 # Build cache (gitignored)
-├── .tmp/                   # Downloaded source cache (gitignored)
-├── .out/                   # Build outputs (gitignored)
-├── nginx/                  # Plain nginx target
-├── nginx-resty-upstream-healthcheck/ # Resty healthcheck nginx target
-├── haproxy/
-├── apache-exporter/
-├── apache-httpd/
-├── coredns/
-├── dnsmasq/
-├── monit/
-└── vector/
++-- metadata.json           # Canonical build/release metadata
++-- Makefile                # Local development build orchestration
++-- .gitlab-ci.yml          # GitLab CI configuration
++-- scripts/                # Shared build/release scripts
+|   +-- download.sh         # Source download dispatcher
+|   +-- metadata.sh         # Metadata query helper
+|   +-- package-release.sh  # Release package helper
++-- .github/
+|   +-- scripts/
+|   |   +-- build.sh        # Docker Buildx build entry
+|   |   +-- release-guard.sh # Release tag validator
+|   +-- workflows/
+|       +-- release-from-tag.yaml
+|       +-- template-release.yaml
++-- .gitlab/
+|   +-- ci/
+|   |   +-- package-pipeline.jsonnet # GitLab child pipeline generator
+|   +-- scripts/
+|       +-- build-rootless.sh        # Rootless BuildKit build entry
++-- templates/              # GitLab CI components
+|   +-- static-release.yml
++-- .cache/                 # Build cache (gitignored)
++-- .tmp/                   # Downloaded source cache (gitignored)
++-- .out/                   # Build outputs (gitignored)
++-- nginx/                  # Plain nginx target
++-- nginx-resty-upstream-healthcheck/ # Resty healthcheck nginx target
++-- haproxy/
++-- apache-exporter/
++-- apache-httpd/
++-- coredns/
++-- dnsmasq/
++-- monit/
++-- vector/
 ```
 
 ## WHERE TO LOOK
@@ -58,8 +56,6 @@ static-builds/
 ## CONVENTIONS
 
 - New top-level directories outside STRUCTURE MUST NOT be added (for example, `docs/`, `tests/`).
-- Documentation files MUST be limited to `README.md` and `CLAUDE.md` at any directory level; `AGENTS.md` MUST be a symlink alias to `CLAUDE.md` when present. Other documentation filenames and directories (for example, `ARTIFACTS.md`, `docs/`) MUST NOT be added. Nested directories (for example, `apache-httpd/CLAUDE.md`) MAY contain README.md or CLAUDE.md for target-specific documentation.
-
 - EditorConfig: 4-space indent (2 for .sh/.yaml)
 - `metadata.json` MUST be the canonical source of build and release metadata for all targets.
 - Target dir: MUST have Dockerfile. Target-specific download metadata MUST live under that target's `metadata.json` `downloads` entries, and downloader output MUST land directly under root `.tmp/`.
