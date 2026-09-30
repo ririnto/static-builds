@@ -11,6 +11,7 @@ WORKDIR /build
 RUN --mount=type=cache,target=/var/cache/apk \
     apk add \
         build-base \
+        coreutils \
         linux-headers
 ADD ".tmp/dnsmasq-${DNSMASQ_VERSION}.tar.gz" /build/
 WORKDIR "/build/dnsmasq-${DNSMASQ_VERSION}"
@@ -23,6 +24,7 @@ RUN make "-j$(nproc)" \
 
 FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
 ARG TARGET_PREFIX
+ARG DNSMASQ_VERSION
 
 RUN --mount=type=cache,target=/var/cache/dnf \
     microdnf -y install file binutils strace
@@ -40,7 +42,8 @@ RUN set -eu; \
     echo "=== ldd output ==="; echo "$ldd_output"; \
     (echo "$file_output" | grep -Eq 'statically linked|static-pie linked') || (echo "Error: file(1) did not report a static binary." && exit 1); \
     (echo "$ldd_output" | grep -Eqi 'statically linked|static-pie linked|not a dynamic executable|not a valid dynamic program') || (echo "Error: Dynamic libraries found. This should be a static build!" && exit 1); \
-    strace ${TARGET_PREFIX}/sbin/dnsmasq -v
+    strace ${TARGET_PREFIX}/sbin/dnsmasq -v && \
+    ${TARGET_PREFIX}/sbin/dnsmasq -v | grep -F "Dnsmasq version ${DNSMASQ_VERSION} "
 
 
 FROM scratch

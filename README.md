@@ -6,7 +6,7 @@ Build statically-linked binaries using Docker multi-stage builds for portable, m
 
 - Static Linking - Produce fully statically-linked binaries using musl libc
 - Multi-stage Builds - Use Docker BuildKit for efficient, cacheable builds
-- Minimal Outputs - Use a UBI9 Micro verify stage for runtime checks and package final artifacts from a `scratch` stage
+- Minimal Outputs - Use a UBI10 Minimal verify stage for runtime checks and package final artifacts from a `scratch` stage
 - Extensible - Add new build targets by following a simple directory structure
 - Reproducible - Version-controlled configurations via `metadata.json`
 
@@ -20,7 +20,8 @@ Build statically-linked binaries using Docker multi-stage builds for portable, m
 make build <target>
 ```
 
-Build artifacts are written to `.out/<target>/` by default for both local and CI builds. You can override this with `BUILD_OUTPUT_DEST`.
+Build artifacts are written to `.out/<target>/` by default for both local and CI builds.
+You can override this with `BUILD_OUTPUT_DEST`.
 
 ### Running haproxy binary image
 
@@ -66,6 +67,19 @@ docker run --rm \
 
 ## Developer Guide
 
+### Dependency Updates
+
+`metadata.json` defines source versions and build image versions for every target.
+Use the latest stable release when updating these values.
+For nginx, follow the stable release series.
+Run `make build <target>` for each affected target before creating release tags.
+
+`.github/dependabot.yaml` checks GitHub Actions every Monday at 09:00 in `Asia/Seoul`.
+It groups action updates into one pull request.
+Dependabot does not update the custom version fields in `metadata.json`.
+Docker image tags come from that metadata through build arguments, so Dependabot cannot resolve them from the Dockerfiles.
+Update those values, GitLab CI dependencies, and the Markdown schema reference manually.
+
 ### Target Structure
 
 Each target must follow this structure:
@@ -91,9 +105,9 @@ Each target must follow this structure:
          "bin/your-target"
        ],
        "env": {
-         "ALPINE_VERSION": "3.23",
+         "ALPINE_VERSION": "3.24.2",
          "YOUR_TARGET_VERSION": "1.0.0",
-          "UBI10_MINIMAL_VERSION": "10.1-1778576723"
+         "UBI10_MINIMAL_VERSION": "10.2-1790556942"
        }
      }
    }
@@ -250,7 +264,7 @@ Invalid examples:
 1. `scripts/download.sh` resolves each target's download resources from `metadata.json`, then the build script runs Docker Buildx
 2. Docker BuildKit executes the multi-stage Dockerfile via `docker buildx build`
 3. Built artifacts go to `.out/<target>/` for both local builds and CI
-4. Verify stages run inside UBI9 Micro, and the final exported artifact comes from the target's `scratch` stage
+4. Verify stages run inside UBI10 Minimal, and the final exported artifact comes from the target's `scratch` stage
 
 Build caching uses the root `.cache/<target>/` directories.
 

@@ -4,10 +4,10 @@ stages:
 
 generate-package-pipeline:
   stage: prepare
-  image: golang:1.26.2
+  image: golang:1.27.1
   script:
     - export PATH="/usr/local/go/bin:${GOPATH:-/go}/bin:$PATH"
-    - go install github.com/google/go-jsonnet/cmd/jsonnet@latest
+    - go install github.com/google/go-jsonnet/cmd/jsonnet@v0.22.0
     - |-
       jsonnet -S \
         --ext-str "branch=${CI_COMMIT_BRANCH:-}" \

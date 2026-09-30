@@ -35,7 +35,7 @@ local includes = [
 local publishJobs = {
   ['publish-' + t]: {
     stage: 'publish',
-    image: 'curlimages/curl',
+    image: 'curlimages/curl:8.22.0',
     needs: [{ job: 'gitlab-static-package-' + t, artifacts: true }],
     script: [
       |||

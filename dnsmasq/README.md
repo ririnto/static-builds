@@ -8,6 +8,7 @@ This target builds a static PIE `dnsmasq` binary from source.
 
 - Build uses upstream `make install` with hardened static flags (`-static -static-pie`) from `dnsmasq/Dockerfile`.
 - No repository-specific feature toggles are passed to `dnsmasq` `make`; compile-time capabilities follow upstream defaults for the selected release.
+- GNU coreutils supplies the version sorting required by upstream's version detection script.
 
 ### Runtime/Packaging Snapshot
 
@@ -19,6 +20,7 @@ This target builds a static PIE `dnsmasq` binary from source.
 - This target follows upstream `dnsmasq` defaults for much of its compile-time feature surface instead of passing many repository-specific feature toggles.
 - The approved release artifact for this target is the static `sbin/dnsmasq` binary.
 - Treat `dnsmasq -v` and `dnsmasq --help` as the authoritative runtime contract for this target's allowed feature set.
+- The verify stage requires `dnsmasq -v` to report the version selected in `metadata.json`.
 
 ## How to Verify
 
@@ -34,17 +36,17 @@ This target builds a static PIE `dnsmasq` binary from source.
 ### dnsmasq -v
 
 ```text
-Dnsmasq version   Copyright (c) 2000-2025 Simon Kelley
-Compile time options: IPv6 GNU-getopt no-DBus no-UBus no-i18n no-IDN DHCP
-  DHCPv6 no-Lua TFTP no-conntrack ipset no-nftset auth no-DNSSEC
-  loop-detect inotify dumpfile
+Dnsmasq version 2.93  Copyright (c) 2000-2026 Simon Kelley
+Compile time options: IPv6 GNU-getopt no-DBus no-UBus no-i18n no-IDN DHCP DHCPv6 no-Lua TFTP no-conntrack ipset no-nftset auth no-DNSSEC loop-detect inotify dumpfile
 
 This software comes with ABSOLUTELY NO WARRANTY.
-Dnsmasq is free software, and you are welcome to redistribute it under
-  the terms of the GNU General Public License, version 2 or 3.
+Dnsmasq is free software, and you are welcome to redistribute it
+under the terms of the GNU General Public License, version 2 or 3.
 ```
 
 ### dnsmasq --help
+
+This help output records an earlier build.
 
 ```text
 Usage: dnsmasq [options]

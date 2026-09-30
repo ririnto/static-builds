@@ -29,6 +29,7 @@ ADD ".tmp/abseil-cpp-${ABSEIL_CPP_VERSION}.tar.gz" /tmp/
 RUN cmake -S "/tmp/abseil-cpp-${ABSEIL_CPP_VERSION}" -B /tmp/abseil-build \
         -DCMAKE_INSTALL_PREFIX=/opt \
         -DCMAKE_CXX_FLAGS="${HARDENING_CFLAGS}" \
+        -DCMAKE_CXX_STANDARD=17 \
         -DCMAKE_INSTALL_LIBDIR=lib \
         -DCMAKE_BUILD_TYPE=Release \
         -DBUILD_SHARED_LIBS=OFF \
@@ -46,6 +47,7 @@ COPY --from=otel-abseil /opt /opt
 RUN cmake -S "/tmp/protobuf-${PROTOBUF_VERSION}" -B /tmp/protobuf-build \
         -DCMAKE_INSTALL_PREFIX=/opt \
         -DCMAKE_CXX_FLAGS="${HARDENING_CFLAGS}" \
+        -DCMAKE_CXX_STANDARD=17 \
         -DCMAKE_INSTALL_LIBDIR=lib \
         -DCMAKE_BUILD_TYPE=Release \
         -DBUILD_SHARED_LIBS=OFF \
@@ -61,10 +63,11 @@ FROM otel-base AS otel-rapidyaml
 ARG RAPIDYAML_VERSION
 ARG HARDENING_CFLAGS
 ADD ".tmp/rapidyaml-${RAPIDYAML_VERSION}-src.tgz" /tmp/
-RUN cmake -S "/tmp/rapidyaml-${RAPIDYAML_VERSION}-src" -B /tmp/rapidyaml-build \
+RUN cmake -S "/tmp/rapidyaml.v${RAPIDYAML_VERSION}" -B /tmp/rapidyaml-build \
         -DCMAKE_INSTALL_PREFIX=/opt \
         -DCMAKE_C_FLAGS="${HARDENING_CFLAGS}" \
         -DCMAKE_CXX_FLAGS="${HARDENING_CFLAGS}" \
+        -DCMAKE_CXX_STANDARD=17 \
         -DCMAKE_INSTALL_LIBDIR=lib \
         -DCMAKE_BUILD_TYPE=Release \
         -DBUILD_SHARED_LIBS=OFF \
@@ -87,6 +90,7 @@ RUN cmake -S "/tmp/re2-${RE2_VERSION}" -B /tmp/re2-build \
         -DCMAKE_INSTALL_PREFIX=/opt \
         -DCMAKE_C_FLAGS="${HARDENING_CFLAGS}" \
         -DCMAKE_CXX_FLAGS="${HARDENING_CFLAGS}" \
+        -DCMAKE_CXX_STANDARD=17 \
         -DCMAKE_INSTALL_LIBDIR=lib \
         -DCMAKE_BUILD_TYPE=Release \
         -DBUILD_SHARED_LIBS=OFF \
@@ -97,16 +101,21 @@ RUN cmake -S "/tmp/re2-${RE2_VERSION}" -B /tmp/re2-build \
 
 FROM otel-base AS otel-grpc
 ARG GRPC_VERSION
+ARG GRPC_PROTO_REF
 ARG HARDENING_CFLAGS
 ADD ".tmp/grpc-${GRPC_VERSION}.tar.gz" /tmp/
+ADD ".tmp/grpc-proto-${GRPC_PROTO_REF}.tar.gz" /tmp/
 COPY --from=otel-abseil /opt /opt
 COPY --from=otel-protobuf /opt /opt
 COPY --from=otel-re2 /opt /opt
-RUN apk add c-ares-dev curl-dev curl-static brotli-static libidn2-static libpsl-static libunistring-static nghttp2-static zstd-static \
+RUN rmdir "/tmp/grpc-${GRPC_VERSION}/third_party/grpc-proto" \
+    && mv "/tmp/grpc-proto-${GRPC_PROTO_REF}" "/tmp/grpc-${GRPC_VERSION}/third_party/grpc-proto" \
+    && apk add c-ares-dev curl-dev curl-static brotli-static libidn2-static libpsl-static libunistring-static nghttp2-static zstd-static \
     && cmake -S "/tmp/grpc-${GRPC_VERSION}" -B /tmp/grpc-build \
         -DCMAKE_INSTALL_PREFIX=/opt \
         -DCMAKE_C_FLAGS="${HARDENING_CFLAGS}" \
         -DCMAKE_CXX_FLAGS="${HARDENING_CFLAGS}" \
+        -DCMAKE_CXX_STANDARD=17 \
         -DCMAKE_INSTALL_LIBDIR=lib \
         -DCMAKE_BUILD_TYPE=Release \
         -DBUILD_SHARED_LIBS=OFF \
@@ -140,10 +149,14 @@ RUN apk add c-ares-dev curl-dev curl-static brotli-static libidn2-static libpsl-
 FROM otel-base AS otel-cpp
 ARG HAPROXY_OTEL_C_WRAPPER_VERSION
 ARG OPENTELEMETRY_CPP_VERSION
+ARG OPENTELEMETRY_CPP_CSTDINT_FIX_REF
 ARG OPENTELEMETRY_PROTO_VERSION
+ARG NLOHMANN_JSON_VERSION
 ARG HARDENING_CFLAGS
 ADD ".tmp/opentelemetry-cpp-${OPENTELEMETRY_CPP_VERSION}.tar.gz" /tmp/
+COPY ".tmp/opentelemetry-cpp-${OPENTELEMETRY_CPP_CSTDINT_FIX_REF}.patch" /tmp/
 ADD ".tmp/opentelemetry-proto-${OPENTELEMETRY_PROTO_VERSION}.tar.gz" /tmp/
+ADD ".tmp/nlohmann-json-${NLOHMANN_JSON_VERSION}.tar.gz" /tmp/
 ADD ".tmp/opentelemetry-c-wrapper-${HAPROXY_OTEL_C_WRAPPER_VERSION}.tar.gz" /build/
 COPY --from=otel-abseil /opt /opt
 COPY --from=otel-protobuf /opt /opt
@@ -153,18 +166,20 @@ RUN apk add c-ares-dev curl-dev curl-static brotli-static libidn2-static libpsl-
     && mv "/build/opentelemetry-c-wrapper-${HAPROXY_OTEL_C_WRAPPER_VERSION}" /build/opentelemetry-c-wrapper \
     && cd "/tmp/opentelemetry-cpp-${OPENTELEMETRY_CPP_VERSION}" \
     && for patch_file in /build/opentelemetry-c-wrapper/scripts/build/000*-opentelemetry-cpp-*.patch; do patch -p1 < "${patch_file}"; done \
+    && git apply --include=sdk/include/opentelemetry/sdk/metrics/view/predicate_factory.h "/tmp/opentelemetry-cpp-${OPENTELEMETRY_CPP_CSTDINT_FIX_REF}.patch" \
     && PKG_CONFIG_PATH=/opt/lib/pkgconfig cmake -S "/tmp/opentelemetry-cpp-${OPENTELEMETRY_CPP_VERSION}" -B build \
         -DCMAKE_INSTALL_PREFIX=/opt \
         -DCMAKE_C_FLAGS="${HARDENING_CFLAGS}" \
         -DCMAKE_CXX_FLAGS="${HARDENING_CFLAGS}" \
+        -DCMAKE_CXX_STANDARD=17 \
         -DCMAKE_INSTALL_LIBDIR=lib \
         -DCMAKE_BUILD_TYPE=Release \
         -DBUILD_SHARED_LIBS=OFF \
-        -DBUILD_PACKAGE=OFF \
+        -DOTELCPP_BUILD_PACKAGE=OFF \
         -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
-        -DCMAKE_CXX_STANDARD=14 \
         -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
         -DOTELCPP_PROTO_PATH="/tmp/opentelemetry-proto-${OPENTELEMETRY_PROTO_VERSION}" \
+        -DFETCHCONTENT_SOURCE_DIR_NLOHMANN_JSON="/tmp/json-${NLOHMANN_JSON_VERSION}" \
         -DOPENSSL_USE_STATIC_LIBS=TRUE \
         -DOPENSSL_ROOT_DIR=/usr \
         -DOPENSSL_SSL_LIBRARY=/usr/lib/libssl.a \
@@ -174,28 +189,29 @@ RUN apk add c-ares-dev curl-dev curl-static brotli-static libidn2-static libpsl-
         -DCURL_INCLUDE_DIR=/usr/include \
         -DZLIB_LIBRARY=/usr/lib/libz.a \
         -DZLIB_INCLUDE_DIR=/usr/include \
-        -DWITH_ABI_VERSION_1=OFF \
-        -DWITH_ABI_VERSION_2=ON \
-        -DWITH_CONFIGURATION=ON \
-        -DOPENTELEMETRY_INSTALL=ON \
-        -DWITH_NO_DEPRECATED_CODE=ON \
-        -DWITH_OTLP_GRPC=ON \
-        -DWITH_OTLP_HTTP=ON \
-        -DWITH_OTLP_FILE=ON \
-        -DWITH_OTLP_HTTP_COMPRESSION=ON \
-        -DWITH_ZIPKIN=ON \
-        -DWITH_ELASTICSEARCH=ON \
+        -DOTELCPP_WITH_ABI_VERSION_1=OFF \
+        -DOTELCPP_WITH_ABI_VERSION_2=ON \
+        -DOTELCPP_WITH_CONFIGURATION=ON \
+        -DOTELCPP_INSTALL=ON \
+        -DOTELCPP_WITH_NO_DEPRECATED_CODE=ON \
+        -DOTELCPP_WITH_OTLP_GRPC=ON \
+        -DOTELCPP_WITH_OTLP_HTTP=ON \
+        -DOTELCPP_WITH_OTLP_FILE=ON \
+        -DOTELCPP_WITH_OTLP_HTTP_COMPRESSION=ON \
+        -DOTELCPP_WITH_ZIPKIN=ON \
+        -DOTELCPP_WITH_ELASTICSEARCH=ON \
         -DOTELCPP_VERSIONED_LIBS=OFF \
-        -DWITH_ASYNC_EXPORT_PREVIEW=OFF \
-        -DWITH_THREAD_INSTRUMENTATION_PREVIEW=OFF \
-        -DWITH_METRICS_EXEMPLAR_PREVIEW=OFF \
-        -DWITH_OPENTRACING=OFF \
-        -DWITH_BENCHMARK=OFF \
-        -DWITH_EXAMPLES=OFF \
-        -DWITH_FUNC_TESTS=OFF \
+        -DOTELCPP_WITH_ASYNC_EXPORT_PREVIEW=OFF \
+        -DOTELCPP_WITH_THREAD_INSTRUMENTATION_PREVIEW=OFF \
+        -DOTELCPP_WITH_METRICS_EXEMPLAR_PREVIEW=OFF \
+        -DOTELCPP_WITH_OPENTRACING=OFF \
+        -DOTELCPP_WITH_BENCHMARK=OFF \
+        -DOTELCPP_WITH_EXAMPLES=OFF \
+        -DOTELCPP_WITH_FUNC_TESTS=OFF \
         -DBUILD_TESTING=OFF \
     && cmake --build build --parallel "$(nproc)" \
-    && cmake --install build \
+    && cmake --install build
+RUN apk add gawk \
     && cd /build/opentelemetry-c-wrapper \
     && PKG_CONFIG_PATH=/opt/lib/pkgconfig:/usr/lib/pkgconfig cmake -S . -B build \
         -DCMAKE_INSTALL_PREFIX=/opt \
@@ -318,6 +334,7 @@ RUN PKG_CONFIG_PATH=/opt/lib/pkgconfig make "-j$(nproc)" \
     # OTEL_INC \
     # OTEL_LIB \
     # OTEL_RUNPATH \
+    OTEL_LDFLAGS="-Wl,--start-group $(PKG_CONFIG_PATH=/opt/lib/pkgconfig pkg-config --libs --static opentelemetry-c-wrapper opentelemetry_instrumentation_scope opentelemetry_otlp_common) -Wl,--end-group" \
     OTEL_STATIC=1 \
     OTEL_USE_VARS=1 \
     # PCRE_CONFIG \
