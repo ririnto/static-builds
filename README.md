@@ -70,9 +70,30 @@ docker run --rm \
 ### Dependency Updates
 
 `metadata.json` defines source versions and build image versions for every target.
-Use the latest stable release when updating these values.
+Use the latest supported LTS release when upstream provides an LTS series.
+Use the supported stable release when upstream does not provide an LTS series.
 For nginx, follow the stable release series.
+Use release tags for source archives and dependency references.
+Use a maintained upstream branch when no suitable release tag exists.
+Do not pin dependencies with commit hashes or container image digests.
+The downloader refreshes branch archives on every call and reuses cached release archives.
 Run `make build <target>` for each affected target before creating release tags.
+
+Upstream projects use different support policies.
+The following policies guide version selection.
+
+| Dependency | Upstream Policy |
+| --- | --- |
+| HAProxy | Select the latest supported [LTS branch](https://www.haproxy.org/). |
+| Abseil | Select the latest supported [LTS release](https://abseil.io/about/releases). |
+| nginx | Select the [stable release series](https://nginx.org/en/download.html). |
+| Go | Select a stable release covered by the [Go support policy](https://go.dev/doc/devel/release#policy). |
+| Alpine | Select a stable branch covered by the [repository support policy](https://alpinelinux.org/releases/). |
+| UBI | Follow the [UBI support lifecycle](https://access.redhat.com/support/policy/updates/ubi). |
+| Other dependencies | Select stable releases when upstream provides no LTS series. |
+
+GitHub release jobs use the `ubuntu-26.04` LTS runner label.
+GitLab child pipelines select the release component through `CI_COMMIT_REF_NAME`, which names the current branch or tag.
 
 `.github/dependabot.yaml` checks GitHub Actions every Monday at 09:00 in `Asia/Seoul`.
 It groups action updates into one pull request.

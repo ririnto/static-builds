@@ -149,12 +149,11 @@ RUN rmdir "/tmp/grpc-${GRPC_VERSION}/third_party/grpc-proto" \
 FROM otel-base AS otel-cpp
 ARG HAPROXY_OTEL_C_WRAPPER_VERSION
 ARG OPENTELEMETRY_CPP_VERSION
-ARG OPENTELEMETRY_CPP_CSTDINT_FIX_REF
 ARG OPENTELEMETRY_PROTO_VERSION
 ARG NLOHMANN_JSON_VERSION
 ARG HARDENING_CFLAGS
 ADD ".tmp/opentelemetry-cpp-${OPENTELEMETRY_CPP_VERSION}.tar.gz" /tmp/
-COPY ".tmp/opentelemetry-cpp-${OPENTELEMETRY_CPP_CSTDINT_FIX_REF}.patch" /tmp/
+COPY haproxy/opentelemetry-cpp-cstdint.patch /tmp/
 ADD ".tmp/opentelemetry-proto-${OPENTELEMETRY_PROTO_VERSION}.tar.gz" /tmp/
 ADD ".tmp/nlohmann-json-${NLOHMANN_JSON_VERSION}.tar.gz" /tmp/
 ADD ".tmp/opentelemetry-c-wrapper-${HAPROXY_OTEL_C_WRAPPER_VERSION}.tar.gz" /build/
@@ -166,7 +165,7 @@ RUN apk add c-ares-dev curl-dev curl-static brotli-static libidn2-static libpsl-
     && mv "/build/opentelemetry-c-wrapper-${HAPROXY_OTEL_C_WRAPPER_VERSION}" /build/opentelemetry-c-wrapper \
     && cd "/tmp/opentelemetry-cpp-${OPENTELEMETRY_CPP_VERSION}" \
     && for patch_file in /build/opentelemetry-c-wrapper/scripts/build/000*-opentelemetry-cpp-*.patch; do patch -p1 < "${patch_file}"; done \
-    && git apply --include=sdk/include/opentelemetry/sdk/metrics/view/predicate_factory.h "/tmp/opentelemetry-cpp-${OPENTELEMETRY_CPP_CSTDINT_FIX_REF}.patch" \
+    && patch -p1 < /tmp/opentelemetry-cpp-cstdint.patch \
     && PKG_CONFIG_PATH=/opt/lib/pkgconfig cmake -S "/tmp/opentelemetry-cpp-${OPENTELEMETRY_CPP_VERSION}" -B build \
         -DCMAKE_INSTALL_PREFIX=/opt \
         -DCMAKE_C_FLAGS="${HARDENING_CFLAGS}" \
@@ -226,7 +225,7 @@ RUN apk add gawk \
 
 FROM alpine:${ALPINE_VERSION} AS build
 ARG HAPROXY_VERSION
-ARG HAPROXY_OTEL_ADDON_REF
+ARG HAPROXY_OTEL_ADDON_VERSION
 ARG TARGET_PREFIX
 
 WORKDIR /build
@@ -251,12 +250,12 @@ RUN --mount=type=cache,target=/var/cache/apk \
         pcre2-static \
         zlib-static
 ADD ".tmp/haproxy-${HAPROXY_VERSION}.tar.gz" /build/
-ADD ".tmp/haproxy-opentelemetry-${HAPROXY_OTEL_ADDON_REF}.tar.gz" /build/
+ADD ".tmp/haproxy-opentelemetry-${HAPROXY_OTEL_ADDON_VERSION}.tar.gz" /build/
 COPY --from=otel-cpp /opt /opt
 WORKDIR "/build/haproxy-${HAPROXY_VERSION}"
 RUN PKG_CONFIG_PATH=/opt/lib/pkgconfig make "-j$(nproc)" \
     TARGET=linux-musl \
-    EXTRA_MAKE="/build/haproxy-opentelemetry-${HAPROXY_OTEL_ADDON_REF}" \
+    EXTRA_MAKE="/build/haproxy-opentelemetry-${HAPROXY_OTEL_ADDON_VERSION}" \
     USE_EPOLL=1 \
     # USE_KQUEUE \
     # USE_EVPORTS \

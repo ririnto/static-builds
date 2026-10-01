@@ -72,14 +72,13 @@
       "ABSEIL_CPP_VERSION": "20260817.0",
       "ALPINE_VERSION": "3.24.2",
       "GRPC_VERSION": "1.84.0",
-      "GRPC_PROTO_REF": "ec30f589e2519d595688b9a42f88a91bdd6b733f",
-      "HAPROXY_OTEL_ADDON_REF": "4d52326b45c6211436b76e609030568974017db7",
+      "GRPC_PROTO_REF": "master",
+      "HAPROXY_OTEL_ADDON_VERSION": "2.3.0",
       "HAPROXY_OTEL_C_WRAPPER_VERSION": "3.4.0",
       "HAPROXY_VERSION": "3.4.6",
       "HAPROXY_VERSION_SERIES": "3.4",
       "NLOHMANN_JSON_VERSION": "3.12.0",
       "OPENTELEMETRY_CPP_VERSION": "1.29.0",
-      "OPENTELEMETRY_CPP_CSTDINT_FIX_REF": "e62f627ccb220e9c72eaebf32b246ec0bf98d60f",
       "OPENTELEMETRY_PROTO_VERSION": "1.11.1",
       "PROTOBUF_VERSION": "36.2",
       "RAPIDYAML_VERSION": "0.16.0",
@@ -96,8 +95,8 @@
         "name": "opentelemetry-c-wrapper-{HAPROXY_OTEL_C_WRAPPER_VERSION}.tar.gz"
       },
       {
-        "url": "https://github.com/haproxytech/haproxy-opentelemetry/archive/{HAPROXY_OTEL_ADDON_REF}.tar.gz",
-        "name": "haproxy-opentelemetry-{HAPROXY_OTEL_ADDON_REF}.tar.gz"
+        "url": "https://github.com/haproxytech/haproxy-opentelemetry/archive/refs/tags/v{HAPROXY_OTEL_ADDON_VERSION}.tar.gz",
+        "name": "haproxy-opentelemetry-{HAPROXY_OTEL_ADDON_VERSION}.tar.gz"
       },
       {
         "url": "https://github.com/abseil/abseil-cpp/archive/refs/tags/{ABSEIL_CPP_VERSION}.tar.gz",
@@ -120,7 +119,7 @@
         "name": "grpc-{GRPC_VERSION}.tar.gz"
       },
       {
-        "url": "https://github.com/grpc/grpc-proto/archive/{GRPC_PROTO_REF}.tar.gz",
+        "url": "https://github.com/grpc/grpc-proto/archive/refs/heads/{GRPC_PROTO_REF}.tar.gz",
         "name": "grpc-proto-{GRPC_PROTO_REF}.tar.gz"
       },
       {
@@ -130,10 +129,6 @@
       {
         "url": "https://github.com/open-telemetry/opentelemetry-cpp/archive/refs/tags/v{OPENTELEMETRY_CPP_VERSION}.tar.gz",
         "name": "opentelemetry-cpp-{OPENTELEMETRY_CPP_VERSION}.tar.gz"
-      },
-      {
-        "url": "https://github.com/open-telemetry/opentelemetry-cpp/commit/{OPENTELEMETRY_CPP_CSTDINT_FIX_REF}.patch",
-        "name": "opentelemetry-cpp-{OPENTELEMETRY_CPP_CSTDINT_FIX_REF}.patch"
       },
       {
         "url": "https://github.com/open-telemetry/opentelemetry-proto/archive/refs/tags/v{OPENTELEMETRY_PROTO_VERSION}.tar.gz",
@@ -169,7 +164,7 @@
     "env": {
       "ALPINE_VERSION": "3.24.2",
       "UBI10_MINIMAL_VERSION": "10.2-1790556942",
-      "HTTPD_VERSION": "2.4.68",
+      "HTTPD_VERSION": "2.4.69",
       "APR_VERSION": "1.7.6",
       "APR_UTIL_VERSION": "1.6.5"
     },

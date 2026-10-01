@@ -2,7 +2,7 @@ local metadata = import '../../metadata.json';
 local branch = std.extVar('branch');
 local targetFilter = std.extVar('target');
 
-local COMPONENT_REF = '$CI_SERVER_FQDN/$CI_PROJECT_PATH/static-release@$CI_COMMIT_SHA';
+local COMPONENT_REF = '$CI_SERVER_FQDN/$CI_PROJECT_PATH/static-release@$CI_COMMIT_REF_NAME';
 
 local versionSuffix =
   if std.length(branch) > 0 && std.startsWith(branch, 'feature/')

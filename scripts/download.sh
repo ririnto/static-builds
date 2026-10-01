@@ -1,5 +1,4 @@
 #!/usr/bin/env sh
-# -*- coding: utf-8 -*-
 set -e
 if [ "$#" -lt 1 ]; then
   echo "Usage: $0 <target>"
@@ -16,6 +15,7 @@ esac
 ROOT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 
 # Download a tarball from a URL to a destination file with retry support.
+# Refresh branch archives on every call and reuse cached release archives.
 #
 # @param url URL to download from.
 # @param dest_file Destination file path.
@@ -36,10 +36,15 @@ download_tarball() {
   base_delay="${DOWNLOAD_BASE_DELAY:-1}"
   mkdir -p "${dest_dir}"
   echo "Downloading ${url} -> ${dest_file}" >&2
-  if [ -f "${dest_file}" ] && [ -s "${dest_file}" ]; then
-    echo "File exists: ${dest_file}" >&2
-    return 0
-  fi
+  case "${url}" in
+    */archive/refs/heads/*) ;;
+    *)
+      if [ -f "${dest_file}" ] && [ -s "${dest_file}" ]; then
+        echo "File exists: ${dest_file}" >&2
+        return 0
+      fi
+      ;;
+  esac
   case "${url}" in
     https://*) ;;
     *)

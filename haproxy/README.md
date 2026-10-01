@@ -28,9 +28,11 @@ This target builds a static PIE `haproxy` binary for musl-based deployments.
 - The OpenTelemetry dependency stages use C++17 and the SDK's `OTELCPP_*` CMake options.
 - The wrapper's bundled SDK patches also apply to the SDK version selected in `metadata.json`.
 - rapidyaml's source archive extracts into `rapidyaml.v<version>`.
-- `GRPC_PROTO_REF` selects the `grpc-proto` submodule revision required by the selected gRPC release.
+- `HAPROXY_OTEL_ADDON_VERSION` selects the addon's release tag.
+- `GRPC_PROTO_REF` selects `grpc-proto`'s maintained `master` branch because upstream provides no release tags.
 - The SDK uses the prefetched nlohmann JSON archive through CMake's `FETCHCONTENT_SOURCE_DIR_NLOHMANN_JSON` option.
-- The SDK applies the header change from upstream's [`<cstdint>` fix](https://github.com/open-telemetry/opentelemetry-cpp/commit/e62f627ccb220e9c72eaebf32b246ec0bf98d60f) for GCC 15 compilation.
+- The SDK applies the local header patch from upstream's [`<cstdint>` fix](https://github.com/open-telemetry/opentelemetry-cpp/pull/4574) for GCC 15 compilation.
+- Remove this patch when the selected SDK release includes the fix.
 - The wrapper requires GNU awk to generate its semantic convention headers.
 - HAProxy links the SDK's instrumentation scope and OTLP common libraries through `pkg-config` alongside the wrapper.
 - The OpenTelemetry static libraries use a linker group to resolve references across archives.

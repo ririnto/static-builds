@@ -58,6 +58,10 @@ static-builds/
 - New top-level directories outside STRUCTURE MUST NOT be added (for example, `docs/`, `tests/`).
 - EditorConfig: 4-space indent (2 for .sh/.yaml)
 - `metadata.json` MUST be the canonical source of build and release metadata for all targets.
+- Versions MUST use the latest supported upstream LTS series when one exists.
+- Projects without an upstream LTS series MUST use supported stable releases when available.
+- Dependency references MUST use release tags or maintained upstream branches, never commit hashes or container image digests.
+- Branch source archives MUST be refreshed on each download call.
 - Target dir: MUST have Dockerfile. Target-specific download metadata MUST live under that target's `metadata.json` `downloads` entries, and downloader output MUST land directly under root `.tmp/`.
 - Upstream source downloads MUST NOT enforce checksum verification/pinning because some upstreams do not publish checksum files. Consumers SHOULD validate sources independently when possible.
 - Release workflow MUST use `.github/workflows/release-from-tag.yaml` as the only tag-triggered entrypoint and MUST delegate build/release logic to `.github/workflows/template-release.yaml`.
