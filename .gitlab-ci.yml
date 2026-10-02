@@ -12,6 +12,7 @@ generate-package-pipeline:
       jsonnet -S \
         --ext-str "branch=${CI_COMMIT_BRANCH:-}" \
         --ext-str "target=" \
+        --ext-str "component_ref=${CI_SERVER_FQDN}/${CI_PROJECT_PATH}/static-release@${CI_COMMIT_REF_NAME}" \
         .gitlab/ci/package-pipeline.jsonnet \
         > package-pipeline.yaml
   artifacts:

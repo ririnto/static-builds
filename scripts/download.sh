@@ -16,6 +16,8 @@ ROOT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 
 # Download a tarball from a URL to a destination file with retry support.
 # Refresh branch archives on every call and reuse cached release archives.
+# Serialize branch downloads per destination with a 60-second lock wait limit.
+# Run in a background shell with an explicit exit to apply cleanup traps.
 #
 # @param url URL to download from.
 # @param dest_file Destination file path.
@@ -35,9 +37,28 @@ download_tarball() {
   attempt=1
   base_delay="${DOWNLOAD_BASE_DELAY:-1}"
   mkdir -p "${dest_dir}"
+  tmp_file=''
+  lock_dir=''
+  child_pid=''
+  trap 'if [ -n "${tmp_file}" ]; then rm -f "${tmp_file}"; fi; if [ -n "${lock_dir}" ]; then rmdir "${lock_dir}"; fi' 0
+  trap 'if [ -n "${child_pid}" ]; then kill -TERM "${child_pid}" 2>/dev/null || :; wait "${child_pid}" 2>/dev/null || :; fi; exit 1' HUP INT TERM
   echo "Downloading ${url} -> ${dest_file}" >&2
   case "${url}" in
-    */archive/refs/heads/*) ;;
+    */archive/refs/heads/*)
+      lock_wait=0
+      while ! mkdir "${dest_file}.lock" 2>/dev/null; do
+        if [ "${lock_wait}" -ge 60 ]; then
+          echo "Error: Timed out waiting for branch download lock: ${dest_file}.lock" >&2
+          return 1
+        fi
+        sleep 1 &
+        child_pid=$!
+        wait "${child_pid}"
+        child_pid=''
+        lock_wait=$((lock_wait + 1))
+      done
+      lock_dir="${dest_file}.lock"
+      ;;
     *)
       if [ -f "${dest_file}" ] && [ -s "${dest_file}" ]; then
         echo "File exists: ${dest_file}" >&2
@@ -59,23 +80,22 @@ download_tarball() {
   while [ "${attempt}" -le "${retries}" ]; do
     rm -f "${tmp_file}"
     if command -v curl >/dev/null 2>&1; then
-      if curl --fail --location --silent --show-error \
+      curl --fail --location --silent --show-error \
         --connect-timeout "${connect_timeout}" \
         --max-time "${max_time}" \
-        --output "${tmp_file}" "${url}"; then
-        rc=0
-      else
-        rc=$?
-      fi
+        --output "${tmp_file}" "${url}" &
     else
-      if wget -q \
+      wget -q \
         -T "${connect_timeout}" \
-        -O "${tmp_file}" "${url}"; then
-        rc=0
-      else
-        rc=$?
-      fi
+        -O "${tmp_file}" "${url}" &
     fi
+    child_pid=$!
+    if wait "${child_pid}"; then
+      rc=0
+    else
+      rc=$?
+    fi
+    child_pid=''
     if [ "${rc}" -eq 0 ]; then
       if [ -s "${tmp_file}" ]; then
         mv -f "${tmp_file}" "${dest_file}"
@@ -100,17 +120,29 @@ download_tarball() {
         delay=60
       fi
       echo "Retrying in ${delay} seconds..." >&2
-      sleep "${delay}"
+      sleep "${delay}" &
+      child_pid=$!
+      wait "${child_pid}"
+      child_pid=''
     fi
   done
   return 1
 }
 
+downloads=$(sh "${ROOT_DIR}/scripts/metadata.sh" get-downloads "${TARGET}")
+download_pid=''
+trap 'if [ -n "${download_pid}" ]; then kill -TERM "${download_pid}" 2>/dev/null || :; wait "${download_pid}" 2>/dev/null || :; fi; exit 1' HUP INT TERM
 while IFS="$(printf '	')" read -r url file_name || [ -n "${url}" ]; do
   if [ -z "${url}" ] || [ -z "${file_name}" ]; then
     continue
   fi
-  download_tarball "${url}" "${ROOT_DIR}/.tmp/${file_name}"
+  (
+    download_tarball "${url}" "${ROOT_DIR}/.tmp/${file_name}"
+    exit 0
+  ) &
+  download_pid=$!
+  wait "${download_pid}"
+  download_pid=''
 done <<EOF
-$(sh "${ROOT_DIR}/scripts/metadata.sh" get-downloads "${TARGET}")
+${downloads}
 EOF

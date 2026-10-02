@@ -77,6 +77,8 @@ Use release tags for source archives and dependency references.
 Use a maintained upstream branch when no suitable release tag exists.
 Do not pin dependencies with commit hashes or container image digests.
 The downloader refreshes branch archives on every call and reuses cached release archives.
+Concurrent branch downloads use a lock for each destination.
+Lock waits stop after 60 seconds.
 Run `make build <target>` for each affected target before creating release tags.
 
 Upstream projects use different support policies.
@@ -94,6 +96,7 @@ The following policies guide version selection.
 
 GitHub release jobs use the `ubuntu-26.04` LTS runner label.
 GitLab child pipelines select the release component through `CI_COMMIT_REF_NAME`, which names the current branch or tag.
+The parent job expands the complete component reference before generating the child pipeline.
 
 `.github/dependabot.yaml` checks GitHub Actions every Monday at 09:00 in `Asia/Seoul`.
 It groups action updates into one pull request.
@@ -128,7 +131,7 @@ Each target must follow this structure:
        "env": {
          "ALPINE_VERSION": "3.24.2",
          "YOUR_TARGET_VERSION": "1.0.0",
-         "UBI10_MINIMAL_VERSION": "10.2-1790556942"
+         "UBI10_MINIMAL_VERSION": "10.2-1790753097"
        }
      }
    }

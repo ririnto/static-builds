@@ -2,8 +2,6 @@ local metadata = import '../../metadata.json';
 local branch = std.extVar('branch');
 local targetFilter = std.extVar('target');
 
-local COMPONENT_REF = '$CI_SERVER_FQDN/$CI_PROJECT_PATH/static-release@$CI_COMMIT_REF_NAME';
-
 local versionSuffix =
   if std.length(branch) > 0 && std.startsWith(branch, 'feature/')
   then '-beta'
@@ -24,7 +22,7 @@ local allTargetsMode = targetFilter == '';
 
 local includes = [
   {
-    component: COMPONENT_REF,
+    component: std.extVar('component_ref'),
     inputs:
       { stage: 'build', target: t, package_name: packageName(t) }
       + (if allTargetsMode then { run_policy: 'manual' } else {}),

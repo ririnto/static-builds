@@ -8,7 +8,7 @@
       "ALPINE_VERSION": "3.24.2",
       "NGINX_VERSION": "1.30.5",
       "NGINX_VTS_MODULE_VERSION": "0.2.7",
-      "UBI10_MINIMAL_VERSION": "10.2-1790556942"
+      "UBI10_MINIMAL_VERSION": "10.2-1790753097"
     },
     "downloads": [
       {
@@ -37,7 +37,7 @@
       "NGINX_LUA_UPSTREAM_MODULE_VERSION": "0.08",
       "NGINX_VERSION": "1.30.5",
       "NGINX_VTS_MODULE_VERSION": "0.2.7",
-      "UBI10_MINIMAL_VERSION": "10.2-1790556942"
+      "UBI10_MINIMAL_VERSION": "10.2-1790753097"
     },
     "downloads": [
       {
@@ -83,7 +83,7 @@
       "PROTOBUF_VERSION": "36.2",
       "RAPIDYAML_VERSION": "0.16.0",
       "RE2_VERSION": "2025-11-05",
-      "UBI10_MINIMAL_VERSION": "10.2-1790556942"
+      "UBI10_MINIMAL_VERSION": "10.2-1790753097"
     },
     "downloads": [
       {
@@ -145,7 +145,7 @@
     "env": {
       "GO_VERSION": "1.27.1",
       "APACHE_EXPORTER_VERSION": "1.1.1",
-      "UBI10_MINIMAL_VERSION": "10.2-1790556942"
+      "UBI10_MINIMAL_VERSION": "10.2-1790753097"
     },
     "downloads": [
       {
@@ -163,7 +163,7 @@
     ],
     "env": {
       "ALPINE_VERSION": "3.24.2",
-      "UBI10_MINIMAL_VERSION": "10.2-1790556942",
+      "UBI10_MINIMAL_VERSION": "10.2-1790753097",
       "HTTPD_VERSION": "2.4.69",
       "APR_VERSION": "1.7.6",
       "APR_UTIL_VERSION": "1.6.5"
@@ -192,7 +192,7 @@
     "env": {
       "GOLANG_IMAGE_TAG": "1.27.1-alpine",
       "COREDNS_VERSION": "1.14.7",
-      "UBI10_MINIMAL_VERSION": "10.2-1790556942"
+      "UBI10_MINIMAL_VERSION": "10.2-1790753097"
     },
     "downloads": [
       {
@@ -210,7 +210,7 @@
     "env": {
       "ALPINE_VERSION": "3.24.2",
       "DNSMASQ_VERSION": "2.93",
-      "UBI10_MINIMAL_VERSION": "10.2-1790556942"
+      "UBI10_MINIMAL_VERSION": "10.2-1790753097"
     },
     "downloads": [
       {
@@ -228,7 +228,7 @@
     "env": {
       "ALPINE_VERSION": "3.24.2",
       "VECTOR_VERSION": "0.58.0",
-      "UBI10_MINIMAL_VERSION": "10.2-1790556942"
+      "UBI10_MINIMAL_VERSION": "10.2-1790753097"
     },
     "downloads": [
       {
@@ -246,7 +246,7 @@
     "env": {
       "ALPINE_VERSION": "3.24.2",
       "MONIT_VERSION": "6.0.0",
-      "UBI10_MINIMAL_VERSION": "10.2-1790556942"
+      "UBI10_MINIMAL_VERSION": "10.2-1790753097"
     },
     "downloads": [
       {
