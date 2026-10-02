@@ -98,7 +98,7 @@ GitHub release jobs use the `ubuntu-26.04` LTS runner label.
 GitLab child pipelines select the release component through `CI_COMMIT_REF_NAME`, which names the current branch or tag.
 The parent job expands the complete component reference before generating the child pipeline.
 
-`.github/dependabot.yaml` checks GitHub Actions every Monday at 09:00 in `Asia/Seoul`.
+`.github/dependabot.yaml` checks GitHub Actions weekly.
 It groups action updates into one pull request.
 Dependabot does not update the custom version fields in `metadata.json`.
 Docker image tags come from that metadata through build arguments, so Dependabot cannot resolve them from the Dockerfiles.
