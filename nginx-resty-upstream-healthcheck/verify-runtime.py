@@ -697,6 +697,55 @@ def wait_until(label: str, predicate: Callable[[], Any], timeout: float) -> Any:
     raise VerificationFailure(f"timed out waiting for {label}{detail}")
 
 
+def _print_ipv6_diagnostics(dns: Optional[AuthoritativeDNS], nginx: Optional[Nginx], state: Optional[BackendState]) -> None:
+    """
+    Print bounded resolver, peer-metric, and fixture evidence after a failed IPv6 assertion.
+    """
+    if dns is not None:
+        print(
+            "IPV6_DIAGNOSTIC dns_queries="
+            f"A:{dns.query_count('ipv6.fixture.test', 1)} "
+            f"AAAA:{dns.query_count('ipv6.fixture.test', 28)}",
+            flush=True,
+        )
+    if state is not None:
+        with state.lock:
+            readiness_requests = state.paths["/readyz"]
+        print(f"IPV6_DIAGNOSTIC fixture_readiness_requests={readiness_requests}", flush=True)
+    if nginx is None or nginx.process is None or nginx.process.poll() is not None:
+        print("IPV6_DIAGNOSTIC metrics=unavailable nginx_not_running", flush=True)
+        return
+    try:
+        status, body, _ = nginx.request("/_healthcheck_metrics")
+    except (OSError, http.client.HTTPException, VerificationFailure) as error:
+        print(f"IPV6_DIAGNOSTIC metrics=unavailable error={error}", flush=True)
+        return
+    if status != 200:
+        print(f"IPV6_DIAGNOSTIC metrics=unavailable status={status}", flush=True)
+        return
+    selected = [
+        line
+        for line in body.splitlines()
+        if line.startswith((
+            "nginx_healthcheck_peer_up{",
+            "nginx_healthcheck_check_status{",
+            "nginx_healthcheck_check_code{",
+            "nginx_healthcheck_checks_total{",
+            "nginx_healthcheck_check_failures_total{",
+            "nginx_healthcheck_check_duration_seconds{",
+            "nginx_healthcheck_last_check_timestamp_seconds{",
+            "nginx_healthcheck_errors_total{",
+        ))
+        and 'upstream="ipv6"' in line
+    ]
+    print("IPV6_DIAGNOSTIC metrics_begin", flush=True)
+    for line in selected[:20]:
+        print(f"IPV6_DIAGNOSTIC {line[:500]}", flush=True)
+    if not selected:
+        print("IPV6_DIAGNOSTIC no_ipv6_peer_metric_lines", flush=True)
+    print("IPV6_DIAGNOSTIC metrics_end", flush=True)
+
+
 def parse_labels(value: str) -> Dict[str, str]:
     """
     Parse Prometheus labels while respecting escaped quoted values.
@@ -1409,6 +1458,7 @@ def main() -> None:
     stream_states: Dict[str, StreamBackendState] = {}
     tcp = None
     nginx = None
+    ipv6_state = None
     release_churn = threading.Event()
     try:
         primary_port = free_port("127.0.0.2")
@@ -1458,6 +1508,7 @@ def main() -> None:
             "rise": StreamBackendState("stream-rise", b"PING\r\n", b"BAD\r\n"),
             "tls": StreamBackendState("stream-tls", b"PING\r\n", b"PONG\r\n"),
         }
+        ipv6_state = states["ipv6"]
         stream_states["fragmented"].response_chunks = [b"NG"]
         stream_states["fragmented"].chunk_delay = 0.05
         stream_states["fragmented"].pause_after_first_chunk = True
@@ -1864,6 +1915,7 @@ def main() -> None:
     finally:
         had_failure = sys.exc_info()[1] is not None
         if had_failure:
+            _print_ipv6_diagnostics(dns, nginx, ipv6_state)
             error_log_path = root / "logs" / "error.log"
             try:
                 error_lines = error_log_path.read_text(errors="replace").splitlines()

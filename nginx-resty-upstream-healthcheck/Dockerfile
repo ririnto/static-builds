@@ -57,6 +57,14 @@ RUN ./configure \
     ;
 RUN make "-j$(nproc)"
 RUN make install
+COPY nginx-resty-upstream-healthcheck/verify-stream-send.c /tmp/verify-stream-send.c
+RUN cc -O2 -ffunction-sections -fdata-sections \
+    -I. -I objs -I src/core -I src/event -I src/event/modules \
+    -I src/event/quic -I src/os/unix -I src/http -I src/http/v2 \
+    -I src/http/v3 -I src/http/modules -I src/stream \
+    /tmp/verify-stream-send.c $(find objs/src -name '*.o' ! -name nginx.o) \
+    -Wl,--gc-sections -lssl -lcrypto -lpcre2-8 -lz -latomic \
+    -o /tmp/verify-stream-send && /tmp/verify-stream-send
 
 
 FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify

@@ -3818,6 +3818,7 @@ ngx_stream_native_healthcheck_probe_send(
     ssize_t            n;
 
     c = probe->connection;
+    probe->stage = NGX_HTTP_NATIVE_HEALTHCHECK_SENDING;
     while (probe->request_sent < probe->conf->send_data.len) {
         n = c->send(c, probe->conf->send_data.data + probe->request_sent,
                     probe->conf->send_data.len - probe->request_sent);

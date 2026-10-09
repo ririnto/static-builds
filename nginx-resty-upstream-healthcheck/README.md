@@ -276,6 +276,13 @@ It checks local failure and recovery, DNS membership changes, TLS verification, 
 Fixture services and certificates are temporary and never use external backend traffic.
 A failed assertion fails the build.
 
+The build stage also runs `verify-stream-send.c` against the production callbacks.
+It checks partial TCP and TLS writes, retry events, exact binary payloads, and successful probe cleanup without changing the installed binary.
+Real TLS handshakes remain covered by the runtime verifier.
+
+Runtime verification requires working IPv4 and IPv6 loopback connections inside the build network.
+Diagnose failed loopback connections in the build environment rather than skipping the IPv6 assertions.
+
 The exported binary targets Linux and cannot run directly on macOS.
 Inspect its installed modules with `nginx -V` in a Linux environment.
 Use `-p <prefix>` and `-c <config>` to select the deployment directory and configuration.
