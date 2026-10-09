@@ -27,6 +27,32 @@ This target builds plain static nginx with the repository's standard non-resty n
 
 ## Runtime Introspection Output
 
+### Historical capture provenance
+
+The output below is a historical snapshot, not verification of the version currently selected in [metadata.json](../metadata.json).
+The recorded output identifies nginx 1.30.0 with nginx-module-vts 0.2.5 and the displayed static PIE configure flags.
+The [Dockerfile](Dockerfile) builds from source and invokes `nginx -V` in its verification stage.
+
+The historical capture date, repository revision, release tag, exact invocation, and host or container environment are unknown.
+The source-backed commands below capture the same introspection surfaces, but do not establish how the historical output was collected.
+
+### Regenerate the snapshot
+
+From the repository root, use the [Makefile](../Makefile) to build the target selected by the current metadata, then run the capture commands on a compatible Linux host.
+The default build platform is `linux/amd64`.
+The build downloads its inputs and runs Docker Buildx, including the Dockerfile's verification stage.
+These commands assume the default output directory and must be adjusted if `BUILD_OUTPUT_DEST` is overridden.
+
+```bash
+make build nginx
+./.out/nginx/sbin/nginx -V 2>&1
+```
+
+Record the capture date, repository revision, selected metadata versions, build platform, build environment, exact commands, and results with any replacement output.
+Preserve errors and distinguish build-stage verification from the host captures above.
+A current-metadata build produces a new snapshot and does not reconstruct the unknown historical environment.
+The historical output below has been preserved without running these commands for this documentation change.
+
 ```text
 nginx version: nginx/1.30.0
 configure arguments:
