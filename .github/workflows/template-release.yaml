@@ -28,7 +28,10 @@ jobs:
         uses: actions/checkout@v7.0.1
 
       - name: Validate release tag
-        run: sh .github/scripts/release-guard.sh "${{ inputs.target }}" "${{ inputs.tag }}"
+        env:
+          TARGET: ${{ inputs.target }}
+          TAG: ${{ inputs.tag }}
+        run: sh .github/scripts/release-guard.sh "$TARGET" "$TAG"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4.4.1
@@ -95,8 +98,8 @@ jobs:
         if: ${{ inputs.upload_release }}
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
         run: |-
-          TAG="${{ inputs.tag }}"
           PACKAGE_NAME="${TAG}.tar.gz"
           test -f "${PACKAGE_NAME}" || { echo "Error: ${PACKAGE_NAME} not found" >&2; exit 1; }
           gh release view "${TAG}" >/dev/null 2>&1 \

@@ -1,5 +1,4 @@
 #!/usr/bin/env sh
-# -*- coding: utf-8 -*-
 set -e
 
 ROOT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
@@ -26,6 +25,7 @@ usage() {
   printf '  get-env <target>\n' >&2
   printf '  get-official-version <target>\n' >&2
   printf '  get-tag-prefix <target>\n' >&2
+  printf '  get-target-from-tag <tag>\n' >&2
   printf '  get-release-files <target>\n' >&2
   printf '  get-downloads <target>\n' >&2
   exit 1
@@ -507,6 +507,48 @@ EOF
   printf '%s\n' "$value"
 }
 
+# Resolve a release tag to the target with its longest matching tag prefix.
+#
+# @param tag Release tag beginning with a canonical tag_prefix followed by a hyphen.
+# @return Target name printed to stdout.
+# @return-type str
+get_target_from_tag() {
+  tag="$1"
+  records=$(parse_metadata_records)
+  tab=$(printf '\t')
+  best_target=''
+  best_prefix=''
+  best_length=0
+  ambiguous=0
+  while IFS="$tab" read -r record_type record_target record_field record_value _; do
+    if [ "$record_type" != 'SCALAR' ] || [ "$record_field" != 'tag_prefix' ] || [ -z "$record_value" ]; then
+      continue
+    fi
+    case "$tag" in
+      "$record_value"-*)
+        prefix_length=${#record_value}
+        if [ "$prefix_length" -gt "$best_length" ]; then
+          best_target="$record_target"
+          best_prefix="$record_value"
+          best_length=$prefix_length
+          ambiguous=0
+        elif [ "$prefix_length" -eq "$best_length" ] && [ "$record_target" != "$best_target" ]; then
+          ambiguous=1
+        fi
+        ;;
+    esac
+  done <<EOF
+$records
+EOF
+  if [ -z "$best_target" ]; then
+    fail "unknown tag '$tag'"
+  fi
+  if [ "$ambiguous" -eq 1 ]; then
+    fail "ambiguous tag '$tag': targets share longest tag prefix '$best_prefix'"
+  fi
+  printf '%s\n' "$best_target"
+}
+
 # Get environment variables for a target as KEY=VALUE lines.
 #
 # @param target Build target name.
@@ -754,6 +796,10 @@ main() {
     get-tag-prefix)
       [ $# -eq 1 ] || usage
       get_scalar_field "$1" 'tag_prefix'
+      ;;
+    get-target-from-tag)
+      [ $# -eq 1 ] || usage
+      get_target_from_tag "$1"
       ;;
     get-official-version)
       [ $# -eq 1 ] || usage

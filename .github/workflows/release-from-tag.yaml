@@ -14,23 +14,32 @@ on:
       - 'monit-*'
 
 jobs:
+  resolve-target:
+    runs-on: ubuntu-26.04
+    permissions:
+      contents: read
+    outputs:
+      target: ${{ steps.resolve.outputs.target }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: Resolve and validate release target
+        id: resolve
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |-
+          TARGET=$(sh scripts/metadata.sh get-target-from-tag "$TAG")
+          sh .github/scripts/release-guard.sh "$TARGET" "$TAG"
+          printf 'target=%s\n' "$TARGET" >> "$GITHUB_OUTPUT"
+
   release:
+    needs: resolve-target
     permissions:
       contents: write
       security-events: write
     uses: ./.github/workflows/template-release.yaml
     with:
-      target: >-
-        ${{ github.ref_type == 'tag'
-        && (startsWith(github.ref_name, 'nginx-upstream-healthcheck-') && 'nginx-upstream-healthcheck'
-        || startsWith(github.ref_name, 'nginx-') && 'nginx'
-        || startsWith(github.ref_name, 'haproxy-') && 'haproxy'
-        || startsWith(github.ref_name, 'apache-exporter-') && 'apache-exporter'
-        || startsWith(github.ref_name, 'httpd-') && 'apache-httpd'
-        || startsWith(github.ref_name, 'coredns-') && 'coredns'
-        || startsWith(github.ref_name, 'dnsmasq-') && 'dnsmasq'
-        || startsWith(github.ref_name, 'vector-') && 'vector'
-        || startsWith(github.ref_name, 'monit-') && 'monit')
-        || '' }}
+      target: ${{ needs.resolve-target.outputs.target }}
       tag: ${{ github.ref_name }}
       upload_release: true
