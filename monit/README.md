@@ -22,7 +22,7 @@ This target builds a static PIE `monit` binary and links required libraries stat
 
 ## Runtime Defaults
 
-Build features (confirmed from `monit -V` output):
+Build features reported by the historical `monit -V` snapshot:
 
 - `Built with ssl, with ipv6, with compression, without pam and with large files`
 
@@ -44,7 +44,33 @@ Commands include: `start`, `stop`, `restart`, `monitor`, `unmonitor`, `reload`, 
 
 ## Runtime Introspection Output
 
-The following sections show the exact runtime introspection outputs from the built binary.
+### Historical capture provenance
+
+The output below is a historical snapshot, not verification of the version currently selected in [metadata.json](../metadata.json).
+The recorded version output identifies Monit 5.35.2 with SSL, IPv6, compression, and large-file support, without PAM.
+The [Dockerfile](Dockerfile) relinks the binary as static PIE and invokes `monit -V` in its verification stage.
+The `monit -h` capture describes the command surface and is not a command in that verification stage.
+
+The historical capture date, repository revision, release tag, exact invocation, and host or container environment are unknown.
+The source-backed commands below capture the same introspection surfaces, but do not establish how the historical output was collected.
+
+### Regenerate the snapshot
+
+From the repository root, use the [Makefile](../Makefile) to build the target selected by the current metadata, then run the capture commands on a compatible Linux host.
+The default build platform is `linux/amd64`.
+The build downloads its inputs and runs Docker Buildx, including the Dockerfile's verification stage.
+These commands assume the default output directory and must be adjusted if `BUILD_OUTPUT_DEST` is overridden.
+
+```bash
+make build monit
+./.out/monit/bin/monit -V
+./.out/monit/bin/monit -h
+```
+
+Record the capture date, repository revision, selected metadata versions, build platform, build environment, exact commands, and results with any replacement output.
+Preserve errors and distinguish build-stage verification from the host captures above.
+A current-metadata build produces a new snapshot and does not reconstruct the unknown historical environment.
+The historical output below has been preserved without running these commands for this documentation change.
 
 ### monit -V
 
@@ -107,7 +133,7 @@ CI= GITHUB_ACTIONS= make build monit
 ```
 
 The `-V` flag shows the build feature summary, and `-h` shows all available command line options and commands.
-See the [Runtime Introspection Output](#runtime-introspection-output) section above for the actual output.
+See the [Runtime Introspection Output](#runtime-introspection-output) section above for the historical output.
 
 ## How to Verify
 
