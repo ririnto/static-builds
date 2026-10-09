@@ -3,7 +3,7 @@ name: Release From Tag
 on:
   push:
     tags:
-      - 'nginx-resty-upstream-healthcheck-*'
+      - 'nginx-upstream-healthcheck-*'
       - 'nginx-*'
       - 'haproxy-*'
       - 'apache-exporter-*'
@@ -22,7 +22,7 @@ jobs:
     with:
       target: >-
         ${{ github.ref_type == 'tag'
-        && (startsWith(github.ref_name, 'nginx-resty-upstream-healthcheck-') && 'nginx-resty-upstream-healthcheck'
+        && (startsWith(github.ref_name, 'nginx-upstream-healthcheck-') && 'nginx-upstream-healthcheck'
         || startsWith(github.ref_name, 'nginx-') && 'nginx'
         || startsWith(github.ref_name, 'haproxy-') && 'haproxy'
         || startsWith(github.ref_name, 'apache-exporter-') && 'apache-exporter'

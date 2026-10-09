@@ -2,13 +2,17 @@
   "nginx": {
     "tag_prefix": "nginx",
     "release_files": [
-      "sbin/nginx"
+      "sbin/nginx",
+      "conf/scripting.conf",
+      "conf/scripting.js"
     ],
     "env": {
       "ALPINE_VERSION": "3.24.2",
       "NGINX_VERSION": "1.30.5",
       "NGINX_VTS_MODULE_VERSION": "0.2.7",
-      "UBI10_MINIMAL_VERSION": "10.2-1790753097"
+      "UBI10_MINIMAL_VERSION": "10.2-1790753097",
+      "NJS_VERSION": "1.0.1",
+      "QUICKJS_VERSION": "0.17.0"
     },
     "downloads": [
       {
@@ -18,20 +22,33 @@
       {
         "url": "https://github.com/vozlt/nginx-module-vts/archive/refs/tags/v{NGINX_VTS_MODULE_VERSION}.tar.gz",
         "name": "nginx-module-vts-{NGINX_VTS_MODULE_VERSION}.tar.gz"
+      },
+      {
+        "url": "https://github.com/nginx/njs/archive/refs/tags/{NJS_VERSION}.tar.gz",
+        "name": "njs-{NJS_VERSION}.tar.gz"
+      },
+      {
+        "url": "https://github.com/quickjs-ng/quickjs/archive/refs/tags/v{QUICKJS_VERSION}.tar.gz",
+        "name": "quickjs-{QUICKJS_VERSION}.tar.gz"
       }
     ],
     "version_env_var": "NGINX_VERSION"
   },
-  "nginx-resty-upstream-healthcheck": {
-    "tag_prefix": "nginx-resty-upstream-healthcheck",
+  "nginx-upstream-healthcheck": {
+    "tag_prefix": "nginx-upstream-healthcheck",
     "release_files": [
-      "sbin/nginx"
+      "sbin/nginx",
+      "conf/scripting.conf",
+      "conf/scripting.js",
+      "conf/upstream-healthcheck.conf"
     ],
     "env": {
       "ALPINE_VERSION": "3.24.2",
       "NGINX_VERSION": "1.30.5",
       "NGINX_VTS_MODULE_VERSION": "0.2.7",
-      "UBI10_MINIMAL_VERSION": "10.2-1790753097"
+      "UBI10_MINIMAL_VERSION": "10.2-1790753097",
+      "NJS_VERSION": "1.0.1",
+      "QUICKJS_VERSION": "0.17.0"
     },
     "downloads": [
       {
@@ -41,6 +58,14 @@
       {
         "url": "https://github.com/vozlt/nginx-module-vts/archive/refs/tags/v{NGINX_VTS_MODULE_VERSION}.tar.gz",
         "name": "nginx-module-vts-{NGINX_VTS_MODULE_VERSION}.tar.gz"
+      },
+      {
+        "url": "https://github.com/nginx/njs/archive/refs/tags/{NJS_VERSION}.tar.gz",
+        "name": "njs-{NJS_VERSION}.tar.gz"
+      },
+      {
+        "url": "https://github.com/quickjs-ng/quickjs/archive/refs/tags/v{QUICKJS_VERSION}.tar.gz",
+        "name": "quickjs-{QUICKJS_VERSION}.tar.gz"
       }
     ],
     "version_env_var": "NGINX_VERSION"
