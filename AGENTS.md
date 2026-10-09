@@ -3,7 +3,7 @@
 ## OVERVIEW
 
 Docker multi-stage build system for statically-linked binaries.
-Builds nginx, nginx-resty-upstream-healthcheck, haproxy, apache-exporter, apache-httpd, coredns, dnsmasq, vector, monit using musl libc.
+Builds nginx, nginx-upstream-healthcheck, haproxy, apache-exporter, apache-httpd, coredns, dnsmasq, vector, monit using musl libc.
 
 ## STRUCTURE
 
@@ -34,7 +34,7 @@ static-builds/
 +-- .tmp/                   # Downloaded source cache (gitignored)
 +-- .out/                   # Build outputs (gitignored)
 +-- nginx/                  # Plain nginx target
-+-- nginx-resty-upstream-healthcheck/ # Resty healthcheck nginx target
++-- nginx-upstream-healthcheck/ # Upstream healthcheck nginx target
 +-- haproxy/
 +-- apache-exporter/
 +-- apache-httpd/
@@ -113,13 +113,13 @@ The repository MUST NOT enforce checksum verification or pinning for upstream so
 ## UNIQUE STYLES
 
 - Tag-triggered release: `nginx-1.28.2.18` builds and uploads the plain nginx artifact.
-  `nginx-resty-upstream-healthcheck-1.28.3.0` builds and uploads the resty healthcheck nginx artifact.
+  `nginx-upstream-healthcheck-1.28.3.0` builds and uploads the upstream healthcheck nginx artifact.
 - Release tags MUST follow `<target>-<official_version>[-<prerelease>].<x>`.
 
   - `official_version`: version from `metadata.json` (for example `NGINX_VERSION`, `HTTPD_VERSION`, `HAPROXY_VERSION`)
   - `prerelease`: optional pre-release suffix (for example `-beta`, `-rc1`)
   - `x`: release revision suffix starting at `0` and incrementing (`.0`, `.1`, `.2`, ...)
-  - examples: `nginx-1.28.2.18`, `nginx-resty-upstream-healthcheck-1.28.3.0`, `httpd-2.4.66.5`, `haproxy-3.2.13-beta.0`
+  - examples: `nginx-1.28.2.18`, `nginx-upstream-healthcheck-1.28.3.0`, `httpd-2.4.66.5`, `haproxy-3.2.13-beta.0`
 
 - Unified caller workflow + reusable template pattern
 
@@ -139,7 +139,7 @@ Follow [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md) for prose, YAML filena
 ```bash
 make list-targets
 make build nginx
-make build nginx-resty-upstream-healthcheck
+make build nginx-upstream-healthcheck
 make download nginx
 ```
 

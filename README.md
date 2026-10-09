@@ -203,7 +203,7 @@ Targets share the same root contract, but some targets vary in builder image, re
 
 - Document approved target-specific variations in that target's `README.md`.
 - Keep the root `README.md` focused on shared repository behavior.
-- Treat `nginx`, `nginx-resty-upstream-healthcheck`, `apache-exporter`, `apache-httpd`, `coredns`, `vector`, `haproxy`, `dnsmasq`, and `monit` differences as documented target profiles, not as undocumented exceptions.
+- Treat `nginx`, `nginx-upstream-healthcheck`, `apache-exporter`, `apache-httpd`, `coredns`, `vector`, `haproxy`, `dnsmasq`, and `monit` differences as documented target profiles, not as undocumented exceptions.
 
 ### Best Practices
 
@@ -223,7 +223,8 @@ Releases are triggered by Git tags following the pattern `<target>-<version>[-<p
 - Example: `nginx-1.28.2.18` (target: nginx, version: 1.28.2, revision: 18)
 - Validation: Release tags are validated against `metadata.json`
 
-Current release tag triggers and target selection still live in `.github/workflows/release-from-tag.yaml` because GitHub event filters must stay static, but release-file selection and tag-version validation now come from `metadata.json`.
+Release tag event filters remain static in `.github/workflows/release-from-tag.yaml` as required by GitHub.
+Target selection, tag-prefix exceptions, release-file selection, and tag-version validation use `metadata.json`.
 
 ### Steps to Release
 
@@ -309,8 +310,10 @@ Build caching uses the root `.cache/<target>/` directories.
 
 Selected release contents:
 
-- `nginx`: `sbin/nginx`
-- `nginx-resty-upstream-healthcheck`: `sbin/nginx` with the native healthcheck and VTS modules compiled in.
+- `nginx`: `sbin/nginx` with njs and VTS modules compiled in.
+- `nginx-upstream-healthcheck`: `sbin/nginx` with upstream healthcheck, njs and VTS modules compiled in.
+- Both nginx targets include their scripting examples under `conf/`.
+- The healthcheck target replaces the former `nginx-resty-upstream-healthcheck` target and release prefix.
 - `haproxy`: `sbin/haproxy`
 - `apache-exporter`: `bin/apache-exporter`
 - `apache-httpd`: `bin/httpd`, `bin/rotatelogs`
