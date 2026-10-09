@@ -18,7 +18,8 @@ This target builds plain static nginx with the repository's standard non-resty n
 
 > [!NOTE]
 >
-> Outputs are under `.out/nginx/`. Override with `BUILD_OUTPUT_DEST`.
+> Outputs are under `.out/nginx/`.
+> Override with `BUILD_OUTPUT_DEST`.
 
 ```bash
 ./.out/nginx/sbin/nginx -V

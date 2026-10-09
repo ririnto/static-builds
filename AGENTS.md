@@ -62,14 +62,19 @@ static-builds/
 - Projects without an upstream LTS series MUST use supported stable releases when available.
 - Dependency references MUST use release tags or maintained upstream branches, never commit hashes or container image digests.
 - Branch source archives MUST be refreshed on each download call.
-- Target dir: MUST have Dockerfile. Target-specific download metadata MUST live under that target's `metadata.json` `downloads` entries, and downloader output MUST land directly under root `.tmp/`.
-- Upstream source downloads MUST NOT enforce checksum verification/pinning because some upstreams do not publish checksum files. Consumers SHOULD validate sources independently when possible.
+- Target directories MUST have a Dockerfile.
+  Target-specific download metadata MUST live under that target's `metadata.json` `downloads` entries, and downloader output MUST land directly under root `.tmp/`.
+- Upstream source downloads MUST NOT enforce checksum verification/pinning because some upstreams do not publish checksum files.
+  Consumers SHOULD validate sources independently when possible.
 - Release workflow MUST use `.github/workflows/release-from-tag.yaml` as the only tag-triggered entrypoint and MUST delegate build/release logic to `.github/workflows/template-release.yaml`.
 - Release target mapping, release-file selection, and tag-prefix exceptions MUST be maintained in `metadata.json` as the single source of truth.
 - Release workflow MUST run Trivy filesystem scanning and MUST upload SARIF results to GitHub Security.
-- Release jobs MUST request the minimum required GitHub permission. `contents: write` MAY be used only for jobs that publish releases or upload release assets.
-- Common static verification logic duplicated across target verify stages MUST be updated in every affected `*/Dockerfile` verify block in the same change. Any repository documentation that describes that shared verification contract SHOULD be updated at the same time.
-- Allowed target-specific variations MUST be documented in each target's `README.md`. Root-level documentation and policy files MUST treat those differences as approved target profiles, not as undocumented exceptions.
+- Release jobs MUST request the minimum required GitHub permission.
+  `contents: write` MAY be used only for jobs that publish releases or upload release assets.
+- Common static verification logic duplicated across target verify stages MUST be updated in every affected `*/Dockerfile` verify block in the same change.
+  Any repository documentation that describes that shared verification contract SHOULD be updated at the same time.
+- Allowed target-specific variations MUST be documented in each target's `README.md`.
+  Root-level documentation and policy files MUST treat those differences as approved target profiles, not as undocumented exceptions.
 - Shell scripts (`*.sh` and files with a `sh`/`bash` shebang) MUST NOT contain comments except:
 
   - The shebang line (the first line starting with `#!`).
@@ -107,7 +112,8 @@ The repository MUST NOT enforce checksum verification or pinning for upstream so
 
 ## UNIQUE STYLES
 
-- Tag-triggered release: `nginx-1.28.2.18` builds and uploads the plain nginx artifact. `nginx-resty-upstream-healthcheck-1.28.3.0` builds and uploads the resty healthcheck nginx artifact.
+- Tag-triggered release: `nginx-1.28.2.18` builds and uploads the plain nginx artifact.
+  `nginx-resty-upstream-healthcheck-1.28.3.0` builds and uploads the resty healthcheck nginx artifact.
 - Release tags MUST follow `<target>-<official_version>[-<prerelease>].<x>`.
 
   - `official_version`: version from `metadata.json` (for example `NGINX_VERSION`, `HTTPD_VERSION`, `HAPROXY_VERSION`)
@@ -121,7 +127,12 @@ The repository MUST NOT enforce checksum verification or pinning for upstream so
   - template: `.github/workflows/template-release.yaml`
 - Artifacts: local builds and CI/release builds both output under `.out/<target>/...`.
 - GitLab package pipelines on `main` and `feature/*` SHOULD use a single manual parent job that generates a child pipeline via `.gitlab/ci/package-pipeline.jsonnet` and reuses `templates/static-release.yml`.
-- GitLab pipelines MUST upload to Package Registry only. `feature/*` branches MUST append `-beta` to the package version.
+- GitLab pipelines MUST upload to Package Registry only.
+  `feature/*` branches MUST append `-beta` to the package version.
+
+## CONTRIBUTION DOCUMENTS
+
+Follow [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md) for prose, YAML filenames, commits, issues, and pull requests.
 
 ## COMMANDS
 

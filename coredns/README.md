@@ -24,7 +24,8 @@ This target builds a static CoreDNS binary from source using Go.
 ## How to Verify
 
 > [!NOTE]
-> Outputs are under `.out/coredns/`. Override with `BUILD_OUTPUT_DEST`.
+> Outputs are under `.out/coredns/`.
+> Override with `BUILD_OUTPUT_DEST`.
 
 ```bash
 ./.out/coredns/coredns -plugins
@@ -100,3 +101,4 @@ tsig
 view
 whoami
 on
+```

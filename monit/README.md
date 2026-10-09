@@ -106,12 +106,14 @@ CI= GITHUB_ACTIONS= make build monit
 ./.out/monit/bin/monit -h
 ```
 
-The `-V` flag shows the build feature summary, and `-h` shows all available command line options and commands. See the [Runtime Introspection Output](#runtime-introspection-output) section above for the actual output.
+The `-V` flag shows the build feature summary, and `-h` shows all available command line options and commands.
+See the [Runtime Introspection Output](#runtime-introspection-output) section above for the actual output.
 
 ## How to Verify
 
 > [!NOTE]
-> Outputs are under `.out/monit/`. Override with `BUILD_OUTPUT_DEST`.
+> Outputs are under `.out/monit/`.
+> Override with `BUILD_OUTPUT_DEST`.
 
 ```bash
 ./.out/monit/bin/monit -V

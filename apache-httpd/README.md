@@ -20,12 +20,14 @@ This target builds Apache HTTPd as static PIE with selected modules compiled in.
 
 - This target MAY release both `bin/httpd` and `bin/rotatelogs` as one approved packaging profile.
 - The target directory name remains `apache-httpd`, but release tags use the `httpd-` prefix.
-- Verify output from `httpd -M` MAY contain only the expected FQDN warning in some environments; treat `httpd -l` as the authoritative compiled-module inventory for this target.
+- Verify output from `httpd -M` MAY contain only the expected FQDN warning in some environments.
+  Treat `httpd -l` as the authoritative compiled-module inventory for this target.
 
 ## How to Verify
 
 > [!NOTE]
-> Outputs are under `.out/apache-httpd/`. Override with `BUILD_OUTPUT_DEST`.
+> Outputs are under `.out/apache-httpd/`.
+> Override with `BUILD_OUTPUT_DEST`.
 
 ```bash
 ./.out/apache-httpd/bin/httpd -V
@@ -122,4 +124,5 @@ AH00558: httpd: Could not reliably determine the server's fully qualified
 ```
 
 > [!NOTE]
-> The `httpd -M` output in this environment is only an FQDN warning and does not list modules. Treat `httpd -l` as the authoritative compiled-in module list for this static build.
+> The `httpd -M` output in this environment is only an FQDN warning and does not list modules.
+> Treat `httpd -l` as the authoritative compiled-in module list for this static build.

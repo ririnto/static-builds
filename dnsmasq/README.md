@@ -7,7 +7,8 @@ This target builds a static PIE `dnsmasq` binary from source.
 ### Build Options (Explicit)
 
 - Build uses upstream `make install` with hardened static flags (`-static -static-pie`) from `dnsmasq/Dockerfile`.
-- No repository-specific feature toggles are passed to `dnsmasq` `make`; compile-time capabilities follow upstream defaults for the selected release.
+- No repository-specific feature toggles are passed to `dnsmasq` `make`.
+  Compile-time capabilities follow upstream defaults for the selected release.
 - GNU coreutils supplies the version sorting required by upstream's version detection script.
 
 ### Runtime/Packaging Snapshot
@@ -25,7 +26,8 @@ This target builds a static PIE `dnsmasq` binary from source.
 ## How to Verify
 
 > [!NOTE]
-> Outputs are under `.out/dnsmasq/`. Override with `BUILD_OUTPUT_DEST`.
+> Outputs are under `.out/dnsmasq/`.
+> Override with `BUILD_OUTPUT_DEST`.
 
 ```bash
 ./.out/dnsmasq/sbin/dnsmasq -v
