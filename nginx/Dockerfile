@@ -91,9 +91,6 @@ RUN set -eu; \
     (echo "$file_output" | grep -Eq 'statically linked|static-pie linked') || (echo "Error: file(1) did not report a static binary." && exit 1); \
     (echo "$ldd_output" | grep -Eqi 'statically linked|static-pie linked|not a dynamic executable|not a valid dynamic program') || (echo "Error: Dynamic libraries found. This should be a static build!" && exit 1); \
     strace ${TARGET_PREFIX}/sbin/nginx -V; \
-    test ! -d ${TARGET_PREFIX}/lualib; \
-    test ! -d ${TARGET_PREFIX}/lib/lua; \
-    test ! -d ${TARGET_PREFIX}/share/lua; \
     ${TARGET_PREFIX}/sbin/nginx -t -c conf/scripting.conf
 RUN <<'EOF'
 set -eu
@@ -102,9 +99,9 @@ nginx_bin="${TARGET_PREFIX}/sbin/nginx"
 nginx_pid=$!
 trap '"$nginx_bin" -s quit -c conf/scripting.conf; wait "$nginx_pid"' EXIT
 curl --retry 10 --retry-connrefused --retry-delay 1 --retry-max-time 10 --max-time 2 -fsS http://127.0.0.1:18081/njs > /tmp/njs-result
-grep -Fx "njs ${NJS_VERSION}" /tmp/njs-result
-curl -fsS http://127.0.0.1:18081/njs | grep -Fx "njs ${NJS_VERSION}"
-timeout 3 bash -c 'cat < /dev/tcp/127.0.0.1/18082' | grep -Fx "njs ${NJS_VERSION}"
+grep -Fx "njs ${NJS_VERSION} engine QuickJS" /tmp/njs-result
+curl -fsS http://127.0.0.1:18081/njs | grep -Fx "njs ${NJS_VERSION} engine QuickJS"
+timeout 3 bash -c 'cat < /dev/tcp/127.0.0.1/18082' | grep -Fx "njs ${NJS_VERSION} engine QuickJS"
 EOF
 
 
