@@ -25,7 +25,8 @@ This build keeps nginx and C modules statically linked and ships only the runtim
 ## How to Verify
 
 > [!NOTE]
-> Outputs are under `.out/nginx-resty-upstream-healthcheck/`. Override with `BUILD_OUTPUT_DEST`.
+> Outputs are under `.out/nginx-resty-upstream-healthcheck/`.
+> Override with `BUILD_OUTPUT_DEST`.
 
 ```bash
 ./.out/nginx-resty-upstream-healthcheck/sbin/nginx -V
@@ -73,7 +74,9 @@ Key paths are:
 
 `LUA_PATH` is configured to load modules from `${TARGET_PREFIX}/lualib` at runtime.
 
-`lualib/resty/core.lua` and `lualib/resty/core/*.lua` are a repository-owned minimal `resty.core` runtime for this target. Shared dict methods and the narrow `ngx.re.find` compatibility shim are backed by a local nginx module that registers a Lua preload bridge and exposes FFI-safe function pointers instead of relying on `ffi.C` symbol lookup from the static PIE main binary. `ngx.re.find` still supports only the healthcheck module's current regex literals, but it now executes them through bridged original compile/exec/destroy regex machinery instead of Lua `string.find`.
+`lualib/resty/core.lua` and `lualib/resty/core/*.lua` are a repository-owned minimal `resty.core` runtime for this target.
+Shared dict methods and the narrow `ngx.re.find` compatibility shim are backed by a local nginx module that registers a Lua preload bridge and exposes FFI-safe function pointers instead of relying on `ffi.C` symbol lookup from the static PIE main binary.
+`ngx.re.find` still supports only the healthcheck module's current regex literals, but it now executes them through bridged original compile/exec/destroy regex machinery instead of Lua `string.find`.
 
 ## Build and Runtime Model
 
@@ -89,7 +92,8 @@ This target packages only the runtime Lua files required for `lua-resty-upstream
 
 - `-p <prefix>` sets the nginx runtime prefix.
 - If `-c` is omitted, nginx loads `${prefix}/conf/nginx.conf` by default.
-- `nginx.conf` cannot set prefix itself like `-p`; it can only reference `$prefix`.
+- `nginx.conf` cannot set prefix itself like `-p`.
+  It can only reference `$prefix`.
 - Relative `lua_package_path` entries are not evaluated from binary path or `nginx.conf` file path.
 - `lua_package_path` default value follows `LUA_PATH` or Lua compiled-in defaults.
 - `;;` appends those default search paths after your custom path.
@@ -228,7 +232,8 @@ http {
 }
 ```
 
-`spawn_checker` updates peer state via `ngx.upstream.set_peer_down`. Failed peers are marked down after `fall` consecutive failures and recovered after `rise` consecutive successes.
+`spawn_checker` updates peer state via `ngx.upstream.set_peer_down`.
+Failed peers are marked down after `fall` consecutive failures and recovered after `rise` consecutive successes.
 
 `nginx_metrics_source_up` indicates metric source availability, not backend health status.
 

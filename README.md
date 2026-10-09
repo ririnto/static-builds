@@ -4,11 +4,11 @@ Build statically-linked binaries using Docker multi-stage builds for portable, m
 
 ## Features
 
-- Static Linking - Produce fully statically-linked binaries using musl libc
-- Multi-stage Builds - Use Docker BuildKit for efficient, cacheable builds
-- Minimal Outputs - Use a UBI10 Minimal verify stage for runtime checks and package final artifacts from a `scratch` stage
-- Extensible - Add new build targets by following a simple directory structure
-- Reproducible - Version-controlled configurations via `metadata.json`
+- Static Linking - Produce fully statically-linked binaries using musl libc.
+- Multi-stage Builds - Use Docker BuildKit for efficient, cacheable builds.
+- Minimal Outputs - Use a UBI10 Minimal verify stage for runtime checks and package final artifacts from a `scratch` stage.
+- Extensible - Add new build targets by following a simple directory structure.
+- Reproducible - Version-controlled configurations via `metadata.json`.
 
 ## Prerequisites
 
@@ -65,6 +65,10 @@ docker run --rm \
     +-- ...
 ```
 
+## Contributing
+
+Follow the [contribution guide](.github/CONTRIBUTING.md) for documentation style, validation, commit bodies, issues, and pull requests.
+
 ## Developer Guide
 
 ### Dependency Updates
@@ -116,7 +120,7 @@ Each target must follow this structure:
 
 ### Adding a New Target
 
-1. Create target directory: Create a new directory named after your target (e.g., `your-target/`)
+1. Create target directory: Create a new directory named after your target (e.g., `your-target/`).
 
 2. Add centralized metadata: Register the target in `metadata.json`:
 
@@ -175,7 +179,8 @@ Each target must follow this structure:
 
 5. Verify: Targets are loaded from `metadata.json`.
 
-6. Update release trigger mapping: Add the tag trigger and target selection case in `.github/workflows/release-from-tag.yaml`. Release file selection and official versions now come from `metadata.json`.
+6. Update release trigger mapping: Add the tag trigger and target selection case in `.github/workflows/release-from-tag.yaml`.
+   Release file selection and official versions now come from `metadata.json`.
 
    ```yaml
    on:
@@ -190,7 +195,7 @@ Each target must follow this structure:
            startsWith(github.ref_name, 'your-target-') && 'your-target'
    ```
 
-7. Validate: Run `make build your-target` to verify the download and build flow works
+7. Validate: Run `make build your-target` to verify the download and build flow works.
 
 ### Allowed Target-Specific Variations
 
@@ -202,11 +207,11 @@ Targets share the same root contract, but some targets vary in builder image, re
 
 ### Best Practices
 
-- Security hardening: Use static PIE builds (`-fPIE -pie`)
-- Verification: Always include a verify stage with ELF checks, static linking verification, and strace validation
-- Caching: Use `--mount=type=cache` for Alpine/DNF caches
-- Documentation: Document approved target-specific variations in each target `README.md`
-- Version variables: Follow naming convention `{TARGET}_VERSION` for consistency inside `metadata.json`
+- Security hardening: Use static PIE builds (`-fPIE -pie`).
+- Verification: Always include a verify stage with ELF checks, static linking verification, and strace validation.
+- Caching: Use `--mount=type=cache` for Alpine/DNF caches.
+- Documentation: Document approved target-specific variations in each target `README.md`.
+- Version variables: Follow naming convention `{TARGET}_VERSION` for consistency inside `metadata.json`.
 
 ## Release Process
 
@@ -240,14 +245,16 @@ Current release tag triggers and target selection still live in `.github/workflo
    make build your-target
    ```
 
-3. Commit changes: Commit version updates:
+3. Commit version updates with a title and an explanatory body.
+   In the editor, describe the reason, changes, actual verification results, and material limitations.
 
    ```bash
    git add metadata.json
-   git commit -m "Update your-target to 2.0.0"
+   git commit
    ```
 
-4. Create tag: Create and push release tag. Use the target name as the tag prefix, except `apache-httpd`, which uses `httpd-`:
+4. Create tag: Create and push release tag.
+   Use the target name as the tag prefix, except `apache-httpd`, which uses `httpd-`:
 
    ```bash
    git tag your-target-2.0.0.0
@@ -255,11 +262,11 @@ Current release tag triggers and target selection still live in `.github/workflo
    ```
 
 5. CI automation: GitHub Actions automatically:
-   - Validates tag format and version
-   - Builds target
-   - Scans for vulnerabilities (Trivy)
-   - Uploads artifacts to GitHub Actions
-   - Creates GitHub Release with `.tar.gz` package
+   - Validates tag format and version.
+   - Builds target.
+   - Scans for vulnerabilities (Trivy).
+   - Uploads artifacts to GitHub Actions.
+   - Creates GitHub Release with `.tar.gz` package.
 
 ### Release Tag Format
 
@@ -285,10 +292,10 @@ Invalid examples:
 
 ## How It Works
 
-1. `scripts/download.sh` resolves each target's download resources from `metadata.json`, then the build script runs Docker Buildx
-2. Docker BuildKit executes the multi-stage Dockerfile via `docker buildx build`
-3. Built artifacts go to `.out/<target>/` for both local builds and CI
-4. Verify stages run inside UBI10 Minimal, and the final exported artifact comes from the target's `scratch` stage
+1. `scripts/download.sh` resolves each target's download resources from `metadata.json`, then the build script runs Docker Buildx.
+2. Docker BuildKit executes the multi-stage Dockerfile via `docker buildx build`.
+3. Built artifacts go to `.out/<target>/` for both local builds and CI.
+4. Verify stages run inside UBI10 Minimal, and the final exported artifact comes from the target's `scratch` stage.
 
 Build caching uses the root `.cache/<target>/` directories.
 
@@ -321,6 +328,7 @@ Selected release contents:
 
 - GitLab pipelines on `main` and `feature/*` expose manual package jobs that generate a child pipeline with `.gitlab/ci/package-pipeline.jsonnet`.
 - `feature/*` branches append `-beta` to the package version.
-- GitLab uploads to Package Registry only. GitHub uploads to Release only.
+- GitLab uploads to Package Registry only.
+  GitHub uploads to Release only.
 - The generated child pipeline includes the local component at `templates/static-release.yml`.
 - GitHub release packaging and GitLab package generation both reuse `scripts/package-release.sh`.

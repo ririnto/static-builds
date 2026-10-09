@@ -20,7 +20,8 @@ This target builds the upstream Apache Exporter source into a statically linked 
 
 > [!NOTE]
 >
-> Outputs are under `.out/apache-exporter/`. Override with `BUILD_OUTPUT_DEST`.
+> Outputs are under `.out/apache-exporter/`.
+> Override with `BUILD_OUTPUT_DEST`.
 
 ```bash
 make build apache-exporter

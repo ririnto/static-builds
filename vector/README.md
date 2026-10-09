@@ -6,7 +6,8 @@ This target packages the upstream `x86_64-unknown-linux-musl` Vector binary as a
 
 ### Build Options (Explicit)
 
-- `vector/Dockerfile` does not compile from source; it unpacks the upstream `x86_64-unknown-linux-musl` release tarball.
+- `vector/Dockerfile` does not compile from source.
+  It unpacks the upstream `x86_64-unknown-linux-musl` release tarball.
 - Packaged binary path is `${TARGET_PREFIX}/bin/vector`.
 - Because the upstream release binary is reused, source/transform/sink availability is determined by that release.
 
@@ -24,7 +25,8 @@ This target packages the upstream `x86_64-unknown-linux-musl` Vector binary as a
 ## How to Verify
 
 > [!NOTE]
-> Outputs are under `.out/vector/`. Override with `BUILD_OUTPUT_DEST`.
+> Outputs are under `.out/vector/`.
+> Override with `BUILD_OUTPUT_DEST`.
 
 ```bash
 ./.out/vector/bin/vector list

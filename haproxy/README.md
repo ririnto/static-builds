@@ -16,15 +16,20 @@ This target builds a static PIE `haproxy` binary for musl-based deployments.
 ### Runtime/Packaging Profile
 
 - Default runtime tunables and enabled features are captured in [Runtime Introspection Output](#runtime-introspection-output) from `haproxy -vv`.
-- OpenTelemetry is provided by the external HAProxy OpenTelemetry addon. HAProxy's native `USE_OT` option is not enabled, so `Feature list` reports `-OT` while the runtime filter list includes `[OTEL] opentelemetry`.
-- `BACKTRACE` is inherited from the `linux-musl` target defaults. `USE_BACKTRACE` is not explicitly set in this target Dockerfile, but `Feature list` reports `+BACKTRACE`.
-- `THREAD_DUMP` is inherited from the `linux-musl` target defaults. `USE_THREAD_DUMP` is not explicitly set in this target Dockerfile, but `Feature list` reports `+THREAD_DUMP`.
+- OpenTelemetry is provided by the external HAProxy OpenTelemetry addon.
+  HAProxy's native `USE_OT` option is not enabled, so `Feature list` reports `-OT` while the runtime filter list includes `[OTEL] opentelemetry`.
+- `BACKTRACE` is inherited from the `linux-musl` target defaults.
+  `USE_BACKTRACE` is not explicitly set in this target Dockerfile, but `Feature list` reports `+BACKTRACE`.
+- `THREAD_DUMP` is inherited from the `linux-musl` target defaults.
+  `USE_THREAD_DUMP` is not explicitly set in this target Dockerfile, but `Feature list` reports `+THREAD_DUMP`.
 
 ### Private Build Inputs
 
 - Source archives listed in root `metadata.json` are the `.tmp/` prefetch inputs for this target.
-- APK packages remain the package-registry inputs. `c-ares-dev`, `curl-dev`, `curl-static`, and `pkgconf` are consumed from APK packages, not from `.tmp/` source archives.
-- `pkg-config` only reads local `.pc` metadata from APK packages and `/opt/lib/pkgconfig`; it is not a source download path.
+- APK packages remain the package-registry inputs.
+  `c-ares-dev`, `curl-dev`, `curl-static`, and `pkgconf` are consumed from APK packages, not from `.tmp/` source archives.
+- `pkg-config` only reads local `.pc` metadata from APK packages and `/opt/lib/pkgconfig`.
+  It is not a source download path.
 - The OpenTelemetry dependency stages use C++17 and the SDK's `OTELCPP_*` CMake options.
 - The wrapper's bundled SDK patches also apply to the SDK version selected in `metadata.json`.
 - rapidyaml's source archive extracts into `rapidyaml.v<version>`.
@@ -48,7 +53,8 @@ This target builds a static PIE `haproxy` binary for musl-based deployments.
 
 > [!NOTE]
 >
-> Outputs are under `.out/haproxy/`. Override with `BUILD_OUTPUT_DEST`.
+> Outputs are under `.out/haproxy/`.
+> Override with `BUILD_OUTPUT_DEST`.
 
 ```bash
 ./.out/haproxy/sbin/haproxy -vv
