@@ -1,243 +1,289 @@
 # nginx-resty-upstream-healthcheck
 
-This build keeps nginx and C modules statically linked and ships only the runtime Lua files needed for `lua-resty-upstream-healthcheck`.
+This target builds nginx with a native C healthcheck module and VTS traffic metrics as one statically linked musl PIE binary.
+The historical target name and release tag prefix remain unchanged.
+LuaJIT, Lua runtime files, and the repository-owned `resty.core` bridge are removed.
+Existing Lua healthcheck configurations must migrate to the native directives below.
 
-## Modules and Features
+## Implementation Choice
 
-### Build Options (Explicit)
+The upstream Lua library cannot use its normal installation path with this target's static musl linking model.
+[LuaJIT `ffi.C`](https://luajit.org/ext_ffi_api.html#ffi_C) resolves exported symbols through the process symbol namespace.
+[musl's static `dlsym`](https://git.musl-libc.org/cgit/musl/tree/src/ldso/dlsym.c) cannot provide that lookup.
+The upstream [`lua-resty-core`](https://github.com/openresty/lua-resty-core) depends on FFI rather than the native Lua C API.
+Export linker flags do not supply a dynamic loader to a static executable.
 
-- Protocol/security modules: `--with-http_ssl_module`, `--with-http_v2_module`, `--with-http_v3_module`, and `--with-stream_ssl_module`.
-- Utility modules: `--with-http_stub_status_module`, `--with-http_gzip_static_module`, `--with-stream_realip_module`, and `--with-stream_ssl_preread_module`.
-- Third-party modules: `--add-module=nginx-module-vts-*`, `--add-module=lua-nginx-module-*`, and `--add-module=lua-upstream-nginx-module-*`.
-- Explicit removals: selected HTTP modules are disabled with `--without-*` flags (for example `fastcgi`, `uwsgi`, `scgi`, and `memcached`).
+| Approach | Decision |
+| --- | --- |
+| Native upstream OpenResty libraries | Their FFI dependency conflicts with this target's static musl contract. |
+| Local `resty.core` compatibility runtime | It replaces upstream APIs and is removed entirely. |
+| [njs](https://nginx.org/en/docs/http/ngx_http_js_module.html) | Static compilation and JavaScript HTTP checks work, but the public API does not expose resolved peer identity or raw TCP probing. |
+| [ngx_dynamic_healthcheck](https://github.com/ZigzagAK/ngx_dynamic_healthcheck/tree/1.3.8) | Its handcrafted TLS hello probe cannot verify HTTPS response status, certificates, or SNI. |
+| Native healthcheck module | It uses nginx peer locks, references, event connections, and OpenSSL without a compatibility runtime. |
 
-### Runtime/Packaging Snapshot
+The native implementation uses nginx's existing upstream resolver rather than introducing a second DNS implementation.
+It operates on the peers nginx actually routes to, including multiple DNS addresses and backup peers.
 
-- Lua runtime files are shipped under `${TARGET_PREFIX}/lualib` as a healthcheck-specific runtime bundle.
-- Runtime configure arguments are captured in [Runtime Introspection Output](#runtime-introspection-output) via `nginx -V`.
+### Native Installation and njs Validation
 
-## Allowed Target-Specific Variations
+A startup probe against the previous static artifact attempted the normal LuaJIT `ffi.C.ngx_http_lua_ffi_now` lookup.
+It failed with `Symbol not found: ngx_http_lua_ffi_now`.
+This confirms the static-symbol limitation independently of the compatibility bridge's API coverage.
 
-- This target MAY ship runtime Lua files under `lualib/` in addition to the static `nginx` binary.
-- Release contents include both `sbin/nginx` and the packaged Lua runtime paths required by `resty.upstream.healthcheck`.
-- Verify-stage checks execute a verify-only nginx config that loads the packaged `resty.core` bridge runtime and healthcheck module and probes the supported runtime contract in addition to the shared static ELF checks used by other targets.
+A separate Linux arm64 prototype statically compiled nginx 1.30.5 with njs 1.0.1 through `--add-module` using this target's security flags.
+Its ELF verification found a static PIE without an interpreter or dynamic library dependencies.
+Pure JavaScript `js_import`, worker-zero `js_periodic`, shared dictionaries, checks of two literal IPs, failure exclusion, recovery, all-down rejection, and basic health metrics passed real local runtime checks.
 
-## How to Verify
+That prototype established the feasibility of static njs and JavaScript for HTTP checks against known IPs.
+It did not establish dynamic DNS or stream TCP support.
+The njs [Fetch API](https://nginx.org/en/docs/njs/reference.html#ngx_fetch) provides HTTP and HTTPS requests.
+Its [response URL implementation](https://github.com/nginx/njs/blob/1.0.1/nginx/ngx_js_fetch.c) preserves the original request URL rather than exposing the selected resolved address.
+The [resolver connection state](https://github.com/nginx/njs/blob/1.0.1/nginx/ngx_js_http.c) remains internal C state.
+The documented [integration model](https://nginx.org/en/docs/njs/integration.html) does not provide arbitrary socket access.
+Checking a hostname and proxying to that hostname again would therefore not guarantee that traffic uses the IP that passed the check.
+Adding native DNS and TCP helper APIs would reintroduce substantial C implementation around the JavaScript layer.
+The selected native module handles those requirements directly.
 
-> [!NOTE]
-> Outputs are under `.out/nginx-resty-upstream-healthcheck/`.
-> Override with `BUILD_OUTPUT_DEST`.
-
-```bash
-./.out/nginx-resty-upstream-healthcheck/sbin/nginx -V
-```
-
-## Runtime Introspection Output
-
-```text
-nginx version: nginx/1.30.0
-built by gcc 15.2.0 (Alpine 15.2.0) 
-built with OpenSSL 3.5.6 7 Apr 2026
-TLS SNI support enabled
-configure arguments:
-  --prefix=/home/nobody --with-threads --with-file-aio
-  --with-http_ssl_module --with-http_v2_module --with-http_v3_module
-  --with-http_realip_module --with-http_gzip_static_module
-  --with-http_stub_status_module --without-http_ssi_module
-  --without-http_userid_module --without-http_autoindex_module
-  --without-http_split_clients_module --without-http_fastcgi_module
-  --without-http_uwsgi_module --without-http_scgi_module
-  --without-http_memcached_module --without-http_empty_gif_module
-  --without-http_browser_module --with-stream --with-stream_ssl_module
-  --with-stream_realip_module --with-stream_ssl_preread_module
-  --add-module=nginx-module-vts-0.2.5 --add-module=lua-nginx-module-0.10.29R2
-  --add-module=lua-upstream-nginx-module-0.08
-  --add-module=ngx_http_lua_resty_core_bridge_module
-  --with-cc-opt='-O2 -pipe -fPIE -fstack-protector-strong -fstack-clash-protection
-    -ffunction-sections -fdata-sections -fno-delete-null-pointer-checks
-    -fno-strict-overflow -fno-strict-aliasing -ftrivial-auto-var-init=zero
-    -Wformat -Wformat=2 -Werror=format-security'
-  --with-ld-opt='-static -static-pie -static-libgcc -Wl,-E -rdynamic
-    -Wl,-z,relro -Wl,-z,now -Wl,-z,noexecstack -Wl,-z,separate-code
-    -Wl,--as-needed' --with-libatomic
-```
-
-## What Is Shipped
-
-The build installs the healthcheck runtime bundle under `nginx-resty-upstream-healthcheck/lualib`.
-
-Key paths are:
-
-- `lualib/resty/core.lua`
-- `lualib/resty/core/`
-- `lualib/resty/upstream/healthcheck.lua`
-
-`LUA_PATH` is configured to load modules from `${TARGET_PREFIX}/lualib` at runtime.
-
-`lualib/resty/core.lua` and `lualib/resty/core/*.lua` are a repository-owned minimal `resty.core` runtime for this target.
-Shared dict methods and the narrow `ngx.re.find` compatibility shim are backed by a local nginx module that registers a Lua preload bridge and exposes FFI-safe function pointers instead of relying on `ffi.C` symbol lookup from the static PIE main binary.
-`ngx.re.find` still supports only the healthcheck module's current regex literals, but it now executes them through bridged original compile/exec/destroy regex machinery instead of Lua `string.find`.
-
-## Build and Runtime Model
-
-1. nginx is built as static PIE with statically linked C dependencies and nginx modules.
-2. A repository-owned `resty.core` bridge runtime, the local `ngx_http_lua_resty_core_bridge_module`, and the upstream `lua-resty-upstream-healthcheck` module are built/copied into `${TARGET_PREFIX}/lualib` during image build.
-3. Runtime `require "resty.core"` and `require "resty.upstream.healthcheck"` load from the packaged healthcheck-specific Lua files.
-
-## Scope
-
-This target packages only the runtime Lua files required for `lua-resty-upstream-healthcheck` operation while preserving static nginx/module builds.
-
-## Prefix and Path Resolution
-
-- `-p <prefix>` sets the nginx runtime prefix.
-- If `-c` is omitted, nginx loads `${prefix}/conf/nginx.conf` by default.
-- `nginx.conf` cannot set prefix itself like `-p`.
-  It can only reference `$prefix`.
-- Relative `lua_package_path` entries are not evaluated from binary path or `nginx.conf` file path.
-- `lua_package_path` default value follows `LUA_PATH` or Lua compiled-in defaults.
-- `;;` appends those default search paths after your custom path.
-
-Use `$prefix` in `nginx.conf` for portable module loading:
-
-```nginx
-http {
-    lua_package_path "$prefix/lualib/?.lua;$prefix/lualib/?/init.lua;;";
-}
-```
-
-Portable bundle example:
-
-```text
-/opt/mybundle/
-  conf/nginx.conf
-  lualib/resty/...
-  sbin/nginx
-```
+## Build and Packaging
 
 ```bash
-/opt/mybundle/sbin/nginx -p /opt/mybundle -c conf/nginx.conf
+make build nginx-resty-upstream-healthcheck
 ```
 
-## Comprehensive Runtime Example
+The build installs the native module through nginx's standard `--add-module` configure option.
+The C module and its dependencies are linked into `sbin/nginx`.
+Release selection in root `metadata.json` includes only that binary.
+The complete local output remains under `.out/nginx-resty-upstream-healthcheck/`.
+`BUILD_OUTPUT_DEST` can override the output directory.
 
-Use this single `http {}` example for multiple upstream checks, automatic peer down/up handling, VTS traffic stats, and merged Prometheus output.
+Protocol modules include HTTP TLS, HTTP/2, HTTP/3, stream TLS, real IP, and stream TLS preread.
+Utility modules include gzip static, stub status, VTS, threads, and file AIO.
+FastCGI, uWSGI, SCGI, SSI, autoindex, split clients, userid, memcached, empty GIF, and browser modules remain disabled.
+
+## Allowed Target-Specific Profile
+
+This target adds native active healthchecks for HTTP and stream upstream groups with shared memory zones.
+Its verification stage runs real local upstream servers, DNS responses, TLS sessions, and client traffic.
+The shared static ELF verification contract remains the same as other targets.
+The verification Python script and generated certificates are build tools and are excluded from release artifacts.
+Both interfaces use nginx's native peer lists and route through the checked peer instances.
+
+## Configuration
+
+Replace `lua_shared_dict`, `lua_package_path`, and `spawn_checker` blocks with native upstream directives.
+No `load_module`, Lua path, or runtime library installation is needed.
 
 ```nginx
+worker_processes 2;
+error_log stderr notice;
+events {}
 http {
-    lua_shared_dict healthcheck 64m;
-    vhost_traffic_status_filter_by_host on;
-    vhost_traffic_status_zone shared:vhost_traffic_status:64m;
-    upstream foo {
-        server 10.0.1.11:8080;
-        server 10.0.1.12:8080;
+    resolver 127.0.0.53 valid=10s;
+    resolver_timeout 2s;
+    vhost_traffic_status_zone shared:vhost_traffic_status:16m;
+
+    upstream api {
+        zone api 256k;
+        server api.internal:8080 resolve;
+        server fallback.internal:8080 resolve backup;
+        server 192.0.2.10:8080 down;
+        healthcheck type=http interval=2s timeout=1s fall=3 rise=2
+                    uri=/readyz host=api.internal;
+        healthcheck_statuses 200 204;
     }
-    upstream bar {
-        server 10.0.2.11:8080;
-        server 10.0.2.12:8080;
-    }
-    init_worker_by_lua_block {
-        local hc = require "resty.upstream.healthcheck"
-        local ok, err = hc.spawn_checker({
-            shm = "healthcheck",
-            upstream = "foo",
-            type = "http",
-            http_req = "GET /readyz HTTP/1.0\r\nHost: foo.internal\r\n\r\n",
-            interval = 2000,
-            timeout = 1000,
-            fall = 3,
-            rise = 2,
-            valid_statuses = {200, 204},
-            concurrency = 10,
-        })
-        if not ok then
-            ngx.log(ngx.ERR, "failed to spawn health checker for foo: ", err)
-        end
-        ok, err = hc.spawn_checker({
-            shm = "healthcheck",
-            upstream = "bar",
-            type = "https",
-            http_req = "GET /healthz HTTP/1.0\r\nHost: bar.internal\r\n\r\n",
-            interval = 5000,
-            timeout = 2000,
-            fall = 5,
-            rise = 3,
-            valid_statuses = {200},
-            concurrency = 5,
-            ssl_verify = true,
-            host = "bar.internal",
-        })
-        if not ok then
-            ngx.log(ngx.ERR, "failed to spawn health checker for bar: ", err)
-        end
+    upstream secure_api {
+        zone secure_api 256k;
+        server secure-api.internal:8443 resolve;
+        healthcheck type=https interval=5s timeout=2s fall=3 rise=2
+                    uri=/readyz host=secure-api.internal;
+        healthcheck_tls_name secure-api.internal;
+        healthcheck_trusted_certificate conf/backend-ca.pem;
     }
     server {
-        listen 80;
+        listen 8080;
         location /api/ {
-            proxy_pass http://foo;
+            proxy_pass http://api;
         }
-        location / {
-            proxy_pass http://bar;
+        location /secure/ {
+            proxy_pass https://secure_api;
+            proxy_ssl_server_name on;
+            proxy_ssl_name secure-api.internal;
+            proxy_ssl_verify on;
+            proxy_ssl_trusted_certificate conf/backend-ca.pem;
         }
     }
     server {
-        listen 18080;
-        location = /status/format/prometheus {
-            internal;
+        listen 127.0.0.1:18080;
+        location = /health-metrics {
+            healthcheck_metrics;
+        }
+        location = /traffic-metrics {
             vhost_traffic_status_display;
             vhost_traffic_status_display_format prometheus;
         }
-        location = /status {
-            access_log off;
-            default_type text/plain;
-            content_by_lua_block {
-                local hc = require "resty.upstream.healthcheck"
-                ngx.print(hc.status_page())
-            }
-        }
-        location = /metrics {
-            access_log off;
-            default_type text/plain;
-            content_by_lua_block {
-                local chunks = {}
-                local healthcheck_up = 0
-                local vts_up = 0
-                local ok_mod, hc_or_err = pcall(require, "resty.upstream.healthcheck")
-                if ok_mod then
-                    local hc_out, hc_err = hc_or_err.prometheus_status_page()
-                    if hc_out then
-                        healthcheck_up = 1
-                        table.insert(chunks, hc_out)
-                    else
-                        table.insert(chunks, "# healthcheck module unavailable: " .. tostring(hc_err))
-                    end
-                else
-                    table.insert(chunks, "# healthcheck module unavailable: " .. tostring(hc_or_err))
-                end
-                local vts = ngx.location.capture("/status/format/prometheus")
-                if vts.status == ngx.HTTP_OK then
-                    vts_up = 1
-                    table.insert(chunks, vts.body)
-                else
-                    table.insert(chunks, "# vts metrics unavailable: status=" .. tostring(vts.status))
-                end
-                table.insert(chunks, "# HELP nginx_metrics_source_up Source availability " .. "for merged /metrics endpoint")
-                table.insert(chunks, "# TYPE nginx_metrics_source_up gauge")
-                table.insert(chunks, string.format("nginx_metrics_source_up{source=\"healthcheck_" .. "module\"} %d", healthcheck_up))
-                table.insert(chunks, string.format("nginx_metrics_source_up{source=\"vts\"} %d", vts_up))
-                ngx.print(table.concat(chunks, "\n"))
-            }
-        }
     }
 }
 ```
 
-`spawn_checker` updates peer state via `ngx.upstream.set_peer_down`.
-Failed peers are marked down after `fall` consecutive failures and recovered after `rise` consecutive successes.
+Replace the resolver, backend names, CA file, and listener addresses for your environment.
+Healthcheck TLS verification and proxy TLS verification are configured separately.
+Keep both enabled for HTTPS backends.
 
-`nginx_metrics_source_up` indicates metric source availability, not backend health status.
+### Healthcheck Parameters
 
-## Reference
+`healthcheck` is configured inside each checked `upstream` block.
+A `zone` is required so all workers route using the same health state.
+The module uses nginx's built-in round-robin peer storage.
+Round robin, least connections, hash, random, and HTTP keepalive retain that storage and can use the checks.
+Third-party balancers with different peer storage are outside the supported target profile.
 
-- [lua-nginx-module: lua_package_path](https://github.com/openresty/lua-nginx-module#lua_package_path)
-- [lua-resty-upstream-healthcheck](https://github.com/openresty/lua-resty-upstream-healthcheck)
+| Parameter | Meaning |
+| --- | --- |
+| `type=http` | Send an HTTP readiness request and evaluate its status code. |
+| `type=https` | Verify the certificate and TLS name before sending the HTTP readiness request. |
+| `type=tcp` | Check whether a connection to the actual peer address succeeds. |
+| `interval` | Set the delay between checks using nginx time syntax. |
+| `timeout` | Bound the complete connection, TLS, request, and response operation. |
+| `fall` | Mark the peer down after this many consecutive failed checks. |
+| `rise` | Admit a new or recovering peer after this many consecutive successful checks. |
+| `uri` | Set the readiness request path for HTTP and HTTPS checks. |
+| `host` | Set the HTTP Host header independently of the resolved peer address. |
+| `concurrency` | Limit simultaneous probes within one upstream group. |
+| `shm_size` | Bound the shared health state storage for one upstream group. |
+
+`healthcheck_statuses` lists accepted final HTTP response codes.
+The default accepted status is `200`.
+HTTPS checks require `healthcheck_trusted_certificate` and `healthcheck_tls_name`.
+`healthcheck_tls_name` sets the certificate hostname and SNI name.
+No option disables certificate or hostname verification.
+
+### Stream TCP and TLS Checks
+
+Configure `healthcheck_tcp` inside a `stream` upstream with a shared zone.
+The default `type=tcp` succeeds after connecting to the peer's actual address.
+Use `type=tls` to require a verified TLS handshake with the configured certificate name and CA.
+The interval, complete-operation timeout, failure threshold, recovery threshold, concurrency, and shared-memory settings have the same meaning as their HTTP counterparts.
+
+```nginx
+stream {
+    resolver 127.0.0.53 valid=10s;
+    resolver_timeout 2s;
+
+    upstream cache {
+        zone cache 256k;
+        server cache.internal:6379 resolve;
+        server cache-backup.internal:6379 resolve backup;
+        healthcheck_tcp type=tcp interval=2s timeout=1s fall=3 rise=2
+                        concurrency=16 shm_size=1m max_response=4096;
+        healthcheck_send "PING\r\n";
+        healthcheck_expect "+PONG\r\n" min_recv=7;
+    }
+    server {
+        listen 6379;
+        proxy_pass cache;
+    }
+}
+```
+
+The example uses Redis's inline PING command and requires a complete positive response.
+Use a protocol request appropriate for the backend and its authentication requirements.
+`healthcheck_send_hex` and `healthcheck_expect_hex` accept hexadecimal bytes for binary protocols.
+Text and hexadecimal forms are alternatives for the same send or expectation setting.
+An expectation must be present in the received bytes, and `min_recv` must be satisfied before success.
+The default response buffer limit is 4096 bytes and can be set with `max_response`.
+Response timeout, early EOF, an unmet expectation, or a full unmatched buffer fails the check.
+Sending a payload without an expectation confirms successful transmission rather than application readiness.
+
+TLS checks require `healthcheck_tls_name` and `healthcheck_trusted_certificate` inside the stream upstream.
+These control the active probe independently of stream `proxy_ssl` settings for client traffic.
+Both transports support the same payload and expectation directives.
+The implementation follows HAProxy's connect, send, expect, timeout, and threshold behavior for this bounded interface.
+HAProxy's arbitrary multi-step TCP scripts and regular-expression expectations are outside this interface.
+
+### DNS and Peer Lifecycle
+
+Use nginx's native [`resolve`, `zone`, and `resolver`](https://nginx.org/en/docs/http/ngx_http_upstream_module.html) directives.
+A domain with several A or AAAA records produces independently checked peers.
+Multiple `server` directives and several upstream groups are supported.
+The same mechanism can consume nginx's SRV-resolved peer list.
+DNS TTL and `valid` control nginx's refresh schedule rather than the healthcheck interval.
+
+New peers start unavailable and require `rise` successful checks before receiving client traffic.
+Failure and recovery streaks belong to a peer instance, not its position in the peer list.
+A probe holds a native peer reference while the check is outstanding.
+Results for removed peers are discarded.
+Recreated peers receive fresh health state even when their address matches a removed peer.
+An administratively configured `down` server remains unavailable after successful checks.
+
+Worker zero performs the probes and publishes state for all workers.
+Checks resume when that worker is replaced.
+Configuration reload creates fresh health state and resets its counters.
+New workers require the configured recovery threshold before admitting peers.
+Graceful shutdown stops new probes and bounds outstanding checks by their deadlines.
+
+## Metrics Integration
+
+`healthcheck_metrics` exports Prometheus health metrics with upstream, configured server, resolved peer, and backup identity.
+Use the native metrics together with VTS traffic metrics from two scrape endpoints.
+Separate endpoints preserve each module's metric names and avoid custom response-merging code.
+
+```yaml
+scrape_configs:
+  - job_name: nginx-health
+    metrics_path: /health-metrics
+    static_configs:
+      - targets: ["127.0.0.1:18080"]
+  - job_name: nginx-traffic
+    metrics_path: /traffic-metrics
+    static_configs:
+      - targets: ["127.0.0.1:18080"]
+```
+
+The example assumes the collector can reach the loopback listener.
+A remote collector requires a private reachable listener and appropriate access controls.
+
+The health metrics follow [HAProxy's server metrics](https://github.com/haproxy/haproxy/blob/master/src/stats-proxy.c) for failures, state transitions, last change, response code, and duration.
+Durations and ages use seconds, cumulative counts use counters, and current state uses gauges.
+An unknown or untested peer must not be interpreted as a successful check.
+Check freshness alongside availability so a stopped checker cannot silently appear healthy.
+Removed DNS peers disappear from health metrics rather than remaining as stale available servers.
+
+HTTP peer metrics use the `nginx_healthcheck_` prefix.
+Stream peer metrics use the `nginx_stream_healthcheck_` prefix on the same `healthcheck_metrics` endpoint.
+Their labels identify the upstream, configured server, resolved peer address, and backup role.
+
+| Suffix | Type | Meaning |
+| --- | --- | --- |
+| `peer_up` | Gauge | The checker currently permits this peer to receive traffic. |
+| `admin_down` | Gauge | The server is administratively unavailable. |
+| `checks_total` | Counter | Completed checks. |
+| `check_failures_total` | Counter | Completed checks that failed. |
+| `check_up_down_total` | Counter | Transitions from ready to down, including checker resource failures. |
+| `check_status` | Gauge | `-1` before any result, `0` for failure, or `1` for success. |
+| `check_code` | Gauge | Parsed HTTP status, or `0` when unavailable. |
+| `check_duration_seconds` | Gauge | Duration of the last completed check. |
+| `check_last_change_seconds` | Gauge | Time since initialization or the last availability change. |
+| `last_check_timestamp_seconds` | Gauge | Unix time of the last completed check, or `0` before any result. |
+| `rise_streak`, `fall_streak` | Gauge | Consecutive successful or failed checks. |
+
+Upstream metrics expose checker ownership, active probes, configured concurrency, scan freshness, concurrency limits, and memory or state failures.
+The failure-transition counter follows HAProxy's downward-transition meaning rather than counting successful recovery as another failure.
+
+## Runtime Verification
+
+The Docker verify stage runs `verify-runtime.py` against the built binary inside UBI10 Minimal.
+It checks local failure and recovery, DNS membership changes, TLS verification, multiple workers, and metrics.
+Fixture services and certificates are temporary and never use external backend traffic.
+A failed assertion fails the build.
+
+The build stage also runs `verify-stream-send.c` against the production callbacks.
+It checks partial TCP and TLS writes, retry events, exact binary payloads, and successful probe cleanup without changing the installed binary.
+Real TLS handshakes remain covered by the runtime verifier.
+
+Runtime verification requires working IPv4 and IPv6 loopback connections inside the build network.
+Diagnose failed loopback connections in the build environment rather than skipping the IPv6 assertions.
+
+The exported binary targets Linux and cannot run directly on macOS.
+Inspect its installed modules with `nginx -V` in a Linux environment.
+Use `-p <prefix>` and `-c <config>` to select the deployment directory and configuration.
+Only the native interface above is supported after migration.

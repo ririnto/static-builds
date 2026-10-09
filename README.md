@@ -310,7 +310,7 @@ Build caching uses the root `.cache/<target>/` directories.
 Selected release contents:
 
 - `nginx`: `sbin/nginx`
-- `nginx-resty-upstream-healthcheck`: `sbin/nginx`, `lualib/resty/core.lua`, `lualib/resty/core/`, `lualib/resty/upstream/`
+- `nginx-resty-upstream-healthcheck`: `sbin/nginx` with the native healthcheck and VTS modules compiled in.
 - `haproxy`: `sbin/haproxy`
 - `apache-exporter`: `bin/apache-exporter`
 - `apache-httpd`: `bin/httpd`, `bin/rotatelogs`
