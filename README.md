@@ -313,7 +313,6 @@ Selected release contents:
 - `nginx`: `sbin/nginx` with njs and VTS modules compiled in.
 - `nginx-upstream-healthcheck`: `sbin/nginx` with upstream healthcheck, njs and VTS modules compiled in.
 - Both nginx targets include their scripting examples under `conf/`.
-- The healthcheck target replaces the former `nginx-resty-upstream-healthcheck` target and release prefix.
 - `haproxy`: `sbin/haproxy`
 - `apache-exporter`: `bin/apache-exporter`
 - `apache-httpd`: `bin/httpd`, `bin/rotatelogs`

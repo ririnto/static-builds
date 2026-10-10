@@ -40,8 +40,7 @@ Replace its resolver and backend names for your environment before using it.
 
 Both NGINX targets include njs 1.0.1 for HTTP and stream scripting.
 Set `js_engine qjs;` in each context that imports an njs script.
-The njs engine is deprecated upstream for new configurations.
-See the [official engine guidance](https://nginx.org/en/docs/http/ngx_http_js_module.html#js_engine).
+The [official engine guidance](https://nginx.org/en/docs/njs/engine.html) recommends QuickJS for new configurations.
 The packaged `conf/scripting.conf` and `conf/scripting.js` provide the scripting example.
 
 The healthcheck C module remains responsible for active probes that must use NGINX's selected peer.
@@ -252,6 +251,7 @@ It does not claim full HAProxy healthcheck parity.
 ## Build verification
 
 The Docker verify stage checks the ELF type and dynamic dependencies, prints `nginx -V`, and runs `nginx -t` on the scripting configuration.
+HTTP and stream scripting responses report the actual `QuickJS` engine and selected njs version.
 It starts the binary and uses `curl` for HTTP njs and Bash `/dev/tcp` for stream njs.
 The healthcheck scenario generates a temporary certificate with OpenSSL and starts local NGINX, DNS, and socket fixtures.
 It runs `nginx -t`, HTTP requests with `curl`, stream requests with Bash `/dev/tcp`, and OpenSSL-backed TLS probes.

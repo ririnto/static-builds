@@ -23,8 +23,8 @@ NGINX Open Source does not publish a separate LTS line.
 The njs HTTP and stream modules use nginx's standard static `--add-module` installation.
 [scripting.conf](scripting.conf) and [scripting.js](scripting.js) provide loopback HTTP and TCP examples.
 Set `js_engine qjs` to select the statically linked QuickJS-NG engine.
+The [official engine guidance](https://nginx.org/en/docs/njs/engine.html) recommends QuickJS for new configurations.
 The optional libxslt dependency is excluded from this target.
-Lua, LuaJIT, OpenResty runtime libraries, and a static FFI compatibility provider are excluded.
 
 On a compatible Linux host, run the packaged example from its deployment prefix:
 
@@ -35,7 +35,7 @@ curl http://127.0.0.1:18081/njs
 ./.out/nginx/sbin/nginx -p "$PWD/.out/nginx/" -c conf/scripting.conf -s quit
 ```
 
-The Docker verification stage checks static linking, configuration parsing, and real HTTP/stream njs execution.
+The Docker verification stage checks static linking, configuration parsing, and real HTTP/stream execution with the reported `QuickJS` engine and selected njs version.
 It runs nginx with standard CLI clients and requires graceful shutdown.
 It does not introduce a separate verification framework.
 
