@@ -12,7 +12,21 @@ Build statically-linked binaries using Docker multi-stage builds for portable, m
 
 ## Prerequisites
 
-- Docker
+Local builds require GNU Make, a POSIX-compatible `sh` with its standard built-ins, AWK, and common host utilities.
+The build scripts use `basename`, `dirname`, `mkdir`, `mktemp`, `mv`, `printf`, `pwd`, `rm`, `rmdir`, and `sleep`.
+See the [Makefile](Makefile), [download script](scripts/download.sh), and [metadata helper](scripts/metadata.sh).
+
+Install `curl` or `wget` to download target sources, and allow network access to their upstream hosts.
+Target download URLs and build arguments come from [metadata.json](metadata.json).
+
+Docker CLI access to a running daemon and the Docker Buildx plugin are required.
+Confirm the installed plugin with `docker buildx version`.
+The active builder must use a BuildKit version and driver that support `type=local` output and cache import and export.
+The Makefile writes artifacts to `.out/<target>/` and imports and exports cache in `.cache/<target>/`.
+Use `docker buildx inspect` to check the active builder and driver.
+
+Python 3 is needed only for `make list-targets`, not for `make build`.
+Target compilers and verification tools are installed or run in Dockerfile stages, so they are not host prerequisites.
 
 ## Usage
 
