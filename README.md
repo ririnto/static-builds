@@ -18,12 +18,17 @@ See the [Makefile](Makefile), [download script](scripts/download.sh), and [metad
 
 Install `curl` or `wget` to download target sources, and allow network access to their upstream hosts.
 Target download URLs and build arguments come from [metadata.json](metadata.json).
+A clean build also requires builder network access to image registries and each target's package or language dependency repositories.
+For example, the [nginx Dockerfile](nginx/Dockerfile) installs Alpine build packages and Red Hat verification packages.
+The [CoreDNS Dockerfile](coredns/Dockerfile) also compiles Go code, which can require access to Go module sources.
 
 Docker CLI access to a running daemon and the Docker Buildx plugin are required.
 Confirm the installed plugin with `docker buildx version`.
 The active builder must use a BuildKit version and driver that support `type=local` output and cache import and export.
 The Makefile writes artifacts to `.out/<target>/` and imports and exports cache in `.cache/<target>/`.
-Use `docker buildx inspect` to check the active builder and driver.
+The builder must run containers for `BUILDKIT_PLATFORM`, which defaults to `linux/amd64` in the Makefile.
+Use a native worker or configured binfmt/QEMU emulation when the builder's architecture differs from the selected platform.
+Use `docker buildx inspect --bootstrap` to check the active builder, driver, and supported platforms.
 
 Python 3 is needed only for `make list-targets`, not for `make build`.
 Target compilers and verification tools are installed or run in Dockerfile stages, so they are not host prerequisites.
