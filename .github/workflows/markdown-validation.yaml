@@ -1,0 +1,54 @@
+name: Markdown Validation
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  markdownlint:
+    name: Markdown lint
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: Check Markdown rules
+        uses: DavidAnson/markdownlint-cli2-action@v24.2.0
+        with:
+          globs: '**/*.md'
+
+  fences:
+    name: Code fences
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: Check closed code fences
+        uses: rvben/rumdl@v0.2.79
+        with:
+          version: 0.2.79
+          path: .
+          args: >-
+            --enable MD046 --no-cache --respect-gitignore
+            --exclude nginx-upstream-healthcheck/ngx_http_upstream_healthcheck_module/**
+
+  links:
+    name: Relative links
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: Check relative files and heading links
+        uses: lycheeverse/lychee-action@v2.9.0
+        with:
+          lycheeVersion: v0.24.2
+          args: --config .lychee.toml '**/*.md'
+          output: ${{ runner.temp }}/markdown-links.md
