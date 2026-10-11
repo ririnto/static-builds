@@ -1,0 +1,6 @@
+{
+  "gitignore": true,
+  "ignores": [
+    "nginx-upstream-healthcheck/ngx_http_upstream_healthcheck_module/**"
+  ]
+}

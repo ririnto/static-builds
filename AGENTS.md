@@ -107,7 +107,7 @@ The repository MUST NOT enforce checksum verification or pinning for upstream so
 
 ## ANTI-PATTERNS (THIS PROJECT)
 
-- No push/PR validation CI (tag-triggered release only)
+- No target builds or releases in push/PR validation CI (documentation validation only).
 - No test framework - build infrastructure only
 
 ## UNIQUE STYLES

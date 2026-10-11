@@ -19,6 +19,31 @@ Exclude generated files and vendored material from mechanical prose changes.
 Check Markdown rendering, relative links, and instruction loading paths after editing.
 Use the repository's `.markdownlint.jsonc` when running Markdown lint.
 
+### Markdown validation
+
+The [Markdown validation workflow](workflows/markdown-validation.yaml) reports lint, code-fence, and relative-link checks on every pull request.
+It also supports manual runs.
+Every pull request is checked because deleting a linked file can break documentation without changing Markdown.
+The checks use maintained markdownlint-cli2, rumdl, and Lychee releases.
+
+Run the same checks from the repository root:
+
+```sh
+npx --yes markdownlint-cli2@0.23.2 '**/*.md'
+rumdl check --enable MD046 --no-cache --respect-gitignore --exclude 'nginx-upstream-healthcheck/ngx_http_upstream_healthcheck_module/**' .
+lychee --config .lychee.toml '**/*.md'
+```
+
+The lint command requires Node.js 22 or newer with npm.
+Use rumdl 0.2.79 and Lychee 0.24.2, matching the workflow's tool versions.
+The existing Markdown rules remain enabled through `.markdownlint.jsonc`.
+The CLI configuration respects Git ignore files and excludes the vendored healthcheck module.
+The fence check supplements Markdown lint with rumdl's built-in MD046 rule, including missing closing fences.
+Lychee checks relative file paths and heading fragments offline, excluding network URLs.
+Its `.lychee.toml` configuration explicitly excludes generated and vendored paths, including when checking Git worktrees.
+All checks exclude ignored build outputs, source caches, and the vendored healthcheck module.
+These checks run without building targets or invoking release jobs.
+
 ## YAML filenames
 
 Use `.yaml` when the consuming platform supports that extension.
@@ -52,5 +77,6 @@ Publish through the feature branch and pull request rather than pushing changes 
 For documentation changes, check Markdown syntax, rendering, relative links, and preservation of code and recorded output.
 For build changes, run `make build <target>` for each affected target before creating release tags.
 Report unavailable tools and checks that could not run.
-The current GitHub workflows run on release tags or reusable workflow calls, without a push or pull request validation workflow.
+The release workflows run on release tags or reusable workflow calls.
+The separate Markdown validation workflow runs on pull requests or manual requests with read-only repository access.
 Do not create release tags to validate documentation changes.
