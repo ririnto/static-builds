@@ -104,7 +104,9 @@ trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
-FIXTURE_DIR=$(mktemp -d "${TMPDIR:-/tmp}/healthcheck-suite.XXXXXX")
+FIXTURE_DIR=$(mktemp -d /tmp/healthcheck-suite.XXXXXX)
+chmod 711 "$FIXTURE_DIR"
+mkdir -p "$FIXTURE_DIR/logs"
 METRICS_FILE="$FIXTURE_DIR/metrics"
 HEADERS_FILE="$FIXTURE_DIR/headers"
 
@@ -257,12 +259,17 @@ metric_value() {
   local line
   local labels
   local sample_value
+  local sample_pattern=',backup="(true|false)"(,result="[A-Z0-9]+")?} [-+0-9.eE]+$'
   local matched=0
   while IFS= read -r line; do
     case "$line" in
       "$family{"*) ;;
       *) continue ;;
     esac
+    if [[ ! "$line" =~ $sample_pattern ]]; then
+      printf 'Invalid quoted peer labels in metric family %s.\n' "$family" >&2
+      return 1
+    fi
     labels=${line#*\{}
     labels=${labels%%\}*}
     case ",$labels," in
@@ -459,7 +466,9 @@ assert_multiworker_metrics() {
 }
 
 create_certificates
+chmod 600 "$FIXTURE_DIR"/*.key
 printf '127.0.0.2 backend.local\n127.0.0.3 backend.local\n' >"$FIXTURE_DIR/hosts"
+chmod 644 "$FIXTURE_DIR/hosts"
 start_fixture dnsmasq --keep-in-foreground --no-resolv --no-hosts \
   --addn-hosts="$FIXTURE_DIR/hosts" --port=15353 --listen-address=127.0.0.1 \
   --bind-interfaces --pid-file="$FIXTURE_DIR/dnsmasq.pid"

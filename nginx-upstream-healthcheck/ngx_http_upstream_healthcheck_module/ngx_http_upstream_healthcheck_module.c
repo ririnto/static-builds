@@ -5336,7 +5336,8 @@ ngx_http_upstream_healthcheck_output_labels_with_result(
         || ngx_http_upstream_healthcheck_output_text(out, ",backup=\"")
            != NGX_OK
         || ngx_http_upstream_healthcheck_output_text(
-               out, sample->backup ? "true" : "false") != NGX_OK)
+               out, sample->backup ? "true" : "false") != NGX_OK
+        || ngx_http_upstream_healthcheck_output_text(out, "\"") != NGX_OK)
     {
         return NGX_ERROR;
     }

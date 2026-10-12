@@ -30,6 +30,8 @@ static-builds/
 |       +-- build-rootless.sh        # Rootless BuildKit build entry
 +-- templates/              # GitLab CI components
 |   +-- static-release.yml
++-- proxy/
+|   +-- tests/              # Standalone healthcheck functional verification
 +-- .cache/                 # Build cache (gitignored)
 +-- .tmp/                   # Downloaded source cache (gitignored)
 +-- .out/                   # Build outputs (gitignored)
@@ -52,6 +54,7 @@ static-builds/
 | CI release config | .github/workflows/, .gitlab-ci.yml, .gitlab/ci/, templates/ | GitHub workflows + GitLab component pipeline |
 | Build definition | */Dockerfile | Multi-stage target build |
 | Build metadata | metadata.json | tag_prefix, release_files, env, downloads |
+| Functional healthcheck verification | proxy/tests/ | Separate from target Docker verification. |
 
 ## CONVENTIONS
 

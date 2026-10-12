@@ -37,7 +37,8 @@ Release packages include these paths beneath the target prefix:
 The packaged healthcheck configuration shows HTTP, HTTPS, TLS-only, stream TCP, TLS stream, and protected localhost metrics examples.
 It uses `conf/backend-ca.pem` as an example trust bundle, which you must provide for your backends.
 Replace its resolver and backend names for your environment before using it.
-The configuration was already included in canonical `metadata.json` release files, so the example adds no package metadata or dependency version changes.
+Canonical `metadata.json` selects the configuration and this README for release packaging.
+The healthcheck profile needs no additional runtime library.
 
 ## njs scripting
 
@@ -243,6 +244,8 @@ Upstream metrics expose the last peer scan, active probes, checker worker PID, c
 
 An untested peer reports check status `-1` and must not be treated as a successful check.
 Peer check status is `-1` before a result, `0` for failure, and `1` for success.
+This boolean describes the last completed probe, while `peer_up` describes current routing eligibility.
+Local resource failures or shutdown aborts can classify the peer as `SOCKERR` while retaining its previous completed boolean result.
 The `check_result` metric families emit one series for each result name on every peer, with one current result set to `1` and all others set to `0`.
 The older boolean status and HTTP code gauges remain available.
 TLS-only checks report no HTTP response code because they do not send an HTTP request.
@@ -251,7 +254,7 @@ It does not count a successful recovery as another failure.
 
 | Result | Meaning |
 | --- | --- |
-| `UNKNOWN` | No completed check has classified the peer yet. |
+| `UNKNOWN` | No probe or local failure has classified the peer yet. |
 | `SOCKERR` | The checker could not create or operate its local socket or event state. |
 | `L4OK` | The TCP connection succeeded for a connect-only check. |
 | `L4TOUT` | The TCP connection did not complete before its timeout. |
@@ -259,7 +262,7 @@ It does not count a successful recovery as another failure.
 | `L6OK` | The TLS handshake, trusted certificate chain, and hostname verification succeeded. |
 | `L6TOUT` | The TLS handshake did not complete before its timeout. |
 | `L6RSP` | The TLS handshake or certificate/name verification failed. |
-| `L7OK` | The HTTP status was accepted or the configured stream response expectation matched. |
+| `L7OK` | The HTTP status was accepted, the stream response requirement was met, or a send-only payload was written. |
 | `L7TOUT` | The HTTP or stream application exchange did not complete before its timeout. |
 | `L7RSP` | The HTTP response was malformed or missing, or a stream response ended without a match. |
 | `L7STS` | The HTTP response was valid but its status was not configured as accepted. |
@@ -285,13 +288,17 @@ The target Docker verify stage performs common static-binary checks and the shar
 It does not run healthcheck functional scenarios.
 The standalone suite lives under `proxy/tests/`, which is a test layout rather than a build target.
 
-Check its shell syntax and formatting without starting fixtures:
+Validate runner cleanup, shell syntax, and formatting offline:
 
 ```sh
+python3 proxy/tests/verify-runner.py
 bash -n proxy/tests/run.sh proxy/tests/run-docker.sh
 make lint
 make shfmt-check
 ```
+
+The Python 3 check uses a local Docker CLI fixture to exercise partial creation, signal cleanup, ownership guards, and exit-status retention.
+It runs offline without a Docker daemon.
 
 Run the suite against an already-built Linux binary with:
 
