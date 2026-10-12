@@ -1,5 +1,4 @@
 #!/usr/bin/env sh
-# -*- coding: utf-8 -*-
 set -e
 ROOT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)
 
@@ -24,11 +23,13 @@ parse_tag() {
   version_revision="${tag#"${tag_prefix}"-}"
   version="${version_revision%.*}"
   revision="${version_revision##*.}"
-  if ! [ "$revision" -eq "$revision" ] 2>/dev/null; then
-    err "Error: Revision '$revision' is not numeric"
-    return 1
-  fi
-  printf '%s' "$version"
+  case "$revision" in
+    '' | *[!0-9]*)
+      err "Error: Revision '$revision' must contain only decimal digits"
+      return 1
+      ;;
+    *) printf '%s' "$version" ;;
+  esac
 }
 
 # Get the official version from centralized metadata.
@@ -62,16 +63,25 @@ main() {
   target="$1"
   tag="$2"
   tag_prefix=$(sh "${ROOT_DIR}/scripts/metadata.sh" get-tag-prefix "$target") || exit 1
-  if ! printf '%s' "$tag" | grep -qE "^${tag_prefix}-"; then
-    err "Error: Invalid tag format '$tag'"
-    err "Expected format: ${tag_prefix}-<version>.<revision>"
-    err "Example: ${tag_prefix}-1.28.2.18"
-    exit 1
-  fi
+  case "$tag" in
+    "${tag_prefix}"-*) ;;
+    *)
+      err "Error: Invalid tag format '$tag'"
+      err "Expected format: ${tag_prefix}-<version>.<revision>"
+      exit 1
+      ;;
+  esac
   tag_version=$(parse_tag "$tag" "$tag_prefix") || exit 1
   official_version=$(get_official_version "$target") || exit 1
   case "$tag_version" in
-    "${official_version}" | "${official_version}"-*) ;;
+    "${official_version}") ;;
+    "${official_version}"-*)
+      prerelease=${tag_version#"${official_version}"-}
+      if ! printf '%s\n' "$prerelease" | grep -Eq '^[A-Za-z0-9]+([.-][A-Za-z0-9]+)*$'; then
+        err "Error: Invalid prerelease suffix '$prerelease'"
+        exit 1
+      fi
+      ;;
     *)
       err "Error: Version mismatch"
       err "  Tag version:      $tag_version (from tag '$tag')"
@@ -79,6 +89,6 @@ main() {
       exit 1
       ;;
   esac
-  printf '✓ Tag validation passed: %s (version %s)\n' "$tag" "$tag_version"
+  printf 'Tag validation passed: %s (version %s)\n' "$tag" "$tag_version"
 }
 main "$@"
