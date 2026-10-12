@@ -163,13 +163,16 @@ Each target must follow this structure:
 3. Create Dockerfile: Implement a multi-stage build:
 
    ```dockerfile
+   ARG ALPINE_VERSION
+   ARG UBI10_MINIMAL_VERSION
+
    # Build stage
    FROM alpine:${ALPINE_VERSION} AS build
    ARG YOUR_TARGET_VERSION
    ADD ".tmp/your-target-${YOUR_TARGET_VERSION}.tar.gz" /build/
    # ... build steps ...
 
-   # Verify stage (optional but recommended)
+   # Verify stage (required)
    FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
    ARG YOUR_TARGET_VERSION
    COPY --from=build /your-target /target/your-target
@@ -198,21 +201,19 @@ Each target must follow this structure:
 
 5. Verify: Targets are loaded from `metadata.json`.
 
-6. Update release trigger mapping: Add the tag trigger and target selection case in `.github/workflows/release-from-tag.yaml`.
-   Release file selection and official versions now come from `metadata.json`.
+6. Extend the tag trigger filter in [.github/workflows/release-from-tag.yaml](.github/workflows/release-from-tag.yaml) with the target's `tag_prefix` followed by `-*`.
+   The existing `resolve-target` job derives target selection from `metadata.json` through `metadata.sh get-target-from-tag` and validates the tag with `.github/release-guard.sh`.
+   Keep that resolution job and its reusable release call unchanged.
+   Release file selection and official versions also come from `metadata.json`.
 
    ```yaml
    on:
      push:
        tags:
          - 'your-target-*'
-
-   jobs:
-     release:
-       with:
-         target: >-
-           startsWith(github.ref_name, 'your-target-') && 'your-target'
    ```
+
+   Add this filter to the existing `on.push.tags` list rather than replacing the caller workflow.
 
 7. Validate: Run `make build your-target` to verify the download and build flow works.
 
