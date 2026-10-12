@@ -17,6 +17,8 @@ The build scripts use `basename`, `dirname`, `mkdir`, `mktemp`, `mv`, `printf`, 
 See the [Makefile](Makefile), [download script](download.sh), and [metadata helper](metadata.sh).
 
 Install `curl` or `wget` to download target sources, and allow network access to their upstream hosts.
+The `wget` fallback also requires GNU Coreutils or BusyBox `timeout`, or GNU Coreutils `gtimeout` on macOS, to enforce the per-attempt wall-clock deadline.
+Both downloaders honor `DOWNLOAD_MAX_TIME`, which defaults to 300 seconds per attempt.
 Target download URLs and build arguments come from [metadata.json](metadata.json).
 A clean build also requires builder network access to image registries and each target's package or language dependency repositories.
 For example, the [nginx Dockerfile](nginx/Dockerfile) installs Alpine build packages and Red Hat verification packages.
