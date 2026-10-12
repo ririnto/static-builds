@@ -38,7 +38,13 @@ curl http://127.0.0.1:18081/njs
 Both NGINX Docker verification stages reference the same separate scripts for static linking, configuration parsing, and HTTP/stream execution.
 The [verification script](../nginx/nginx-verify.sh) preserves their existing verification contract.
 The scripting checks require the reported `QuickJS` engine and selected njs version.
-It runs nginx with standard CLI clients and requires graceful shutdown.
+Each HTTP probe has a 15-second GNU `timeout` deadline, with curl request limits of two seconds for the retrying probe and five seconds for the second probe.
+On success, failure, `INT`, or `TERM`, it cancels active probes and forwards `QUIT` to the supervised nginx process group.
+GNU `timeout` escalates resistant probes to `KILL` after one second and resistant nginx processes after two seconds.
+The verifier reaps both supervisors and removes its temporary response file.
+The nginx supervisor also imposes a 40-second server lifetime bound.
+Run `python3 proxy/tests/verify-nginx.py` from the repository root to check cancellation, failed probes, deadlines, and shutdown with local process fixtures.
+This standalone regression requires Python 3 and GNU Coreutils `timeout` or `gtimeout` and does not invoke Docker.
 It does not introduce a separate verification framework.
 
 ## How to Verify

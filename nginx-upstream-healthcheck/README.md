@@ -206,6 +206,13 @@ The NGINX results classify the point where each probe succeeded or failed while 
 Both NGINX Docker verify stages reference shared scripts for common static-binary checks and njs HTTP and stream checks.
 Build scripts and fixture configurations live in separate source files rather than embedded Dockerfile or documentation scripts.
 The shared [verification script](../nginx/nginx-verify.sh) preserves the existing static-build verification contract.
+Each HTTP probe has a 15-second GNU `timeout` deadline, with curl request limits of two seconds for the retrying probe and five seconds for the second probe.
+On success, failure, `INT`, or `TERM`, it cancels active probes and forwards `QUIT` to the supervised nginx process group.
+GNU `timeout` escalates resistant probes to `KILL` after one second and resistant nginx processes after two seconds.
+The verifier reaps both supervisors and removes its temporary response file.
+The nginx supervisor also imposes a 40-second server lifetime bound.
+Run `python3 proxy/tests/verify-nginx.py` from the repository root to check cancellation, failed probes, deadlines, and shutdown with local process fixtures.
+This standalone regression requires Python 3 and GNU Coreutils `timeout` or `gtimeout` and does not invoke Docker.
 It does not run healthcheck functional scenarios.
 The standalone suite lives under `proxy/tests/`, which is a test layout rather than a build target.
 Its [NGINX fixture template](../proxy/tests/fixtures/nginx.conf.template) and [certificate configuration](../proxy/tests/fixtures/ca.cnf.template) provide separate fixture sources.
