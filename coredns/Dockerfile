@@ -17,6 +17,7 @@ WORKDIR "/build/coredns-${COREDNS_VERSION}"
 RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg/mod \
     make coredns \
+        GOTOOLCHAIN=local \
         CGO_ENABLED=0 \
         BUILDOPTS="-v -trimpath"
 

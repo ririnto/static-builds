@@ -6,7 +6,9 @@ This target builds a static CoreDNS binary from source using Go.
 
 ### Build Options (Explicit)
 
-- Build command: `make coredns CGO_ENABLED=0 BUILDOPTS="-v -trimpath"`.
+- Build command: `make coredns GOTOOLCHAIN=local CGO_ENABLED=0 BUILDOPTS="-v -trimpath"`.
+- `GOTOOLCHAIN=local` uses the compiler installed by the Go builder image selected in `metadata.json`.
+  It overrides the upstream Makefile's older compiler selection and prevents an automatic toolchain download.
 - `CGO_ENABLED=0` forces a pure-Go build without libc runtime dependencies.
 - No repository-specific plugin patching is applied during build.
 
