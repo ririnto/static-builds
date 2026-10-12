@@ -521,7 +521,7 @@ start_fixture socat TCP-LISTEN:19086,bind=127.0.0.1,reuseaddr,fork EXEC:'sleep 5
   >"$FIXTURE_DIR/http-stall.log" 2>&1
 start_fixture socat \
   "OPENSSL-LISTEN:19455,bind=127.0.0.1,reuseaddr,fork,cert=$FIXTURE_DIR/valid.pem,key=$FIXTURE_DIR/valid.key,verify=0" \
-  'SYSTEM:printf "malformed response\\r\\n"' \
+  "EXEC:$TEMPLATE_DIR/malformed-response.sh" \
   >"$FIXTURE_DIR/http-malformed.log" 2>&1
 
 render_template "$TEMPLATE_DIR/nginx.conf.template" "$FIXTURE_DIR/nginx.conf"
