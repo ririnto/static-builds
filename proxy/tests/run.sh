@@ -540,6 +540,8 @@ assert_config_rejected "$FIXTURE_DIR/stream-missing-name.conf" \
 assert_config_rejected "$FIXTURE_DIR/stream-missing-ca.conf" \
   'TLS healthcheck requires healthcheck_tls_name and healthcheck_trusted_certificate'
 
+"$NGINX_BIN" -t -p "$FIXTURE_DIR" -c "$TEMPLATE_DIR/implicit-http.conf"
+"$NGINX_BIN" -t -p "$FIXTURE_DIR" -c "$TEMPLATE_DIR/implicit-stream.conf"
 "$NGINX_BIN" -t -p "$FIXTURE_DIR" -c "$FIXTURE_DIR/nginx.conf"
 start_fixture "$NGINX_BIN" -p "$FIXTURE_DIR" -c "$FIXTURE_DIR/nginx.conf" -g 'daemon off;'
 

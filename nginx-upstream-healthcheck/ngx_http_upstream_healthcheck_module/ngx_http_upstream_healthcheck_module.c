@@ -1114,7 +1114,10 @@ ngx_http_upstream_healthcheck_postconfiguration(ngx_conf_t *cf)
     uscfp = umcf->upstreams.elts;
 
     for (i = 0; i < umcf->upstreams.nelts; i++) {
-        hc = uscfp[i]->srv_conf[ngx_http_upstream_healthcheck_module.ctx_index];
+        hc = NULL;
+        if (uscfp[i]->srv_conf != NULL) {
+            hc = uscfp[i]->srv_conf[ngx_http_upstream_healthcheck_module.ctx_index];
+        }
         if (hc == NULL || !hc->enabled) {
             if (hc != NULL && (hc->statuses_set || hc->tls_name_set
                                || hc->trusted_certificate_set))
@@ -3037,7 +3040,10 @@ ngx_stream_upstream_healthcheck_postconfiguration(ngx_conf_t *cf)
     uscfp = umcf->upstreams.elts;
 
     for (i = 0; i < umcf->upstreams.nelts; i++) {
-        hc = uscfp[i]->srv_conf[ngx_stream_upstream_healthcheck_module.ctx_index];
+        hc = NULL;
+        if (uscfp[i]->srv_conf != NULL) {
+            hc = uscfp[i]->srv_conf[ngx_stream_upstream_healthcheck_module.ctx_index];
+        }
         if (hc == NULL || !hc->enabled) {
             if (hc != NULL && (hc->send_set || hc->expect_set
                                || hc->tls_name_set

@@ -223,6 +223,7 @@ The local runner needs Bash, core utilities, grep, sed, curl, dnsmasq, OpenSSL, 
 It creates loopback fixtures and certificate files under a temporary directory, then removes the fixture process groups and files on exit or signal.
 The fixtures cover HTTP and stream L4 connection results, verified TLS-only checks with no client application bytes, HTTPS status and timeout results, TLS protocol and certificate failures, stream TLS payload expectations, dynamic DNS replacement, fall/rise and recovery, IPv6, metrics visibility across workers, and VTS metrics.
 The suite also checks that HTTP and stream TLS configurations fail when either the TLS name or trusted CA is missing.
+It validates literal HTTP and stream proxy destinations that create implicit upstreams without healthcheck settings.
 
 On macOS or another host without the required Linux runtime tools, use [proxy/tests/run-docker.sh](../proxy/tests/run-docker.sh).
 Run `proxy/tests/run-docker.sh .out/nginx-upstream-healthcheck/sbin/nginx`.
