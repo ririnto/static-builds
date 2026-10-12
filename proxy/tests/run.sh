@@ -11,6 +11,8 @@ if [ ! -x "$NGINX_BIN" ]; then
   printf 'NGINX binary is not executable: %s\n' "$NGINX_BIN" >&2
   exit 2
 fi
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
+TEMPLATE_DIR="$SCRIPT_DIR/fixtures"
 if [ "$(uname -s)" != Linux ]; then
   printf 'The functional suite requires Linux. Use run-docker.sh on macOS.\n' >&2
   exit 2
@@ -39,6 +41,7 @@ process_group_running() {
   local -a stat_parts
   local state
   local process_group
+  local running=1
   for stat_file in /proc/[0-9]*/stat; do
     if IFS= read -r stat_line <"$stat_file"; then
       stat_fields=${stat_line##*) }
@@ -46,11 +49,12 @@ process_group_running() {
       state=${stat_parts[0]}
       process_group=${stat_parts[2]}
       if [ "$process_group" = "$group_id" ] && [ "$state" != Z ]; then
-        return 0
+        running=0
+        break
       fi
     fi
   done
-  return 1
+  return "$running"
 }
 
 # Stops fixture process groups, waits for their leaders, and removes temporary files.
@@ -120,6 +124,17 @@ start_fixture() {
   FIXTURE_GROUPS+=("$!")
 }
 
+# Renders a suite fixture template with the controlled temporary directory.
+# @param template_path Source template under the suite fixtures directory.
+# @param output_path Destination file in the temporary fixture directory.
+# @return 0 after writing the rendered fixture.
+# @return-type int
+render_template() {
+  local template_path=$1
+  local output_path=$2
+  sed "s|@FIXTURE_DIR@|$FIXTURE_DIR|g" "$template_path" >"$output_path"
+}
+
 # Stops one recorded fixture process group and removes its identifiers from cleanup state.
 # @param process_id Fixture process group leader PID.
 # @return 0 after stopping and reaping the fixture leader.
@@ -178,27 +193,7 @@ create_certificates() {
     -subj /CN=healthcheck-suite-wrong-ca \
     -addext 'basicConstraints=critical,CA:TRUE' \
     -addext 'keyUsage=critical,keyCertSign,cRLSign'
-  cat >"$FIXTURE_DIR/ca.cnf" <<EOF
-[ ca ]
-default_ca = issuing_ca
-[ issuing_ca ]
-database = $FIXTURE_DIR/ca/index.txt
-new_certs_dir = $FIXTURE_DIR/ca/newcerts
-certificate = $FIXTURE_DIR/ca.pem
-private_key = $FIXTURE_DIR/ca.key
-serial = $FIXTURE_DIR/ca/serial
-default_md = sha256
-policy = subject_policy
-unique_subject = no
-x509_extensions = server
-[ subject_policy ]
-commonName = supplied
-[ server ]
-basicConstraints = critical,CA:FALSE
-keyUsage = critical,digitalSignature,keyEncipherment
-extendedKeyUsage = serverAuth
-subjectAltName = DNS:backend.local,IP:127.0.0.1
-EOF
+  render_template "$TEMPLATE_DIR/ca.cnf.template" "$FIXTURE_DIR/ca.cnf"
   valid_start=$(date -u -d '5 minutes ago' '+%y%m%d%H%M%SZ')
   valid_end=$(date -u -d '2 days' '+%y%m%d%H%M%SZ')
   expired_start=$(date -u -d '2 days ago' '+%y%m%d%H%M%SZ')
@@ -261,38 +256,50 @@ metric_value() {
   local sample_value
   local sample_pattern=',backup="(true|false)"(,result="[A-Z0-9]+")?} [-+0-9.eE]+$'
   local matched=0
+  local valid=1
+  local upstream_matches
+  local peer_matches
+  local result_matches
   while IFS= read -r line; do
     case "$line" in
       "$family{"*) ;;
       *) continue ;;
     esac
-    if [[ ! "$line" =~ $sample_pattern ]]; then
-      printf 'Invalid quoted peer labels in metric family %s.\n' "$family" >&2
-      return 1
-    fi
-    labels=${line#*\{}
-    labels=${labels%%\}*}
-    case ",$labels," in
-      *",upstream=\"$upstream\","*) ;;
-      *) continue ;;
-    esac
-    case ",$labels," in
-      *",peer=\"$peer\","*) ;;
-      *) continue ;;
-    esac
-    if [ -n "$result" ]; then
+    if [[ "$line" =~ $sample_pattern ]]; then
+      labels=${line#*\{}
+      labels=${labels%%\}*}
       case ",$labels," in
-        *",result=\"$result\","*) ;;
-        *) continue ;;
+        *",upstream=\"$upstream\","*) upstream_matches=1 ;;
+        *) upstream_matches=0 ;;
       esac
+      case ",$labels," in
+        *",peer=\"$peer\","*) peer_matches=1 ;;
+        *) peer_matches=0 ;;
+      esac
+      if [ -n "$result" ]; then
+        case ",$labels," in
+          *",result=\"$result\","*) result_matches=1 ;;
+          *) result_matches=0 ;;
+        esac
+      else
+        result_matches=1
+      fi
+      if [ "$upstream_matches" -eq 1 ] && [ "$peer_matches" -eq 1 ] && [ "$result_matches" -eq 1 ]; then
+        sample_value=${line##* }
+        matched=$((matched + 1))
+      fi
+    else
+      printf 'Invalid quoted peer labels in metric family %s.\n' "$family" >&2
+      valid=0
+      break
     fi
-    sample_value=${line##* }
-    matched=$((matched + 1))
   done <"$METRICS_FILE"
-  if [ "$matched" -ne 1 ]; then
+  if [ "$valid" -eq 1 ] && [ "$matched" -eq 1 ]; then
+    printf '%s\n' "$sample_value"
+    return 0
+  else
     return 1
   fi
-  printf '%s\n' "$sample_value"
 }
 
 # Checks all fixed result series for a peer and enforces one-hot values.
@@ -314,16 +321,14 @@ assert_one_hot() {
   local results=(UNKNOWN SOCKERR L4OK L4TOUT L4CON L6OK L6TOUT L6RSP L7OK L7TOUT L7RSP L7STS)
   for result in "${results[@]}"; do
     if value=$(metric_value "$family" "$upstream" "$peer" "$result"); then
-      :
+      expected_value=0
+      if [ "$result" = "$expected" ]; then
+        expected_value=1
+      fi
+      if [ "$value" != "$expected_value" ]; then
+        failed=1
+      fi
     else
-      failed=1
-      continue
-    fi
-    expected_value=0
-    if [ "$result" = "$expected" ]; then
-      expected_value=1
-    fi
-    if [ "$value" != "$expected_value" ]; then
       failed=1
     fi
   done
@@ -343,15 +348,23 @@ wait_for_result() {
   local peer=$3
   local expected=$4
   local attempt
+  local reached=0
   for ((attempt = 0; attempt < 120; attempt++)); do
     if fetch_metrics && assert_one_hot "$family" "$upstream" "$peer" "$expected"; then
-      return 0
+      reached=1
+    fi
+    if [ "$reached" -eq 1 ]; then
+      break
     fi
     sleep 0.1
   done
-  printf 'Timed out waiting for %s upstream %s peer %s to report %s.\n' \
-    "$family" "$upstream" "$peer" "$expected" >&2
-  return 1
+  if [ "$reached" -eq 1 ]; then
+    return 0
+  else
+    printf 'Timed out waiting for %s upstream %s peer %s to report %s.\n' \
+      "$family" "$upstream" "$peer" "$expected" >&2
+    return 1
+  fi
 }
 
 # Polls a peer's readiness gauge until it reaches the requested value.
@@ -368,17 +381,25 @@ wait_for_readiness() {
   local expected=$4
   local value
   local attempt
+  local reached=0
   for ((attempt = 0; attempt < 120; attempt++)); do
     if fetch_metrics && value=$(metric_value "$family" "$upstream" "$peer"); then
       if [ "$value" = "$expected" ]; then
-        return 0
+        reached=1
       fi
+    fi
+    if [ "$reached" -eq 1 ]; then
+      break
     fi
     sleep 0.1
   done
-  printf 'Timed out waiting for %s upstream %s peer %s readiness=%s.\n' \
-    "$family" "$upstream" "$peer" "$expected" >&2
-  return 1
+  if [ "$reached" -eq 1 ]; then
+    return 0
+  else
+    printf 'Timed out waiting for %s upstream %s peer %s readiness=%s.\n' \
+      "$family" "$upstream" "$peer" "$expected" >&2
+    return 1
+  fi
 }
 
 # Verifies one TLS directive validation failure using nginx -t.
@@ -390,13 +411,24 @@ assert_config_rejected() {
   local config_path=$1
   local expected_message=$2
   local output_path="$FIXTURE_DIR/config-check.log"
+  local accepted=0
+  local message_found=0
   if "$NGINX_BIN" -t -p "$FIXTURE_DIR" -c "$config_path" >"$output_path" 2>&1; then
-    printf 'NGINX unexpectedly accepted invalid configuration: %s\n' "$config_path" >&2
-    return 1
+    accepted=1
   fi
-  if ! grep -F "$expected_message" "$output_path"; then
-    printf 'NGINX rejected configuration for an unexpected reason: %s\n' "$config_path" >&2
-    cat "$output_path" >&2
+  if [ "$accepted" -eq 1 ]; then
+    printf 'NGINX unexpectedly accepted invalid configuration: %s\n' "$config_path" >&2
+  else
+    if grep -F "$expected_message" "$output_path"; then
+      message_found=1
+    else
+      printf 'NGINX rejected configuration for an unexpected reason: %s\n' "$config_path" >&2
+      cat "$output_path" >&2
+    fi
+  fi
+  if [ "$accepted" -eq 0 ] && [ "$message_found" -eq 1 ]; then
+    return 0
+  else
     return 1
   fi
 }
@@ -413,27 +445,30 @@ assert_stream_response() {
   local expected=$3
   local descriptor
   local response
-  if ! exec {descriptor}<>"/dev/tcp/$host/$port"; then
+  local succeeded=0
+  if exec {descriptor}<>"/dev/tcp/$host/$port"; then
+    if [ "$port" = 19083 ]; then
+      printf 'PING\r\n' >&"$descriptor"
+    fi
+    if IFS= read -r -t 3 response <&"$descriptor"; then
+      exec {descriptor}>&-
+      response=${response%$'\r'}
+      case "$response" in
+        *"$expected"*) succeeded=1 ;;
+        *) printf 'Unexpected response from %s:%s: %s\n' "$host" "$port" "$response" >&2 ;;
+      esac
+    else
+      exec {descriptor}>&-
+      printf 'Timed out waiting for stream response from %s:%s.\n' "$host" "$port" >&2
+    fi
+  else
     printf 'Could not connect to stream listener %s:%s.\n' "$host" "$port" >&2
+  fi
+  if [ "$succeeded" -eq 1 ]; then
+    return 0
+  else
     return 1
   fi
-  if [ "$port" = 19083 ]; then
-    printf 'PING\r\n' >&"$descriptor"
-  fi
-  if ! IFS= read -r -t 3 response <&"$descriptor"; then
-    exec {descriptor}>&-
-    printf 'Timed out waiting for stream response from %s:%s.\n' "$host" "$port" >&2
-    return 1
-  fi
-  exec {descriptor}>&-
-  response=${response%$'\r'}
-  case "$response" in
-    *"$expected"*) ;;
-    *)
-      printf 'Unexpected response from %s:%s: %s\n' "$host" "$port" "$response" >&2
-      return 1
-      ;;
-  esac
 }
 
 # Confirms health metrics remain visible when both NGINX workers serve requests.
@@ -444,6 +479,7 @@ assert_multiworker_metrics() {
   local attempt
   local first_worker=
   local second_worker=
+  local observed=0
   for ((attempt = 0; attempt < 120; attempt++)); do
     if fetch_metrics; then
       worker=$(sed -n 's/^[Xx]-[Ww]orker: *//p' "$HEADERS_FILE" | tr -d '\r')
@@ -455,14 +491,21 @@ assert_multiworker_metrics() {
           second_worker=$worker
           printf 'Shared health metrics served by workers %s and %s.\n' \
             "$first_worker" "$second_worker"
-          return 0
+          observed=1
+          break
         fi
       fi
     fi
-    sleep 0.05
+    if [ "$observed" -eq 0 ]; then
+      sleep 0.05
+    fi
   done
-  printf 'Did not observe the shared result metric from two NGINX workers.\n' >&2
-  return 1
+  if [ "$observed" -eq 1 ]; then
+    return 0
+  else
+    printf 'Did not observe the shared result metric from two NGINX workers.\n' >&2
+    return 1
+  fi
 }
 
 create_certificates
@@ -481,333 +524,12 @@ start_fixture socat \
   'SYSTEM:printf "malformed response\\r\\n"' \
   >"$FIXTURE_DIR/http-malformed.log" 2>&1
 
-cat >"$FIXTURE_DIR/nginx.conf" <<EOF
-worker_processes 2;
-error_log stderr notice;
-pid $FIXTURE_DIR/nginx.pid;
-events {
-    worker_connections 2048;
-    accept_mutex off;
-}
-http {
-    resolver 127.0.0.1:15353 valid=1s ipv6=off;
-    resolver_timeout 1s;
-    vhost_traffic_status_zone;
-    upstream dynamic_http {
-        zone dynamic_http 256k;
-        server backend.local:19080 resolve;
-        server 127.0.0.1:19999 backup;
-        healthcheck type=http interval=100ms timeout=200ms fall=2 rise=2;
-    }
-    upstream l4_http {
-        zone l4_http 256k;
-        server 127.0.0.2:19080;
-        healthcheck type=tcp interval=100ms timeout=200ms fall=1 rise=2;
-    }
-    upstream l4_http_failure {
-        zone l4_http_failure 256k;
-        server 127.0.0.1:19999;
-        healthcheck type=tcp interval=100ms timeout=200ms fall=1 rise=2;
-    }
-    upstream ipv6_http {
-        zone ipv6_http 256k;
-        server [::1]:19084;
-        healthcheck type=tcp interval=100ms timeout=200ms fall=1 rise=2;
-    }
-    upstream tls_only {
-        zone tls_only 256k;
-        server 127.0.0.1:19444;
-        healthcheck type=tls interval=100ms timeout=300ms fall=1 rise=2;
-        healthcheck_tls_name backend.local;
-        healthcheck_trusted_certificate $FIXTURE_DIR/ca.pem;
-    }
-    upstream tls_wrong_name {
-        zone tls_wrong_name 256k;
-        server 127.0.0.1:19444;
-        healthcheck type=tls interval=100ms timeout=300ms fall=1 rise=2;
-        healthcheck_tls_name wrong.local;
-        healthcheck_trusted_certificate $FIXTURE_DIR/ca.pem;
-    }
-    upstream tls_wrong_ca {
-        zone tls_wrong_ca 256k;
-        server 127.0.0.1:19444;
-        healthcheck type=tls interval=100ms timeout=300ms fall=1 rise=2;
-        healthcheck_tls_name backend.local;
-        healthcheck_trusted_certificate $FIXTURE_DIR/wrong-ca.pem;
-    }
-    upstream tls_plaintext {
-        zone tls_plaintext 256k;
-        server 127.0.0.2:19080;
-        healthcheck type=tls interval=100ms timeout=300ms fall=1 rise=2;
-        healthcheck_tls_name backend.local;
-        healthcheck_trusted_certificate $FIXTURE_DIR/ca.pem;
-    }
-    upstream tls_stall {
-        zone tls_stall 256k;
-        server 127.0.0.1:19443;
-        healthcheck type=tls interval=100ms timeout=300ms fall=1 rise=2;
-        healthcheck_tls_name backend.local;
-        healthcheck_trusted_certificate $FIXTURE_DIR/ca.pem;
-    }
-    upstream tls_expired {
-        zone tls_expired 256k;
-        server 127.0.0.1:19448;
-        healthcheck type=tls interval=100ms timeout=300ms fall=1 rise=2;
-        healthcheck_tls_name backend.local;
-        healthcheck_trusted_certificate $FIXTURE_DIR/ca.pem;
-    }
-    upstream tls_future {
-        zone tls_future 256k;
-        server 127.0.0.1:19447;
-        healthcheck type=tls interval=100ms timeout=300ms fall=1 rise=2;
-        healthcheck_tls_name backend.local;
-        healthcheck_trusted_certificate $FIXTURE_DIR/ca.pem;
-    }
-    upstream tls_recovery {
-        zone tls_recovery 256k;
-        server 127.0.0.1:19445;
-        healthcheck type=tls interval=100ms timeout=300ms fall=2 rise=2;
-        healthcheck_tls_name backend.local;
-        healthcheck_trusted_certificate $FIXTURE_DIR/ca.pem;
-    }
-    upstream https_success {
-        zone https_success 256k;
-        server 127.0.0.1:19454;
-        healthcheck type=https interval=100ms timeout=500ms fall=1 rise=2 uri=/ok host=backend.local;
-        healthcheck_tls_name backend.local;
-        healthcheck_trusted_certificate $FIXTURE_DIR/ca.pem;
-    }
-    upstream https_status {
-        zone https_status 256k;
-        server 127.0.0.1:19454;
-        healthcheck type=https interval=100ms timeout=500ms fall=1 rise=2 uri=/reject host=backend.local;
-        healthcheck_statuses 200;
-        healthcheck_tls_name backend.local;
-        healthcheck_trusted_certificate $FIXTURE_DIR/ca.pem;
-    }
-    upstream https_timeout {
-        zone https_timeout 256k;
-        server 127.0.0.1:19454;
-        healthcheck type=https interval=100ms timeout=300ms fall=1 rise=2 uri=/slow host=backend.local;
-        healthcheck_tls_name backend.local;
-        healthcheck_trusted_certificate $FIXTURE_DIR/ca.pem;
-    }
-    upstream https_malformed {
-        zone https_malformed 256k;
-        server 127.0.0.1:19455;
-        healthcheck type=https interval=100ms timeout=500ms fall=1 rise=2 uri=/ok host=backend.local;
-        healthcheck_tls_name backend.local;
-        healthcheck_trusted_certificate $FIXTURE_DIR/ca.pem;
-    }
-    server {
-        listen 127.0.0.2:19080;
-        listen 127.0.0.4:19080;
-        location / { return 200 "\$server_addr\\n"; }
-    }
-    server {
-        listen 127.0.0.3:19080;
-        location / {
-            if (-f $FIXTURE_DIR/recovered-http) { return 200 "\$server_addr\\n"; }
-            return 503;
-        }
-    }
-    server {
-        listen 127.0.0.1:19081;
-        location /route { proxy_pass http://dynamic_http; }
-        location /metrics {
-            add_header X-Worker \$pid always;
-            healthcheck_metrics;
-        }
-        location /traffic {
-            vhost_traffic_status_display;
-            vhost_traffic_status_display_format prometheus;
-        }
-    }
-    server {
-        listen 127.0.0.1:19454 ssl;
-        ssl_certificate $FIXTURE_DIR/valid.pem;
-        ssl_certificate_key $FIXTURE_DIR/valid.key;
-        location /ok { return 200 ready; }
-        location /reject { return 503 unavailable; }
-        location /slow { proxy_pass http://127.0.0.1:19086; }
-    }
-}
-stream {
-    resolver 127.0.0.1:15353 valid=1s ipv6=off;
-    resolver_timeout 1s;
-    upstream dynamic_tcp {
-        zone dynamic_tcp 256k;
-        server backend.local:19082 resolve;
-        server 127.0.0.1:19999 backup;
-        healthcheck_tcp type=tcp interval=100ms timeout=200ms fall=2 rise=2;
-        healthcheck_send "PING\\r\\n";
-        healthcheck_expect "PONG" min_recv=4;
-    }
-    upstream l4_stream {
-        zone l4_stream 256k;
-        server 127.0.0.2:19082;
-        healthcheck_tcp type=tcp interval=100ms timeout=200ms fall=1 rise=2;
-    }
-    upstream l4_stream_failure {
-        zone l4_stream_failure 256k;
-        server 127.0.0.1:19999;
-        healthcheck_tcp type=tcp interval=100ms timeout=200ms fall=1 rise=2;
-    }
-    upstream tls_stream {
-        zone tls_stream 256k;
-        server 127.0.0.1:19444;
-        healthcheck_tcp type=tls interval=100ms timeout=300ms fall=1 rise=2;
-        healthcheck_tls_name backend.local;
-        healthcheck_trusted_certificate $FIXTURE_DIR/ca.pem;
-    }
-    upstream stream_wrong_name {
-        zone stream_wrong_name 256k;
-        server 127.0.0.1:19444;
-        healthcheck_tcp type=tls interval=100ms timeout=300ms fall=1 rise=2;
-        healthcheck_tls_name wrong.local;
-        healthcheck_trusted_certificate $FIXTURE_DIR/ca.pem;
-    }
-    upstream stream_wrong_ca {
-        zone stream_wrong_ca 256k;
-        server 127.0.0.1:19444;
-        healthcheck_tcp type=tls interval=100ms timeout=300ms fall=1 rise=2;
-        healthcheck_tls_name backend.local;
-        healthcheck_trusted_certificate $FIXTURE_DIR/wrong-ca.pem;
-    }
-    upstream stream_plaintext {
-        zone stream_plaintext 256k;
-        server 127.0.0.2:19080;
-        healthcheck_tcp type=tls interval=100ms timeout=300ms fall=1 rise=2;
-        healthcheck_tls_name backend.local;
-        healthcheck_trusted_certificate $FIXTURE_DIR/ca.pem;
-    }
-    upstream stream_stall {
-        zone stream_stall 256k;
-        server 127.0.0.1:19443;
-        healthcheck_tcp type=tls interval=100ms timeout=300ms fall=1 rise=2;
-        healthcheck_tls_name backend.local;
-        healthcheck_trusted_certificate $FIXTURE_DIR/ca.pem;
-    }
-    upstream stream_expired {
-        zone stream_expired 256k;
-        server 127.0.0.1:19448;
-        healthcheck_tcp type=tls interval=100ms timeout=300ms fall=1 rise=2;
-        healthcheck_tls_name backend.local;
-        healthcheck_trusted_certificate $FIXTURE_DIR/ca.pem;
-    }
-    upstream stream_future {
-        zone stream_future 256k;
-        server 127.0.0.1:19447;
-        healthcheck_tcp type=tls interval=100ms timeout=300ms fall=1 rise=2;
-        healthcheck_tls_name backend.local;
-        healthcheck_trusted_certificate $FIXTURE_DIR/ca.pem;
-    }
-    upstream stream_tls_recovery {
-        zone stream_tls_recovery 256k;
-        server 127.0.0.1:19445;
-        healthcheck_tcp type=tls interval=100ms timeout=300ms fall=2 rise=2;
-        healthcheck_tls_name backend.local;
-        healthcheck_trusted_certificate $FIXTURE_DIR/ca.pem;
-    }
-    upstream stream_tls_payload {
-        zone stream_tls_payload 256k;
-        server 127.0.0.1:19446;
-        healthcheck_tcp type=tls interval=100ms timeout=500ms fall=1 rise=2;
-        healthcheck_tls_name backend.local;
-        healthcheck_trusted_certificate $FIXTURE_DIR/ca.pem;
-        healthcheck_send "PING\\r\\n";
-        healthcheck_expect "PONG" min_recv=4;
-    }
-    log_format application_bytes '\$bytes_received';
-    server {
-        listen 127.0.0.1:19444 ssl;
-        ssl_certificate $FIXTURE_DIR/valid.pem;
-        ssl_certificate_key $FIXTURE_DIR/valid.key;
-        access_log $FIXTURE_DIR/tls-application.log application_bytes;
-        return "TLS ready\\n";
-    }
-    server {
-        listen 127.0.0.1:19446 ssl;
-        ssl_certificate $FIXTURE_DIR/valid.pem;
-        ssl_certificate_key $FIXTURE_DIR/valid.key;
-        proxy_pass 127.0.0.2:19082;
-    }
-    server {
-        listen 127.0.0.1:19447 ssl;
-        ssl_certificate $FIXTURE_DIR/future.pem;
-        ssl_certificate_key $FIXTURE_DIR/future.key;
-        return "Future certificate\\n";
-    }
-    server {
-        listen 127.0.0.1:19448 ssl;
-        ssl_certificate $FIXTURE_DIR/expired.pem;
-        ssl_certificate_key $FIXTURE_DIR/expired.key;
-        return "Expired certificate\\n";
-    }
-    server {
-        listen 127.0.0.2:19082;
-        listen 127.0.0.4:19082;
-        return "\$server_addr PONG\\r\\n";
-    }
-    server {
-        listen 127.0.0.3:19082;
-        return "FAIL\\n";
-    }
-    server {
-        listen 127.0.0.1:19083;
-        proxy_pass dynamic_tcp;
-    }
-    server {
-        listen [::1]:19084;
-        return "IPv6 ready\\n";
-    }
-}
-EOF
+render_template "$TEMPLATE_DIR/nginx.conf.template" "$FIXTURE_DIR/nginx.conf"
 
-cat >"$FIXTURE_DIR/http-missing-name.conf" <<EOF
-events {}
-http {
-    upstream bad_http {
-        zone bad_http 64k;
-        server 127.0.0.1:19454;
-        healthcheck type=https interval=1s timeout=1s;
-        healthcheck_trusted_certificate $FIXTURE_DIR/ca.pem;
-    }
-}
-EOF
-cat >"$FIXTURE_DIR/http-missing-ca.conf" <<EOF
-events {}
-http {
-    upstream bad_http {
-        zone bad_http 64k;
-        server 127.0.0.1:19454;
-        healthcheck type=https interval=1s timeout=1s;
-        healthcheck_tls_name backend.local;
-    }
-}
-EOF
-cat >"$FIXTURE_DIR/stream-missing-name.conf" <<EOF
-events {}
-stream {
-    upstream bad_stream {
-        zone bad_stream 64k;
-        server 127.0.0.1:19444;
-        healthcheck_tcp type=tls interval=1s timeout=1s;
-        healthcheck_trusted_certificate $FIXTURE_DIR/ca.pem;
-    }
-}
-EOF
-cat >"$FIXTURE_DIR/stream-missing-ca.conf" <<EOF
-events {}
-stream {
-    upstream bad_stream {
-        zone bad_stream 64k;
-        server 127.0.0.1:19444;
-        healthcheck_tcp type=tls interval=1s timeout=1s;
-        healthcheck_tls_name backend.local;
-    }
-}
-EOF
+render_template "$TEMPLATE_DIR/http-missing-name.conf.template" "$FIXTURE_DIR/http-missing-name.conf"
+render_template "$TEMPLATE_DIR/http-missing-ca.conf.template" "$FIXTURE_DIR/http-missing-ca.conf"
+render_template "$TEMPLATE_DIR/stream-missing-name.conf.template" "$FIXTURE_DIR/stream-missing-name.conf"
+render_template "$TEMPLATE_DIR/stream-missing-ca.conf.template" "$FIXTURE_DIR/stream-missing-ca.conf"
 
 assert_config_rejected "$FIXTURE_DIR/http-missing-name.conf" \
   'HTTPS healthcheck requires healthcheck_tls_name and healthcheck_trusted_certificate'

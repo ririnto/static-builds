@@ -5,11 +5,7 @@ The healthcheck code is compiled into the binary as `ngx_http_upstream_healthche
 
 ## Build and packaged files
 
-Build this target with:
-
-```sh
-make build nginx-upstream-healthcheck
-```
+Build this target with `make build nginx-upstream-healthcheck`.
 
 Build metadata selects the NGINX, njs, QuickJS-NG, and VTS release versions.
 
@@ -68,56 +64,7 @@ The existing C implementation therefore remains the smaller maintained path for 
 Configure `healthcheck` inside each checked HTTP `upstream` block.
 The upstream requires a shared `zone` and a built-in round-robin-compatible peer list.
 
-```nginx
-http {
-    resolver 127.0.0.53 valid=10s;
-    resolver_timeout 2s;
-    vhost_traffic_status_zone;
-
-    upstream api {
-        zone api 256k;
-        server api.internal:8080 resolve;
-        server fallback.internal:8080 backup;
-        healthcheck type=http interval=2s timeout=1s fall=3 rise=2
-                    uri=/readyz host=api.internal;
-        healthcheck_statuses 200 204;
-    }
-
-    upstream secure_api {
-        zone secure_api 256k;
-        server secure-api.internal:8443 resolve;
-        healthcheck type=https interval=5s timeout=2s fall=3 rise=2
-                    uri=/readyz host=secure-api.internal;
-        healthcheck_tls_name secure-api.internal;
-        healthcheck_trusted_certificate conf/backend-ca.pem;
-    }
-
-    server {
-        listen 8080;
-        location /api/ {
-            proxy_pass http://api;
-        }
-        location /secure/ {
-            proxy_pass https://secure_api;
-            proxy_ssl_server_name on;
-            proxy_ssl_name secure-api.internal;
-            proxy_ssl_verify on;
-            proxy_ssl_trusted_certificate conf/backend-ca.pem;
-        }
-    }
-
-    server {
-        listen 127.0.0.1:18080;
-        location = /health-metrics {
-            healthcheck_metrics;
-        }
-        location = /traffic-metrics {
-            vhost_traffic_status_display;
-            vhost_traffic_status_display_format prometheus;
-        }
-    }
-}
-```
+Use the HTTP examples in [upstream-healthcheck.conf](upstream-healthcheck.conf).
 
 Replace the resolver, backend names, CA file, and listener addresses for your environment.
 Healthcheck TLS settings and proxy TLS settings are independent.
@@ -157,35 +104,7 @@ The default concurrency is 16 probes and the health state zone defaults to one m
 Configure `healthcheck_tcp` inside a checked `stream` `upstream` block with a shared `zone`.
 The default `type=tcp` probe succeeds after connecting to the selected peer.
 
-```nginx
-stream {
-    resolver 127.0.0.53 valid=10s;
-    resolver_timeout 2s;
-
-    upstream cache {
-        zone cache 256k;
-        server cache.internal:6379 resolve;
-        server cache-backup.internal:6379 backup;
-        healthcheck_tcp type=tcp interval=2s timeout=1s fall=3 rise=2
-                        concurrency=16 shm_size=1m max_response=4096;
-        healthcheck_send "PING\r\n";
-        healthcheck_expect "+PONG\r\n" min_recv=7;
-    }
-
-    upstream secure_service {
-        zone secure_service 256k;
-        server secure-service.internal:443 resolve;
-        healthcheck_tcp type=tls interval=5s timeout=2s fall=3 rise=2;
-        healthcheck_tls_name secure-service.internal;
-        healthcheck_trusted_certificate conf/backend-ca.pem;
-    }
-
-    server {
-        listen 6379;
-        proxy_pass cache;
-    }
-}
-```
+Use the stream examples in [upstream-healthcheck.conf](upstream-healthcheck.conf).
 
 For TLS-only stream checks, omit send and expect directives to stop after the verified handshake.
 With payload and expectation directives, the probe continues over TLS and checks the application response.
@@ -284,38 +203,29 @@ The NGINX results classify the point where each probe succeeded or failed while 
 
 ## Build verification
 
-The target Docker verify stage performs common static-binary checks and the shared njs HTTP and stream checks.
+Both NGINX Docker verify stages reference shared scripts for common static-binary checks and njs HTTP and stream checks.
+Build scripts and fixture configurations live in separate source files rather than embedded Dockerfile or documentation scripts.
+The shared [verification script](../scripts/nginx-verify.sh) preserves the existing static-build verification contract.
 It does not run healthcheck functional scenarios.
 The standalone suite lives under `proxy/tests/`, which is a test layout rather than a build target.
+Its [NGINX fixture template](../proxy/tests/fixtures/nginx.conf.template) and [certificate configuration](../proxy/tests/fixtures/ca.cnf.template) provide separate fixture sources.
 
-Validate runner cleanup, shell syntax, and formatting offline:
-
-```sh
-python3 proxy/tests/verify-runner.py
-bash -n proxy/tests/run.sh proxy/tests/run-docker.sh
-make lint
-make shfmt-check
-```
+Validate runner cleanup offline with `python3 proxy/tests/verify-runner.py`.
+Check shell syntax with `bash -n proxy/tests/run.sh proxy/tests/run-docker.sh`.
+Run `make lint` and `make shfmt-check` for shell lint and formatting.
 
 The Python 3 check uses a local Docker CLI fixture to exercise partial creation, signal cleanup, ownership guards, and exit-status retention.
 It runs offline without a Docker daemon.
 
-Run the suite against an already-built Linux binary with:
-
-```sh
-proxy/tests/run.sh .out/nginx-upstream-healthcheck/sbin/nginx
-```
+Run [proxy/tests/run.sh](../proxy/tests/run.sh) against an already-built Linux binary with `proxy/tests/run.sh .out/nginx-upstream-healthcheck/sbin/nginx`.
 
 The local runner needs Bash, core utilities, grep, sed, curl, dnsmasq, OpenSSL, `setsid`, and socat.
 It creates loopback fixtures and certificate files under a temporary directory, then removes the fixture process groups and files on exit or signal.
 The fixtures cover HTTP and stream L4 connection results, verified TLS-only checks with no client application bytes, HTTPS status and timeout results, TLS protocol and certificate failures, stream TLS payload expectations, dynamic DNS replacement, fall/rise and recovery, IPv6, metrics visibility across workers, and VTS metrics.
 The suite also checks that HTTP and stream TLS configurations fail when either the TLS name or trusted CA is missing.
 
-On macOS or another host without the required Linux runtime tools, run the isolated Docker wrapper instead:
-
-```sh
-proxy/tests/run-docker.sh .out/nginx-upstream-healthcheck/sbin/nginx
-```
+On macOS or another host without the required Linux runtime tools, use [proxy/tests/run-docker.sh](../proxy/tests/run-docker.sh).
+Run `proxy/tests/run-docker.sh .out/nginx-upstream-healthcheck/sbin/nginx`.
 
 The wrapper derives the UBI 10 Minimal tag from `metadata.json`, passes that maintained image reference to the test image build, mounts the binary read-only, and creates one uniquely named container with a four-CPU and eight-GiB cap.
 It defaults to the repository's `linux/amd64` build platform; pass `--platform linux/arm64` when the binary was built for another platform.

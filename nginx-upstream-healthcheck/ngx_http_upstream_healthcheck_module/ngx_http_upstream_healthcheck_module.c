@@ -1973,17 +1973,16 @@ ngx_http_upstream_healthcheck_start(
             rc == NGX_ERROR || rc == NGX_BUSY
                 ? NGX_UPSTREAM_HEALTHCHECK_RESULT_SOCKERR
                 : NGX_UPSTREAM_HEALTHCHECK_RESULT_L4CON);
-        return NGX_OK;
-    }
+    } else {
+        c = probe->connection;
+        c->data = probe;
+        c->pool = probe->pool;
+        c->read->handler = ngx_http_upstream_healthcheck_probe_event;
+        c->write->handler = ngx_http_upstream_healthcheck_probe_event;
 
-    c = probe->connection;
-    c->data = probe;
-    c->pool = probe->pool;
-    c->read->handler = ngx_http_upstream_healthcheck_probe_event;
-    c->write->handler = ngx_http_upstream_healthcheck_probe_event;
-
-    if (rc == NGX_OK) {
-        ngx_http_upstream_healthcheck_probe_connected(probe);
+        if (rc == NGX_OK) {
+            ngx_http_upstream_healthcheck_probe_connected(probe);
+        }
     }
 
     return NGX_OK;
@@ -1994,6 +1993,7 @@ ngx_http_upstream_healthcheck_probe_event(ngx_event_t *ev)
 {
     ngx_connection_t                    *c;
     ngx_http_upstream_healthcheck_probe_t *probe;
+    ngx_uint_t                            classification;
 
     c = ev->data;
     probe = c->data;
@@ -2005,41 +2005,24 @@ ngx_http_upstream_healthcheck_probe_event(ngx_event_t *ev)
         ngx_http_upstream_healthcheck_probe_finish(
             probe, 0, 0, 1, 0,
             ngx_upstream_healthcheck_timeout_result(probe->stage));
-        return;
-    }
-
-    if (ev->error || c->error) {
+    } else if (ev->error || c->error) {
         ngx_http_upstream_healthcheck_probe_finish(
             probe, 0, 0, 1, 0,
             ngx_upstream_healthcheck_failure_result(probe->stage));
-        return;
-    }
-
-    if (probe->stage == NGX_HTTP_UPSTREAM_HEALTHCHECK_CONNECT) {
-        if (!ev->write) {
-            return;
-        }
-        {
-            ngx_uint_t  classification;
-
+    } else if (probe->stage == NGX_HTTP_UPSTREAM_HEALTHCHECK_CONNECT) {
+        if (ev->write) {
             if (ngx_http_upstream_healthcheck_test_connect(c, &classification)
-                != NGX_OK)
+                == NGX_OK)
             {
+                ngx_http_upstream_healthcheck_probe_connected(probe);
+            } else {
                 ngx_http_upstream_healthcheck_probe_finish(
                     probe, 0, 0, 1, 0, classification);
-                return;
             }
         }
-        ngx_http_upstream_healthcheck_probe_connected(probe);
-        return;
-    }
-
-    if (probe->stage == NGX_HTTP_UPSTREAM_HEALTHCHECK_SENDING) {
+    } else if (probe->stage == NGX_HTTP_UPSTREAM_HEALTHCHECK_SENDING) {
         ngx_http_upstream_healthcheck_probe_send(probe);
-        return;
-    }
-
-    if (probe->stage == NGX_HTTP_UPSTREAM_HEALTHCHECK_READING) {
+    } else if (probe->stage == NGX_HTTP_UPSTREAM_HEALTHCHECK_READING) {
         ngx_http_upstream_healthcheck_probe_read(probe);
     }
 }
@@ -2097,20 +2080,16 @@ ngx_http_upstream_healthcheck_probe_connected(
         ngx_http_upstream_healthcheck_probe_finish(
             probe, 1, 0, 1, 0,
             NGX_UPSTREAM_HEALTHCHECK_RESULT_L4OK);
-        return;
-    }
-
-    if (probe->conf->type == NGX_HTTP_UPSTREAM_HEALTHCHECK_HTTPS
-        || probe->conf->type == NGX_HTTP_UPSTREAM_HEALTHCHECK_TLS_ONLY)
+    } else if (probe->conf->type == NGX_HTTP_UPSTREAM_HEALTHCHECK_HTTPS
+               || probe->conf->type == NGX_HTTP_UPSTREAM_HEALTHCHECK_TLS_ONLY)
     {
         ngx_http_upstream_healthcheck_probe_start_tls(probe);
-        return;
+    } else {
+        probe->stage = NGX_HTTP_UPSTREAM_HEALTHCHECK_SENDING;
+        c->read->handler = ngx_http_upstream_healthcheck_probe_event;
+        c->write->handler = ngx_http_upstream_healthcheck_probe_event;
+        ngx_http_upstream_healthcheck_probe_send(probe);
     }
-
-    probe->stage = NGX_HTTP_UPSTREAM_HEALTHCHECK_SENDING;
-    c->read->handler = ngx_http_upstream_healthcheck_probe_event;
-    c->write->handler = ngx_http_upstream_healthcheck_probe_event;
-    ngx_http_upstream_healthcheck_probe_send(probe);
 }
 
 static void
@@ -2129,15 +2108,14 @@ ngx_http_upstream_healthcheck_probe_start_tls(
              ngx_http_upstream_healthcheck_probe_tls_done, &force_down);
     if (rc == NGX_AGAIN) {
         return;
-    }
-    if (rc != NGX_OK) {
+    } else if (rc != NGX_OK) {
         ngx_http_upstream_healthcheck_probe_finish(
             probe, 0, 0, 1, force_down,
             force_down ? NGX_UPSTREAM_HEALTHCHECK_RESULT_SOCKERR
                        : NGX_UPSTREAM_HEALTHCHECK_RESULT_L6RSP);
-        return;
+    } else {
+        ngx_http_upstream_healthcheck_probe_tls_done(c);
     }
-    ngx_http_upstream_healthcheck_probe_tls_done(c);
 #else
     ngx_http_upstream_healthcheck_probe_finish(
         probe, 0, 0, 1, 1, NGX_UPSTREAM_HEALTHCHECK_RESULT_SOCKERR);
@@ -2156,26 +2134,24 @@ ngx_http_upstream_healthcheck_probe_tls_done(ngx_connection_t *c)
     }
 
     if (ngx_upstream_healthcheck_tls_verified(
-            c, &probe->conf->tls_name) != NGX_OK)
+            c, &probe->conf->tls_name) == NGX_OK)
     {
+        if (probe->conf->type == NGX_HTTP_UPSTREAM_HEALTHCHECK_TLS_ONLY) {
+            ngx_http_upstream_healthcheck_probe_finish(
+                probe, 1, 0, 1, 0, NGX_UPSTREAM_HEALTHCHECK_RESULT_L6OK);
+        } else {
+            probe->stage = NGX_HTTP_UPSTREAM_HEALTHCHECK_SENDING;
+            c->read->handler = ngx_http_upstream_healthcheck_probe_event;
+            c->write->handler = ngx_http_upstream_healthcheck_probe_event;
+            ngx_http_upstream_healthcheck_probe_send(probe);
+        }
+    } else {
         ngx_log_error(NGX_LOG_ERR, c->log, 0,
                       "healthcheck TLS certificate verification failed for \"%V\"",
                       &probe->conf->tls_name);
         ngx_http_upstream_healthcheck_probe_finish(
             probe, 0, 0, 1, 0, NGX_UPSTREAM_HEALTHCHECK_RESULT_L6RSP);
-        return;
     }
-
-    if (probe->conf->type == NGX_HTTP_UPSTREAM_HEALTHCHECK_TLS_ONLY) {
-        ngx_http_upstream_healthcheck_probe_finish(
-            probe, 1, 0, 1, 0, NGX_UPSTREAM_HEALTHCHECK_RESULT_L6OK);
-        return;
-    }
-
-    probe->stage = NGX_HTTP_UPSTREAM_HEALTHCHECK_SENDING;
-    c->read->handler = ngx_http_upstream_healthcheck_probe_event;
-    c->write->handler = ngx_http_upstream_healthcheck_probe_event;
-    ngx_http_upstream_healthcheck_probe_send(probe);
 #endif
 }
 
@@ -2503,10 +2479,12 @@ static ngx_int_t
 ngx_http_upstream_healthcheck_test_connect(ngx_connection_t *c,
     ngx_uint_t *classification)
 {
+    ngx_int_t  rc;
     int        err;
     socklen_t  len;
 
     *classification = NGX_UPSTREAM_HEALTHCHECK_RESULT_L4CON;
+    rc = NGX_OK;
 
 #if (NGX_HAVE_KQUEUE)
     if (ngx_event_flags & NGX_USE_KQUEUE_EVENT) {
@@ -2515,48 +2493,55 @@ ngx_http_upstream_healthcheck_test_connect(ngx_connection_t *c,
                                         : c->read->kq_errno;
             (void) ngx_connection_error(c, err,
                                         "healthcheck connect() failed");
-            return NGX_ERROR;
+            rc = NGX_ERROR;
         }
-        return NGX_OK;
-    }
+    } else
 #endif
-
-    err = 0;
-    len = sizeof(int);
-    if (getsockopt(c->fd, SOL_SOCKET, SO_ERROR, (void *) &err, &len) == -1) {
-        *classification = NGX_UPSTREAM_HEALTHCHECK_RESULT_SOCKERR;
-        err = ngx_socket_errno;
+    {
+        err = 0;
+        len = sizeof(int);
+        if (getsockopt(c->fd, SOL_SOCKET, SO_ERROR, (void *) &err, &len) == -1) {
+            *classification = NGX_UPSTREAM_HEALTHCHECK_RESULT_SOCKERR;
+            err = ngx_socket_errno;
+        }
+        if (err != 0) {
+            (void) ngx_connection_error(c, err,
+                                        "healthcheck connect() failed");
+            rc = NGX_ERROR;
+        }
     }
-    if (err != 0) {
-        (void) ngx_connection_error(c, err, "healthcheck connect() failed");
-        return NGX_ERROR;
-    }
 
-    return NGX_OK;
+    return rc;
 }
 
 static ngx_uint_t
 ngx_upstream_healthcheck_timeout_result(ngx_uint_t stage)
 {
+    ngx_uint_t  result;
+
+    result = NGX_UPSTREAM_HEALTHCHECK_RESULT_L7TOUT;
     if (stage == NGX_HTTP_UPSTREAM_HEALTHCHECK_CONNECT) {
-        return NGX_UPSTREAM_HEALTHCHECK_RESULT_L4TOUT;
+        result = NGX_UPSTREAM_HEALTHCHECK_RESULT_L4TOUT;
+    } else if (stage == NGX_HTTP_UPSTREAM_HEALTHCHECK_TLS) {
+        result = NGX_UPSTREAM_HEALTHCHECK_RESULT_L6TOUT;
     }
-    if (stage == NGX_HTTP_UPSTREAM_HEALTHCHECK_TLS) {
-        return NGX_UPSTREAM_HEALTHCHECK_RESULT_L6TOUT;
-    }
-    return NGX_UPSTREAM_HEALTHCHECK_RESULT_L7TOUT;
+
+    return result;
 }
 
 static ngx_uint_t
 ngx_upstream_healthcheck_failure_result(ngx_uint_t stage)
 {
+    ngx_uint_t  result;
+
+    result = NGX_UPSTREAM_HEALTHCHECK_RESULT_L7RSP;
     if (stage == NGX_HTTP_UPSTREAM_HEALTHCHECK_CONNECT) {
-        return NGX_UPSTREAM_HEALTHCHECK_RESULT_L4CON;
+        result = NGX_UPSTREAM_HEALTHCHECK_RESULT_L4CON;
+    } else if (stage == NGX_HTTP_UPSTREAM_HEALTHCHECK_TLS) {
+        result = NGX_UPSTREAM_HEALTHCHECK_RESULT_L6RSP;
     }
-    if (stage == NGX_HTTP_UPSTREAM_HEALTHCHECK_TLS) {
-        return NGX_UPSTREAM_HEALTHCHECK_RESULT_L6RSP;
-    }
-    return NGX_UPSTREAM_HEALTHCHECK_RESULT_L7RSP;
+
+    return result;
 }
 
 static void *
@@ -3825,17 +3810,17 @@ ngx_stream_upstream_healthcheck_start(
             rc == NGX_ERROR || rc == NGX_BUSY
                 ? NGX_UPSTREAM_HEALTHCHECK_RESULT_SOCKERR
                 : NGX_UPSTREAM_HEALTHCHECK_RESULT_L4CON);
-        return NGX_OK;
+    } else {
+        c = probe->connection;
+        c->data = probe;
+        c->pool = probe->pool;
+        c->read->handler = ngx_stream_upstream_healthcheck_probe_event;
+        c->write->handler = ngx_stream_upstream_healthcheck_probe_event;
+        if (rc == NGX_OK) {
+            ngx_stream_upstream_healthcheck_probe_event(c->write);
+        }
     }
 
-    c = probe->connection;
-    c->data = probe;
-    c->pool = probe->pool;
-    c->read->handler = ngx_stream_upstream_healthcheck_probe_event;
-    c->write->handler = ngx_stream_upstream_healthcheck_probe_event;
-    if (rc == NGX_OK) {
-        ngx_stream_upstream_healthcheck_probe_event(c->write);
-    }
     return NGX_OK;
 }
 
@@ -3844,6 +3829,7 @@ ngx_stream_upstream_healthcheck_probe_event(ngx_event_t *ev)
 {
     ngx_connection_t                     *c;
     ngx_stream_upstream_healthcheck_probe_t *probe;
+    ngx_uint_t                             classification;
 
     c = ev->data;
     probe = c->data;
@@ -3854,42 +3840,28 @@ ngx_stream_upstream_healthcheck_probe_event(ngx_event_t *ev)
         ngx_stream_upstream_healthcheck_probe_finish(
             probe, 0, 1, 0,
             ngx_upstream_healthcheck_timeout_result(probe->stage));
-        return;
-    }
-
-    if (ev->error || c->error) {
+    } else if (ev->error || c->error) {
         ngx_stream_upstream_healthcheck_probe_finish(
             probe, 0, 1, 0,
             ngx_upstream_healthcheck_failure_result(probe->stage));
-        return;
-    }
-    if (probe->stage == NGX_HTTP_UPSTREAM_HEALTHCHECK_CONNECT) {
-        if (!ev->write) {
-            return;
-        }
-        {
-            ngx_uint_t  classification;
-
+    } else if (probe->stage == NGX_HTTP_UPSTREAM_HEALTHCHECK_CONNECT) {
+        if (ev->write) {
             if (ngx_http_upstream_healthcheck_test_connect(c, &classification)
-                != NGX_OK)
+                == NGX_OK)
             {
+                if (probe->conf->type == NGX_STREAM_UPSTREAM_HEALTHCHECK_TLS) {
+                    ngx_stream_upstream_healthcheck_probe_start_tls(probe);
+                } else {
+                    ngx_stream_upstream_healthcheck_probe_send(probe);
+                }
+            } else {
                 ngx_stream_upstream_healthcheck_probe_finish(
                     probe, 0, 1, 0, classification);
-                return;
             }
         }
-        if (probe->conf->type == NGX_STREAM_UPSTREAM_HEALTHCHECK_TLS) {
-            ngx_stream_upstream_healthcheck_probe_start_tls(probe);
-        } else {
-            ngx_stream_upstream_healthcheck_probe_send(probe);
-        }
-        return;
-    }
-    if (probe->stage == NGX_HTTP_UPSTREAM_HEALTHCHECK_SENDING) {
+    } else if (probe->stage == NGX_HTTP_UPSTREAM_HEALTHCHECK_SENDING) {
         ngx_stream_upstream_healthcheck_probe_send(probe);
-        return;
-    }
-    if (probe->stage == NGX_HTTP_UPSTREAM_HEALTHCHECK_READING) {
+    } else if (probe->stage == NGX_HTTP_UPSTREAM_HEALTHCHECK_READING) {
         ngx_stream_upstream_healthcheck_probe_read(probe);
     }
 }
@@ -3950,15 +3922,14 @@ ngx_stream_upstream_healthcheck_probe_start_tls(
              ngx_stream_upstream_healthcheck_probe_tls_done, &force_down);
     if (rc == NGX_AGAIN) {
         return;
-    }
-    if (rc != NGX_OK) {
+    } else if (rc != NGX_OK) {
         ngx_stream_upstream_healthcheck_probe_finish(
             probe, 0, 1, force_down,
             force_down ? NGX_UPSTREAM_HEALTHCHECK_RESULT_SOCKERR
                        : NGX_UPSTREAM_HEALTHCHECK_RESULT_L6RSP);
-        return;
+    } else {
+        ngx_stream_upstream_healthcheck_probe_tls_done(c);
     }
-    ngx_stream_upstream_healthcheck_probe_tls_done(c);
 #else
     ngx_stream_upstream_healthcheck_probe_finish(
         probe, 0, 1, 1, NGX_UPSTREAM_HEALTHCHECK_RESULT_SOCKERR);
@@ -3976,18 +3947,18 @@ ngx_stream_upstream_healthcheck_probe_tls_done(ngx_connection_t *c)
         return;
     }
     if (ngx_upstream_healthcheck_tls_verified(
-            c, &probe->conf->tls_name) != NGX_OK)
+            c, &probe->conf->tls_name) == NGX_OK)
     {
+        c->read->handler = ngx_stream_upstream_healthcheck_probe_event;
+        c->write->handler = ngx_stream_upstream_healthcheck_probe_event;
+        ngx_stream_upstream_healthcheck_probe_send(probe);
+    } else {
         ngx_log_error(NGX_LOG_ERR, c->log, 0,
                       "stream healthcheck TLS certificate verification failed for \"%V\"",
                       &probe->conf->tls_name);
         ngx_stream_upstream_healthcheck_probe_finish(
             probe, 0, 1, 0, NGX_UPSTREAM_HEALTHCHECK_RESULT_L6RSP);
-        return;
     }
-    c->read->handler = ngx_stream_upstream_healthcheck_probe_event;
-    c->write->handler = ngx_stream_upstream_healthcheck_probe_event;
-    ngx_stream_upstream_healthcheck_probe_send(probe);
 #endif
 }
 
@@ -4995,9 +4966,11 @@ ngx_http_upstream_healthcheck_render_peer_family(
 {
     ngx_http_upstream_healthcheck_sample_t  *sample;
     ngx_uint_t                             i, j;
+    ngx_int_t                              rc;
 
     sample = samples->elts;
-    for (i = 0; i < samples->nelts; i++) {
+    rc = NGX_OK;
+    for (i = 0; i < samples->nelts && rc == NGX_OK; i++) {
         switch (family) {
         case 0:
             if (ngx_http_upstream_healthcheck_output_sample_uint(
@@ -5107,14 +5080,14 @@ ngx_http_upstream_healthcheck_render_peer_family(
             break;
 
         case 12:
-            for (j = 0; j < NGX_UPSTREAM_HEALTHCHECK_RESULT_COUNT; j++) {
-                if (ngx_http_upstream_healthcheck_output_sample_result(
-                        out, name, &sample[i],
-                        ngx_upstream_healthcheck_result_names[j],
-                        sample[i].last_classification == j) != NGX_OK)
-                {
-                    return NGX_ERROR;
-                }
+            for (j = 0; j < NGX_UPSTREAM_HEALTHCHECK_RESULT_COUNT
+                        && rc == NGX_OK;
+                 j++)
+            {
+                rc = ngx_http_upstream_healthcheck_output_sample_result(
+                         out, name, &sample[i],
+                         ngx_upstream_healthcheck_result_names[j],
+                         sample[i].last_classification == j);
             }
             break;
 
@@ -5124,7 +5097,7 @@ ngx_http_upstream_healthcheck_render_peer_family(
 
     }
 
-    return NGX_OK;
+    return rc;
 }
 
 static ngx_int_t
@@ -5324,36 +5297,38 @@ ngx_http_upstream_healthcheck_output_labels_with_result(
     ngx_http_upstream_healthcheck_output_t *out,
     const ngx_http_upstream_healthcheck_sample_t *sample, const char *result)
 {
-    if (ngx_http_upstream_healthcheck_output_text(out, "{upstream=") != NGX_OK
-        || ngx_http_upstream_healthcheck_output_label(out, &sample->upstream)
-           != NGX_OK
-        || ngx_http_upstream_healthcheck_output_text(out, ",server=") != NGX_OK
-        || ngx_http_upstream_healthcheck_output_label(out, &sample->server)
-           != NGX_OK
-        || ngx_http_upstream_healthcheck_output_text(out, ",peer=") != NGX_OK
-        || ngx_http_upstream_healthcheck_output_label(out, &sample->peer)
-           != NGX_OK
-        || ngx_http_upstream_healthcheck_output_text(out, ",backup=\"")
-           != NGX_OK
-        || ngx_http_upstream_healthcheck_output_text(
-               out, sample->backup ? "true" : "false") != NGX_OK
-        || ngx_http_upstream_healthcheck_output_text(out, "\"") != NGX_OK)
+    ngx_int_t  rc;
+
+    rc = NGX_ERROR;
+    if (ngx_http_upstream_healthcheck_output_text(out, "{upstream=") == NGX_OK
+        && ngx_http_upstream_healthcheck_output_label(out, &sample->upstream)
+           == NGX_OK
+        && ngx_http_upstream_healthcheck_output_text(out, ",server=") == NGX_OK
+        && ngx_http_upstream_healthcheck_output_label(out, &sample->server)
+           == NGX_OK
+        && ngx_http_upstream_healthcheck_output_text(out, ",peer=") == NGX_OK
+        && ngx_http_upstream_healthcheck_output_label(out, &sample->peer)
+           == NGX_OK
+        && ngx_http_upstream_healthcheck_output_text(out, ",backup=\"")
+           == NGX_OK
+        && ngx_http_upstream_healthcheck_output_text(
+               out, sample->backup ? "true" : "false") == NGX_OK
+        && ngx_http_upstream_healthcheck_output_text(out, "\"") == NGX_OK)
     {
-        return NGX_ERROR;
+        if (result == NULL) {
+            rc = ngx_http_upstream_healthcheck_output_text(out, "}");
+        } else if (ngx_http_upstream_healthcheck_output_text(out, ",result=\"")
+                       == NGX_OK
+                   && ngx_http_upstream_healthcheck_output_text(out, result)
+                      == NGX_OK
+                   && ngx_http_upstream_healthcheck_output_text(out, "\"")
+                      == NGX_OK)
+        {
+            rc = ngx_http_upstream_healthcheck_output_text(out, "}");
+        }
     }
 
-    if (result != NULL
-        && (ngx_http_upstream_healthcheck_output_text(out, ",result=\"")
-            != NGX_OK
-            || ngx_http_upstream_healthcheck_output_text(out, result)
-               != NGX_OK
-            || ngx_http_upstream_healthcheck_output_text(out, "\"")
-               != NGX_OK))
-    {
-        return NGX_ERROR;
-    }
-
-    return ngx_http_upstream_healthcheck_output_text(out, "}");
+    return rc;
 }
 
 static ngx_int_t
@@ -5412,17 +5387,20 @@ ngx_http_upstream_healthcheck_output_sample_result(
     const ngx_http_upstream_healthcheck_sample_t *sample,
     const char *result, ngx_uint_t value)
 {
-    if (ngx_http_upstream_healthcheck_output_text(out, name) != NGX_OK
-        || ngx_http_upstream_healthcheck_output_labels_with_result(
-               out, sample, result) != NGX_OK
-        || ngx_http_upstream_healthcheck_output_text(out, " ") != NGX_OK
-        || ngx_http_upstream_healthcheck_output_uint(out, value) != NGX_OK
-        || ngx_http_upstream_healthcheck_output_text(out, "\n") != NGX_OK)
+    ngx_int_t  rc;
+
+    rc = NGX_ERROR;
+    if (ngx_http_upstream_healthcheck_output_text(out, name) == NGX_OK
+        && ngx_http_upstream_healthcheck_output_labels_with_result(
+               out, sample, result) == NGX_OK
+        && ngx_http_upstream_healthcheck_output_text(out, " ") == NGX_OK
+        && ngx_http_upstream_healthcheck_output_uint(out, value) == NGX_OK
+        && ngx_http_upstream_healthcheck_output_text(out, "\n") == NGX_OK)
     {
-        return NGX_ERROR;
+        rc = NGX_OK;
     }
 
-    return NGX_OK;
+    return rc;
 }
 
 static ngx_int_t

@@ -60,6 +60,9 @@ static-builds/
 
 - New top-level directories outside STRUCTURE MUST NOT be added (for example, `docs/`, `tests/`).
 - EditorConfig: 4-space indent (2 for .sh/.yaml)
+- Inside functions, prefer positive guarded blocks over early returns when equivalent behavior stays clear.
+- Keep scripts and executable source in separate files and reference them from Dockerfiles, configurations, and documentation.
+  Do not embed script bodies in those files.
 - `metadata.json` MUST be the canonical source of build and release metadata for all targets.
 - Versions MUST use the latest supported upstream LTS series when one exists.
 - Projects without an upstream LTS series MUST use supported stable releases when available.
