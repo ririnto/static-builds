@@ -54,7 +54,7 @@ download:
 	sh "$(DOWNLOAD_SCRIPT)" "$(word 1,$(ARGS))"
 
 lint:
-	@find scripts .github/scripts .gitlab/scripts -name '*.sh' 2>/dev/null | while read -r file; do \
+	@find scripts .github/scripts .gitlab/scripts proxy/tests -name '*.sh' 2>/dev/null | while read -r file; do \
 		echo "shellcheck $$file"; \
 		if ! shellcheck "$$file"; then \
 			exit 1; \
@@ -62,9 +62,9 @@ lint:
 	done
 
 shfmt-check:
-	@find scripts .github/scripts .gitlab/scripts -name '*.sh' 2>/dev/null \
+	@find scripts .github/scripts .gitlab/scripts proxy/tests -name '*.sh' 2>/dev/null \
 		| xargs shfmt -d -i 2 -ci
 
 shfmt-write:
-	@find scripts .github/scripts .gitlab/scripts -name '*.sh' 2>/dev/null \
+	@find scripts .github/scripts .gitlab/scripts proxy/tests -name '*.sh' 2>/dev/null \
 		| xargs shfmt -w -i 2 -ci

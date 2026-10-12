@@ -41,6 +41,37 @@ typedef enum {
     NGX_HTTP_UPSTREAM_HEALTHCHECK_TLS_ONLY
 } ngx_http_upstream_healthcheck_type_e;
 
+enum {
+    NGX_UPSTREAM_HEALTHCHECK_RESULT_UNKNOWN,
+    NGX_UPSTREAM_HEALTHCHECK_RESULT_SOCKERR,
+    NGX_UPSTREAM_HEALTHCHECK_RESULT_L4OK,
+    NGX_UPSTREAM_HEALTHCHECK_RESULT_L4TOUT,
+    NGX_UPSTREAM_HEALTHCHECK_RESULT_L4CON,
+    NGX_UPSTREAM_HEALTHCHECK_RESULT_L6OK,
+    NGX_UPSTREAM_HEALTHCHECK_RESULT_L6TOUT,
+    NGX_UPSTREAM_HEALTHCHECK_RESULT_L6RSP,
+    NGX_UPSTREAM_HEALTHCHECK_RESULT_L7OK,
+    NGX_UPSTREAM_HEALTHCHECK_RESULT_L7TOUT,
+    NGX_UPSTREAM_HEALTHCHECK_RESULT_L7RSP,
+    NGX_UPSTREAM_HEALTHCHECK_RESULT_L7STS,
+    NGX_UPSTREAM_HEALTHCHECK_RESULT_COUNT
+};
+
+static const char *const ngx_upstream_healthcheck_result_names[] = {
+    "UNKNOWN",
+    "SOCKERR",
+    "L4OK",
+    "L4TOUT",
+    "L4CON",
+    "L6OK",
+    "L6TOUT",
+    "L6RSP",
+    "L7OK",
+    "L7TOUT",
+    "L7RSP",
+    "L7STS"
+};
+
 struct ngx_http_upstream_healthcheck_conf_s {
     ngx_http_upstream_srv_conf_t          *uscf;
     ngx_http_upstream_rr_peers_t          *peers;
@@ -102,6 +133,7 @@ struct ngx_http_upstream_healthcheck_peer_s {
     ngx_uint_t                             busy;
     ngx_uint_t                             has_result;
     ngx_uint_t                             last_result;
+    ngx_uint_t                             last_classification;
     ngx_uint_t                             status_code;
     ngx_uint_t                             rise_streak;
     ngx_uint_t                             fall_streak;
@@ -208,6 +240,7 @@ struct ngx_stream_upstream_healthcheck_peer_s {
     ngx_uint_t                                busy;
     ngx_uint_t                                has_result;
     ngx_uint_t                                last_result;
+    ngx_uint_t                                last_classification;
     ngx_uint_t                                status_code;
     ngx_uint_t                                rise_streak;
     ngx_uint_t                                fall_streak;
@@ -258,6 +291,7 @@ typedef struct {
     ngx_uint_t                             admin_down;
     ngx_uint_t                             ready;
     ngx_int_t                              last_result;
+    ngx_uint_t                             last_classification;
     ngx_uint_t                             status_code;
     ngx_uint_t                             rise_streak;
     ngx_uint_t                             fall_streak;
@@ -336,7 +370,8 @@ static ngx_int_t ngx_http_upstream_healthcheck_status_allowed(
     ngx_http_upstream_healthcheck_conf_t *conf, ngx_uint_t status);
 static void ngx_http_upstream_healthcheck_probe_finish(
     ngx_http_upstream_healthcheck_probe_t *probe, ngx_uint_t success,
-    ngx_uint_t status, ngx_uint_t attempted, ngx_uint_t force_down);
+    ngx_uint_t status, ngx_uint_t attempted, ngx_uint_t force_down,
+    ngx_uint_t classification);
 static void ngx_http_upstream_healthcheck_probe_link(
     ngx_http_upstream_healthcheck_probe_t *probe);
 static void ngx_http_upstream_healthcheck_probe_unlink(
@@ -345,7 +380,7 @@ static void ngx_http_upstream_healthcheck_complete(
     ngx_http_upstream_healthcheck_conf_t *conf,
     ngx_http_upstream_healthcheck_peer_t *peer_state, ngx_uint_t success,
     ngx_uint_t status, ngx_uint_t attempted, ngx_uint_t force_down,
-    ngx_msec_t duration);
+    ngx_uint_t classification, ngx_msec_t duration);
 static void ngx_http_upstream_healthcheck_start_failed(
     ngx_http_upstream_healthcheck_conf_t *conf,
     ngx_http_upstream_healthcheck_peer_t *peer_state, ngx_uint_t force_down);
@@ -400,6 +435,10 @@ static ngx_int_t ngx_http_upstream_healthcheck_output_label(
 static ngx_int_t ngx_http_upstream_healthcheck_output_labels(
     ngx_http_upstream_healthcheck_output_t *out,
     const ngx_http_upstream_healthcheck_sample_t *sample);
+static ngx_int_t ngx_http_upstream_healthcheck_output_labels_with_result(
+    ngx_http_upstream_healthcheck_output_t *out,
+    const ngx_http_upstream_healthcheck_sample_t *sample,
+    const char *result);
 static ngx_int_t ngx_http_upstream_healthcheck_output_group_label(
     ngx_http_upstream_healthcheck_output_t *out, const ngx_str_t *upstream);
 static ngx_int_t ngx_http_upstream_healthcheck_output_help(
@@ -414,6 +453,10 @@ static ngx_int_t ngx_http_upstream_healthcheck_output_sample_uint(
 static ngx_int_t ngx_http_upstream_healthcheck_output_sample_int(
     ngx_http_upstream_healthcheck_output_t *out, const char *name,
     const ngx_http_upstream_healthcheck_sample_t *sample, ngx_int_t value);
+static ngx_int_t ngx_http_upstream_healthcheck_output_sample_result(
+    ngx_http_upstream_healthcheck_output_t *out, const char *name,
+    const ngx_http_upstream_healthcheck_sample_t *sample,
+    const char *result, ngx_uint_t value);
 static ngx_int_t ngx_http_upstream_healthcheck_output_group_uint(
     ngx_http_upstream_healthcheck_output_t *out, const char *name,
     const ngx_str_t *upstream, ngx_uint_t value);
@@ -436,7 +479,9 @@ static ngx_int_t ngx_http_upstream_healthcheck_has_crlf(const ngx_str_t *value);
 static ngx_int_t ngx_http_upstream_healthcheck_same_string(const ngx_str_t *a,
     const ngx_str_t *b);
 static ngx_int_t ngx_http_upstream_healthcheck_test_connect(
-    ngx_connection_t *c);
+    ngx_connection_t *c, ngx_uint_t *classification);
+static ngx_uint_t ngx_upstream_healthcheck_timeout_result(ngx_uint_t stage);
+static ngx_uint_t ngx_upstream_healthcheck_failure_result(ngx_uint_t stage);
 #if (NGX_HTTP_SSL || NGX_STREAM_SSL)
 static ngx_int_t ngx_upstream_healthcheck_ssl_context(ngx_conf_t *cf,
     ngx_ssl_t *ssl, ngx_str_t *trusted_certificate, ngx_str_t *upstream);
@@ -526,7 +571,7 @@ static ngx_uint_t ngx_stream_upstream_healthcheck_response_matches(
     ngx_stream_upstream_healthcheck_probe_t *probe);
 static void ngx_stream_upstream_healthcheck_probe_finish(
     ngx_stream_upstream_healthcheck_probe_t *probe, ngx_uint_t success,
-    ngx_uint_t attempted, ngx_uint_t force_down);
+    ngx_uint_t attempted, ngx_uint_t force_down, ngx_uint_t classification);
 static void ngx_stream_upstream_healthcheck_probe_link(
     ngx_stream_upstream_healthcheck_probe_t *probe);
 static void ngx_stream_upstream_healthcheck_probe_unlink(
@@ -537,7 +582,8 @@ static void ngx_stream_upstream_healthcheck_start_failed(
 static void ngx_stream_upstream_healthcheck_complete(
     ngx_stream_upstream_healthcheck_conf_t *conf,
     ngx_stream_upstream_healthcheck_peer_t *peer_state, ngx_uint_t success,
-    ngx_uint_t attempted, ngx_uint_t force_down, ngx_msec_t duration);
+    ngx_uint_t attempted, ngx_uint_t force_down, ngx_uint_t classification,
+    ngx_msec_t duration);
 static void ngx_stream_upstream_healthcheck_log_memory_failure(
     ngx_stream_upstream_healthcheck_conf_t *conf,
     ngx_stream_upstream_healthcheck_state_t *state);
@@ -1407,7 +1453,9 @@ ngx_http_upstream_healthcheck_exit_process(ngx_cycle_t *cycle)
         }
         while (hcs[i]->probes != NULL) {
             probe = hcs[i]->probes;
-            ngx_http_upstream_healthcheck_probe_finish(probe, 0, 0, 0, 0);
+            ngx_http_upstream_healthcheck_probe_finish(
+                probe, 0, 0, 0, 0,
+                NGX_UPSTREAM_HEALTHCHECK_RESULT_SOCKERR);
         }
     }
 }
@@ -1699,6 +1747,7 @@ ngx_http_upstream_healthcheck_add_peer_locked(
     peer_state->admin_down = ngx_http_upstream_healthcheck_admin_down(
                                  conf, peer, backup);
     peer_state->last_result = (ngx_uint_t) -1;
+    peer_state->last_classification = NGX_UPSTREAM_HEALTHCHECK_RESULT_UNKNOWN;
     peer_state->last_change = ngx_time();
 
     ngx_http_upstream_rr_peer_ref(group, peer);
@@ -1919,8 +1968,11 @@ ngx_http_upstream_healthcheck_start(
             ngx_close_connection(probe->connection);
             probe->connection = NULL;
         }
-        ngx_http_upstream_healthcheck_probe_finish(probe, 0, 0, 1,
-                                                  rc == NGX_ERROR);
+        ngx_http_upstream_healthcheck_probe_finish(
+            probe, 0, 0, 1, rc == NGX_ERROR,
+            rc == NGX_ERROR || rc == NGX_BUSY
+                ? NGX_UPSTREAM_HEALTHCHECK_RESULT_SOCKERR
+                : NGX_UPSTREAM_HEALTHCHECK_RESULT_L4CON);
         return NGX_OK;
     }
 
@@ -1949,8 +2001,17 @@ ngx_http_upstream_healthcheck_probe_event(ngx_event_t *ev)
         return;
     }
 
-    if (ev->timedout || ev->error || c->error) {
-        ngx_http_upstream_healthcheck_probe_finish(probe, 0, 0, 1, 0);
+    if (ev->timedout) {
+        ngx_http_upstream_healthcheck_probe_finish(
+            probe, 0, 0, 1, 0,
+            ngx_upstream_healthcheck_timeout_result(probe->stage));
+        return;
+    }
+
+    if (ev->error || c->error) {
+        ngx_http_upstream_healthcheck_probe_finish(
+            probe, 0, 0, 1, 0,
+            ngx_upstream_healthcheck_failure_result(probe->stage));
         return;
     }
 
@@ -1958,9 +2019,16 @@ ngx_http_upstream_healthcheck_probe_event(ngx_event_t *ev)
         if (!ev->write) {
             return;
         }
-        if (ngx_http_upstream_healthcheck_test_connect(c) != NGX_OK) {
-            ngx_http_upstream_healthcheck_probe_finish(probe, 0, 0, 1, 0);
-            return;
+        {
+            ngx_uint_t  classification;
+
+            if (ngx_http_upstream_healthcheck_test_connect(c, &classification)
+                != NGX_OK)
+            {
+                ngx_http_upstream_healthcheck_probe_finish(
+                    probe, 0, 0, 1, 0, classification);
+                return;
+            }
         }
         ngx_http_upstream_healthcheck_probe_connected(probe);
         return;
@@ -2013,7 +2081,9 @@ ngx_http_upstream_healthcheck_probe_deadline(ngx_event_t *ev)
         return;
     }
 
-    ngx_http_upstream_healthcheck_probe_finish(probe, 0, 0, 1, 0);
+    ngx_http_upstream_healthcheck_probe_finish(
+        probe, 0, 0, 1, 0,
+        ngx_upstream_healthcheck_timeout_result(probe->stage));
 }
 
 static void
@@ -2024,7 +2094,9 @@ ngx_http_upstream_healthcheck_probe_connected(
 
     c = probe->connection;
     if (probe->conf->type == NGX_HTTP_UPSTREAM_HEALTHCHECK_TCP) {
-        ngx_http_upstream_healthcheck_probe_finish(probe, 1, 0, 1, 0);
+        ngx_http_upstream_healthcheck_probe_finish(
+            probe, 1, 0, 1, 0,
+            NGX_UPSTREAM_HEALTHCHECK_RESULT_L4OK);
         return;
     }
 
@@ -2059,12 +2131,16 @@ ngx_http_upstream_healthcheck_probe_start_tls(
         return;
     }
     if (rc != NGX_OK) {
-        ngx_http_upstream_healthcheck_probe_finish(probe, 0, 0, 1, force_down);
+        ngx_http_upstream_healthcheck_probe_finish(
+            probe, 0, 0, 1, force_down,
+            force_down ? NGX_UPSTREAM_HEALTHCHECK_RESULT_SOCKERR
+                       : NGX_UPSTREAM_HEALTHCHECK_RESULT_L6RSP);
         return;
     }
     ngx_http_upstream_healthcheck_probe_tls_done(c);
 #else
-    ngx_http_upstream_healthcheck_probe_finish(probe, 0, 0, 1, 1);
+    ngx_http_upstream_healthcheck_probe_finish(
+        probe, 0, 0, 1, 1, NGX_UPSTREAM_HEALTHCHECK_RESULT_SOCKERR);
 #endif
 }
 
@@ -2085,12 +2161,14 @@ ngx_http_upstream_healthcheck_probe_tls_done(ngx_connection_t *c)
         ngx_log_error(NGX_LOG_ERR, c->log, 0,
                       "healthcheck TLS certificate verification failed for \"%V\"",
                       &probe->conf->tls_name);
-        ngx_http_upstream_healthcheck_probe_finish(probe, 0, 0, 1, 0);
+        ngx_http_upstream_healthcheck_probe_finish(
+            probe, 0, 0, 1, 0, NGX_UPSTREAM_HEALTHCHECK_RESULT_L6RSP);
         return;
     }
 
     if (probe->conf->type == NGX_HTTP_UPSTREAM_HEALTHCHECK_TLS_ONLY) {
-        ngx_http_upstream_healthcheck_probe_finish(probe, 1, 0, 1, 0);
+        ngx_http_upstream_healthcheck_probe_finish(
+            probe, 1, 0, 1, 0, NGX_UPSTREAM_HEALTHCHECK_RESULT_L6OK);
         return;
     }
 
@@ -2116,12 +2194,16 @@ ngx_http_upstream_healthcheck_probe_send(
             if (ngx_handle_read_event(c->read, 0) != NGX_OK
                 || ngx_handle_write_event(c->write, 0) != NGX_OK)
             {
-                ngx_http_upstream_healthcheck_probe_finish(probe, 0, 0, 1, 0);
+                ngx_http_upstream_healthcheck_probe_finish(
+                    probe, 0, 0, 1, 0,
+                    NGX_UPSTREAM_HEALTHCHECK_RESULT_SOCKERR);
             }
             return;
         }
         if (n <= 0) {
-            ngx_http_upstream_healthcheck_probe_finish(probe, 0, 0, 1, 0);
+            ngx_http_upstream_healthcheck_probe_finish(
+                probe, 0, 0, 1, 0,
+                NGX_UPSTREAM_HEALTHCHECK_RESULT_L7RSP);
             return;
         }
         probe->request_sent += n;
@@ -2145,7 +2227,9 @@ ngx_http_upstream_healthcheck_probe_read(
     c = probe->connection;
     for (;;) {
         if (probe->response_len == sizeof(probe->response)) {
-            ngx_http_upstream_healthcheck_probe_finish(probe, 0, 0, 1, 0);
+            ngx_http_upstream_healthcheck_probe_finish(
+                probe, 0, 0, 1, 0,
+                NGX_UPSTREAM_HEALTHCHECK_RESULT_L7RSP);
             return;
         }
 
@@ -2155,12 +2239,16 @@ ngx_http_upstream_healthcheck_probe_read(
             if (ngx_handle_read_event(c->read, 0) != NGX_OK
                 || ngx_handle_write_event(c->write, 0) != NGX_OK)
             {
-                ngx_http_upstream_healthcheck_probe_finish(probe, 0, 0, 1, 0);
+                ngx_http_upstream_healthcheck_probe_finish(
+                    probe, 0, 0, 1, 0,
+                    NGX_UPSTREAM_HEALTHCHECK_RESULT_SOCKERR);
             }
             return;
         }
         if (n <= 0) {
-            ngx_http_upstream_healthcheck_probe_finish(probe, 0, 0, 1, 0);
+            ngx_http_upstream_healthcheck_probe_finish(
+                probe, 0, 0, 1, 0,
+                NGX_UPSTREAM_HEALTHCHECK_RESULT_L7RSP);
             return;
         }
 
@@ -2172,15 +2260,21 @@ ngx_http_upstream_healthcheck_probe_read(
                 if (ngx_http_upstream_healthcheck_parse_status(
                         probe->response, i - 1, &status) != NGX_OK)
                 {
-                    ngx_http_upstream_healthcheck_probe_finish(probe, 0, 0,
-                                                             1, 0);
+                    ngx_http_upstream_healthcheck_probe_finish(
+                        probe, 0, 0, 1, 0,
+                        NGX_UPSTREAM_HEALTHCHECK_RESULT_L7RSP);
                     return;
                 }
-                ngx_http_upstream_healthcheck_probe_finish(
-                    probe,
-                    ngx_http_upstream_healthcheck_status_allowed(probe->conf,
-                                                                status),
-                    status, 1, 0);
+                {
+                    ngx_uint_t  success;
+
+                    success = ngx_http_upstream_healthcheck_status_allowed(
+                                  probe->conf, status);
+                    ngx_http_upstream_healthcheck_probe_finish(
+                        probe, success, status, 1, 0,
+                        success ? NGX_UPSTREAM_HEALTHCHECK_RESULT_L7OK
+                                : NGX_UPSTREAM_HEALTHCHECK_RESULT_L7STS);
+                }
                 return;
             }
         }
@@ -2230,7 +2324,8 @@ ngx_http_upstream_healthcheck_status_allowed(
 static void
 ngx_http_upstream_healthcheck_probe_finish(
     ngx_http_upstream_healthcheck_probe_t *probe, ngx_uint_t success,
-    ngx_uint_t status, ngx_uint_t attempted, ngx_uint_t force_down)
+    ngx_uint_t status, ngx_uint_t attempted, ngx_uint_t force_down,
+    ngx_uint_t classification)
 {
     ngx_connection_t  *c;
 
@@ -2255,6 +2350,7 @@ ngx_http_upstream_healthcheck_probe_finish(
 
     ngx_http_upstream_healthcheck_complete(probe->conf, probe->peer_state,
                                          success, status, attempted, force_down,
+                                         classification,
                                          ngx_current_msec - probe->started);
     ngx_destroy_pool(probe->pool);
 }
@@ -2285,6 +2381,8 @@ ngx_http_upstream_healthcheck_start_failed(
             ngx_http_upstream_healthcheck_remove_peer_locked(state,
                                                             peer_state);
         } else if (force_down && !peer_state->admin_down) {
+            peer_state->last_classification =
+                NGX_UPSTREAM_HEALTHCHECK_RESULT_SOCKERR;
             state->errors_total++;
             state->memory_failures_total++;
             peer_state->rise_streak = 0;
@@ -2310,7 +2408,7 @@ ngx_http_upstream_healthcheck_complete(
     ngx_http_upstream_healthcheck_conf_t *conf,
     ngx_http_upstream_healthcheck_peer_t *peer_state, ngx_uint_t success,
     ngx_uint_t status, ngx_uint_t attempted, ngx_uint_t force_down,
-    ngx_msec_t duration)
+    ngx_uint_t classification, ngx_msec_t duration)
 {
     ngx_http_upstream_healthcheck_state_t  *state;
     ngx_http_upstream_rr_peers_t         *group;
@@ -2337,6 +2435,11 @@ ngx_http_upstream_healthcheck_complete(
                                                             peer_state);
         } else {
             peer_state->next_due = ngx_current_msec + conf->interval;
+            if (attempted
+                || classification == NGX_UPSTREAM_HEALTHCHECK_RESULT_SOCKERR)
+            {
+                peer_state->last_classification = classification;
+            }
             if (attempted) {
                 peer_state->has_result = 1;
                 peer_state->last_result = success ? 1 : 0;
@@ -2397,10 +2500,13 @@ ngx_http_upstream_healthcheck_complete(
 }
 
 static ngx_int_t
-ngx_http_upstream_healthcheck_test_connect(ngx_connection_t *c)
+ngx_http_upstream_healthcheck_test_connect(ngx_connection_t *c,
+    ngx_uint_t *classification)
 {
     int        err;
     socklen_t  len;
+
+    *classification = NGX_UPSTREAM_HEALTHCHECK_RESULT_L4CON;
 
 #if (NGX_HAVE_KQUEUE)
     if (ngx_event_flags & NGX_USE_KQUEUE_EVENT) {
@@ -2418,6 +2524,7 @@ ngx_http_upstream_healthcheck_test_connect(ngx_connection_t *c)
     err = 0;
     len = sizeof(int);
     if (getsockopt(c->fd, SOL_SOCKET, SO_ERROR, (void *) &err, &len) == -1) {
+        *classification = NGX_UPSTREAM_HEALTHCHECK_RESULT_SOCKERR;
         err = ngx_socket_errno;
     }
     if (err != 0) {
@@ -2426,6 +2533,30 @@ ngx_http_upstream_healthcheck_test_connect(ngx_connection_t *c)
     }
 
     return NGX_OK;
+}
+
+static ngx_uint_t
+ngx_upstream_healthcheck_timeout_result(ngx_uint_t stage)
+{
+    if (stage == NGX_HTTP_UPSTREAM_HEALTHCHECK_CONNECT) {
+        return NGX_UPSTREAM_HEALTHCHECK_RESULT_L4TOUT;
+    }
+    if (stage == NGX_HTTP_UPSTREAM_HEALTHCHECK_TLS) {
+        return NGX_UPSTREAM_HEALTHCHECK_RESULT_L6TOUT;
+    }
+    return NGX_UPSTREAM_HEALTHCHECK_RESULT_L7TOUT;
+}
+
+static ngx_uint_t
+ngx_upstream_healthcheck_failure_result(ngx_uint_t stage)
+{
+    if (stage == NGX_HTTP_UPSTREAM_HEALTHCHECK_CONNECT) {
+        return NGX_UPSTREAM_HEALTHCHECK_RESULT_L4CON;
+    }
+    if (stage == NGX_HTTP_UPSTREAM_HEALTHCHECK_TLS) {
+        return NGX_UPSTREAM_HEALTHCHECK_RESULT_L6RSP;
+    }
+    return NGX_UPSTREAM_HEALTHCHECK_RESULT_L7RSP;
 }
 
 static void *
@@ -3234,7 +3365,8 @@ ngx_stream_upstream_healthcheck_exit_process(ngx_cycle_t *cycle)
         }
         while (hcs[i]->probes != NULL) {
             probe = hcs[i]->probes;
-            ngx_stream_upstream_healthcheck_probe_finish(probe, 0, 0, 0);
+            ngx_stream_upstream_healthcheck_probe_finish(
+                probe, 0, 0, 0, NGX_UPSTREAM_HEALTHCHECK_RESULT_SOCKERR);
         }
     }
 }
@@ -3509,6 +3641,7 @@ ngx_stream_upstream_healthcheck_add_peer_locked(
     peer_state->backup = backup;
     peer_state->admin_down = ngx_stream_upstream_healthcheck_admin_down(
                                  conf, peer, backup);
+    peer_state->last_classification = NGX_UPSTREAM_HEALTHCHECK_RESULT_UNKNOWN;
     peer_state->last_change = ngx_time();
     ngx_stream_upstream_rr_peer_ref(group, peer);
 
@@ -3687,7 +3820,11 @@ ngx_stream_upstream_healthcheck_start(
             ngx_close_connection(probe->connection);
             probe->connection = NULL;
         }
-        ngx_stream_upstream_healthcheck_probe_finish(probe, 0, 1, 0);
+        ngx_stream_upstream_healthcheck_probe_finish(
+            probe, 0, 1, 0,
+            rc == NGX_ERROR || rc == NGX_BUSY
+                ? NGX_UPSTREAM_HEALTHCHECK_RESULT_SOCKERR
+                : NGX_UPSTREAM_HEALTHCHECK_RESULT_L4CON);
         return NGX_OK;
     }
 
@@ -3713,17 +3850,33 @@ ngx_stream_upstream_healthcheck_probe_event(ngx_event_t *ev)
     if (probe == NULL || probe->done) {
         return;
     }
-    if (ev->timedout || ev->error || c->error) {
-        ngx_stream_upstream_healthcheck_probe_finish(probe, 0, 1, 0);
+    if (ev->timedout) {
+        ngx_stream_upstream_healthcheck_probe_finish(
+            probe, 0, 1, 0,
+            ngx_upstream_healthcheck_timeout_result(probe->stage));
+        return;
+    }
+
+    if (ev->error || c->error) {
+        ngx_stream_upstream_healthcheck_probe_finish(
+            probe, 0, 1, 0,
+            ngx_upstream_healthcheck_failure_result(probe->stage));
         return;
     }
     if (probe->stage == NGX_HTTP_UPSTREAM_HEALTHCHECK_CONNECT) {
         if (!ev->write) {
             return;
         }
-        if (ngx_http_upstream_healthcheck_test_connect(c) != NGX_OK) {
-            ngx_stream_upstream_healthcheck_probe_finish(probe, 0, 1, 0);
-            return;
+        {
+            ngx_uint_t  classification;
+
+            if (ngx_http_upstream_healthcheck_test_connect(c, &classification)
+                != NGX_OK)
+            {
+                ngx_stream_upstream_healthcheck_probe_finish(
+                    probe, 0, 1, 0, classification);
+                return;
+            }
         }
         if (probe->conf->type == NGX_STREAM_UPSTREAM_HEALTHCHECK_TLS) {
             ngx_stream_upstream_healthcheck_probe_start_tls(probe);
@@ -3775,7 +3928,9 @@ ngx_stream_upstream_healthcheck_probe_deadline(ngx_event_t *ev)
 
     probe = ev->data;
     if (probe != NULL && !probe->done) {
-        ngx_stream_upstream_healthcheck_probe_finish(probe, 0, 1, 0);
+        ngx_stream_upstream_healthcheck_probe_finish(
+            probe, 0, 1, 0,
+            ngx_upstream_healthcheck_timeout_result(probe->stage));
     }
 }
 
@@ -3797,12 +3952,16 @@ ngx_stream_upstream_healthcheck_probe_start_tls(
         return;
     }
     if (rc != NGX_OK) {
-        ngx_stream_upstream_healthcheck_probe_finish(probe, 0, 1, force_down);
+        ngx_stream_upstream_healthcheck_probe_finish(
+            probe, 0, 1, force_down,
+            force_down ? NGX_UPSTREAM_HEALTHCHECK_RESULT_SOCKERR
+                       : NGX_UPSTREAM_HEALTHCHECK_RESULT_L6RSP);
         return;
     }
     ngx_stream_upstream_healthcheck_probe_tls_done(c);
 #else
-    ngx_stream_upstream_healthcheck_probe_finish(probe, 0, 1, 1);
+    ngx_stream_upstream_healthcheck_probe_finish(
+        probe, 0, 1, 1, NGX_UPSTREAM_HEALTHCHECK_RESULT_SOCKERR);
 #endif
 }
 
@@ -3822,7 +3981,8 @@ ngx_stream_upstream_healthcheck_probe_tls_done(ngx_connection_t *c)
         ngx_log_error(NGX_LOG_ERR, c->log, 0,
                       "stream healthcheck TLS certificate verification failed for \"%V\"",
                       &probe->conf->tls_name);
-        ngx_stream_upstream_healthcheck_probe_finish(probe, 0, 1, 0);
+        ngx_stream_upstream_healthcheck_probe_finish(
+            probe, 0, 1, 0, NGX_UPSTREAM_HEALTHCHECK_RESULT_L6RSP);
         return;
     }
     c->read->handler = ngx_stream_upstream_healthcheck_probe_event;
@@ -3847,19 +4007,28 @@ ngx_stream_upstream_healthcheck_probe_send(
             if (ngx_handle_read_event(c->read, 0) != NGX_OK
                 || ngx_handle_write_event(c->write, 0) != NGX_OK)
             {
-                ngx_stream_upstream_healthcheck_probe_finish(probe, 0, 1, 0);
+                ngx_stream_upstream_healthcheck_probe_finish(
+                    probe, 0, 1, 0,
+                    NGX_UPSTREAM_HEALTHCHECK_RESULT_SOCKERR);
             }
             return;
         }
         if (n <= 0) {
-            ngx_stream_upstream_healthcheck_probe_finish(probe, 0, 1, 0);
+            ngx_stream_upstream_healthcheck_probe_finish(
+                probe, 0, 1, 0, NGX_UPSTREAM_HEALTHCHECK_RESULT_L7RSP);
             return;
         }
         probe->request_sent += n;
     }
 
     if (!probe->conf->expect_set && !probe->conf->min_recv_set) {
-        ngx_stream_upstream_healthcheck_probe_finish(probe, 1, 1, 0);
+        ngx_stream_upstream_healthcheck_probe_finish(
+            probe, 1, 1, 0,
+            probe->conf->send_set
+                ? NGX_UPSTREAM_HEALTHCHECK_RESULT_L7OK
+                : (probe->conf->type == NGX_STREAM_UPSTREAM_HEALTHCHECK_TLS
+                       ? NGX_UPSTREAM_HEALTHCHECK_RESULT_L6OK
+                       : NGX_UPSTREAM_HEALTHCHECK_RESULT_L4OK));
         return;
     }
     probe->stage = NGX_HTTP_UPSTREAM_HEALTHCHECK_READING;
@@ -3903,11 +4072,13 @@ ngx_stream_upstream_healthcheck_probe_read(
     c = probe->connection;
     for (;;) {
         if (ngx_stream_upstream_healthcheck_response_matches(probe)) {
-            ngx_stream_upstream_healthcheck_probe_finish(probe, 1, 1, 0);
+            ngx_stream_upstream_healthcheck_probe_finish(
+                probe, 1, 1, 0, NGX_UPSTREAM_HEALTHCHECK_RESULT_L7OK);
             return;
         }
         if (probe->response_len == probe->conf->max_response) {
-            ngx_stream_upstream_healthcheck_probe_finish(probe, 0, 1, 0);
+            ngx_stream_upstream_healthcheck_probe_finish(
+                probe, 0, 1, 0, NGX_UPSTREAM_HEALTHCHECK_RESULT_L7RSP);
             return;
         }
         n = c->recv(c, probe->response + probe->response_len,
@@ -3916,12 +4087,15 @@ ngx_stream_upstream_healthcheck_probe_read(
             if (ngx_handle_read_event(c->read, 0) != NGX_OK
                 || ngx_handle_write_event(c->write, 0) != NGX_OK)
             {
-                ngx_stream_upstream_healthcheck_probe_finish(probe, 0, 1, 0);
+                ngx_stream_upstream_healthcheck_probe_finish(
+                    probe, 0, 1, 0,
+                    NGX_UPSTREAM_HEALTHCHECK_RESULT_SOCKERR);
             }
             return;
         }
         if (n <= 0) {
-            ngx_stream_upstream_healthcheck_probe_finish(probe, 0, 1, 0);
+            ngx_stream_upstream_healthcheck_probe_finish(
+                probe, 0, 1, 0, NGX_UPSTREAM_HEALTHCHECK_RESULT_L7RSP);
             return;
         }
         probe->response_len += n;
@@ -3931,7 +4105,7 @@ ngx_stream_upstream_healthcheck_probe_read(
 static void
 ngx_stream_upstream_healthcheck_probe_finish(
     ngx_stream_upstream_healthcheck_probe_t *probe, ngx_uint_t success,
-    ngx_uint_t attempted, ngx_uint_t force_down)
+    ngx_uint_t attempted, ngx_uint_t force_down, ngx_uint_t classification)
 {
     ngx_connection_t  *c;
 
@@ -3953,6 +4127,7 @@ ngx_stream_upstream_healthcheck_probe_finish(
     }
     ngx_stream_upstream_healthcheck_complete(
         probe->conf, probe->peer_state, success, attempted, force_down,
+        classification,
         ngx_current_msec - probe->started);
     ngx_destroy_pool(probe->pool);
 }
@@ -3982,6 +4157,8 @@ ngx_stream_upstream_healthcheck_start_failed(
             ngx_stream_upstream_healthcheck_remove_peer_locked(state,
                                                               peer_state);
         } else if (!peer_state->admin_down) {
+            peer_state->last_classification =
+                NGX_UPSTREAM_HEALTHCHECK_RESULT_SOCKERR;
             state->errors_total++;
             if (memory) {
                 state->memory_failures_total++;
@@ -4011,7 +4188,8 @@ static void
 ngx_stream_upstream_healthcheck_complete(
     ngx_stream_upstream_healthcheck_conf_t *conf,
     ngx_stream_upstream_healthcheck_peer_t *peer_state, ngx_uint_t success,
-    ngx_uint_t attempted, ngx_uint_t force_down, ngx_msec_t duration)
+    ngx_uint_t attempted, ngx_uint_t force_down, ngx_uint_t classification,
+    ngx_msec_t duration)
 {
     ngx_stream_upstream_healthcheck_state_t  *state;
     ngx_stream_upstream_rr_peers_t         *group;
@@ -4035,6 +4213,11 @@ ngx_stream_upstream_healthcheck_complete(
                                                               peer_state);
         } else {
             peer_state->next_due = ngx_current_msec + conf->interval;
+            if (attempted
+                || classification == NGX_UPSTREAM_HEALTHCHECK_RESULT_SOCKERR)
+            {
+                peer_state->last_classification = classification;
+            }
             if (attempted) {
                 peer_state->has_result = 1;
                 peer_state->last_result = success;
@@ -4160,6 +4343,10 @@ ngx_stream_upstream_healthcheck_collect_samples(
         sample[n].ready = peer_state->admin_down ? 0 : peer_state->ready;
         sample[n].last_result = peer_state->has_result
                                 ? (ngx_int_t) peer_state->last_result : -1;
+        sample[n].last_classification =
+            peer_state->last_classification < NGX_UPSTREAM_HEALTHCHECK_RESULT_COUNT
+            ? peer_state->last_classification
+            : NGX_UPSTREAM_HEALTHCHECK_RESULT_UNKNOWN;
         sample[n].status_code = 0;
         sample[n].rise_streak = peer_state->rise_streak;
         sample[n].fall_streak = peer_state->fall_streak;
@@ -4295,6 +4482,7 @@ ngx_upstream_healthcheck_tls_start(ngx_connection_t *c, ngx_pool_t *pool,
     if (SSL_set_tlsext_host_name(c->ssl->connection, (char *) name) != 1) {
         ngx_ssl_error(NGX_LOG_ERR, c->log, 0,
                       "SSL_set_tlsext_host_name() failed for active healthcheck");
+        *force_down = 1;
         return NGX_ERROR;
     }
     c->ssl->handler = handler;
@@ -4461,6 +4649,10 @@ ngx_http_upstream_healthcheck_metrics(ngx_http_request_t *r)
             "Latest check result: -1 before a result, 0 failure, or 1 success.",
             "gauge") != NGX_OK
         || ngx_http_upstream_healthcheck_output_help(
+            &out, "nginx_healthcheck_check_result",
+            "One-hot classification of the latest peer check result.",
+            "gauge") != NGX_OK
+        || ngx_http_upstream_healthcheck_output_help(
             &out, "nginx_healthcheck_check_code",
             "Latest parsed HTTP status code, or 0 when not available.",
             "gauge") != NGX_OK
@@ -4536,6 +4728,10 @@ ngx_http_upstream_healthcheck_metrics(ngx_http_request_t *r)
         || ngx_http_upstream_healthcheck_output_help(
             &out, "nginx_stream_healthcheck_check_status",
             "Latest stream check result: -1 before a result, 0 failure, or 1 success.",
+            "gauge") != NGX_OK
+        || ngx_http_upstream_healthcheck_output_help(
+            &out, "nginx_stream_healthcheck_check_result",
+            "One-hot classification of the latest stream peer check result.",
             "gauge") != NGX_OK
         || ngx_http_upstream_healthcheck_output_help(
             &out, "nginx_stream_healthcheck_check_duration_seconds",
@@ -4614,6 +4810,12 @@ ngx_http_upstream_healthcheck_metrics(ngx_http_request_t *r)
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
     }
+    if (ngx_http_upstream_healthcheck_render_peer_family(
+            &out, "nginx_healthcheck_check_result",
+            (ngx_array_t *) &samples, 12, ngx_time()) != NGX_OK)
+    {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
 
     hcs = mcf->upstreams.elts;
     for (i = 0; i < mcf->upstreams.nelts; i++) {
@@ -4645,6 +4847,12 @@ ngx_http_upstream_healthcheck_metrics(ngx_http_request_t *r)
         {
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
+    }
+    if (ngx_http_upstream_healthcheck_render_peer_family(
+            &out, "nginx_stream_healthcheck_check_result",
+            &stream_samples, 12, ngx_time()) != NGX_OK)
+    {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
     if (smcf != NULL) {
         shcs = smcf->upstreams.elts;
@@ -4757,6 +4965,10 @@ ngx_http_upstream_healthcheck_collect_samples(
         sample[n].ready = peer_state->admin_down ? 0 : peer_state->ready;
         sample[n].last_result = peer_state->has_result
                                 ? (ngx_int_t) peer_state->last_result : -1;
+        sample[n].last_classification =
+            peer_state->last_classification < NGX_UPSTREAM_HEALTHCHECK_RESULT_COUNT
+            ? peer_state->last_classification
+            : NGX_UPSTREAM_HEALTHCHECK_RESULT_UNKNOWN;
         sample[n].status_code = peer_state->status_code;
         sample[n].rise_streak = peer_state->rise_streak;
         sample[n].fall_streak = peer_state->fall_streak;
@@ -4782,7 +4994,7 @@ ngx_http_upstream_healthcheck_render_peer_family(
     ngx_array_t *samples, ngx_uint_t family, time_t now)
 {
     ngx_http_upstream_healthcheck_sample_t  *sample;
-    ngx_uint_t                             i;
+    ngx_uint_t                             i, j;
 
     sample = samples->elts;
     for (i = 0; i < samples->nelts; i++) {
@@ -4891,6 +5103,18 @@ ngx_http_upstream_healthcheck_render_peer_family(
                     out, name, &sample[i], sample[i].fall_streak) != NGX_OK)
             {
                 return NGX_ERROR;
+            }
+            break;
+
+        case 12:
+            for (j = 0; j < NGX_UPSTREAM_HEALTHCHECK_RESULT_COUNT; j++) {
+                if (ngx_http_upstream_healthcheck_output_sample_result(
+                        out, name, &sample[i],
+                        ngx_upstream_healthcheck_result_names[j],
+                        sample[i].last_classification == j) != NGX_OK)
+                {
+                    return NGX_ERROR;
+                }
             }
             break;
 
@@ -5091,6 +5315,15 @@ ngx_http_upstream_healthcheck_output_labels(
     ngx_http_upstream_healthcheck_output_t *out,
     const ngx_http_upstream_healthcheck_sample_t *sample)
 {
+    return ngx_http_upstream_healthcheck_output_labels_with_result(
+               out, sample, NULL);
+}
+
+static ngx_int_t
+ngx_http_upstream_healthcheck_output_labels_with_result(
+    ngx_http_upstream_healthcheck_output_t *out,
+    const ngx_http_upstream_healthcheck_sample_t *sample, const char *result)
+{
     if (ngx_http_upstream_healthcheck_output_text(out, "{upstream=") != NGX_OK
         || ngx_http_upstream_healthcheck_output_label(out, &sample->upstream)
            != NGX_OK
@@ -5103,13 +5336,23 @@ ngx_http_upstream_healthcheck_output_labels(
         || ngx_http_upstream_healthcheck_output_text(out, ",backup=\"")
            != NGX_OK
         || ngx_http_upstream_healthcheck_output_text(
-               out, sample->backup ? "true" : "false") != NGX_OK
-        || ngx_http_upstream_healthcheck_output_text(out, "\"}") != NGX_OK)
+               out, sample->backup ? "true" : "false") != NGX_OK)
     {
         return NGX_ERROR;
     }
 
-    return NGX_OK;
+    if (result != NULL
+        && (ngx_http_upstream_healthcheck_output_text(out, ",result=\"")
+            != NGX_OK
+            || ngx_http_upstream_healthcheck_output_text(out, result)
+               != NGX_OK
+            || ngx_http_upstream_healthcheck_output_text(out, "\"")
+               != NGX_OK))
+    {
+        return NGX_ERROR;
+    }
+
+    return ngx_http_upstream_healthcheck_output_text(out, "}");
 }
 
 static ngx_int_t
@@ -5154,6 +5397,25 @@ ngx_http_upstream_healthcheck_output_sample(
         || ngx_http_upstream_healthcheck_output_labels(out, sample) != NGX_OK
         || ngx_http_upstream_healthcheck_output_text(out, " ") != NGX_OK
         || ngx_http_upstream_healthcheck_output_text(out, value) != NGX_OK
+        || ngx_http_upstream_healthcheck_output_text(out, "\n") != NGX_OK)
+    {
+        return NGX_ERROR;
+    }
+
+    return NGX_OK;
+}
+
+static ngx_int_t
+ngx_http_upstream_healthcheck_output_sample_result(
+    ngx_http_upstream_healthcheck_output_t *out, const char *name,
+    const ngx_http_upstream_healthcheck_sample_t *sample,
+    const char *result, ngx_uint_t value)
+{
+    if (ngx_http_upstream_healthcheck_output_text(out, name) != NGX_OK
+        || ngx_http_upstream_healthcheck_output_labels_with_result(
+               out, sample, result) != NGX_OK
+        || ngx_http_upstream_healthcheck_output_text(out, " ") != NGX_OK
+        || ngx_http_upstream_healthcheck_output_uint(out, value) != NGX_OK
         || ngx_http_upstream_healthcheck_output_text(out, "\n") != NGX_OK)
     {
         return NGX_ERROR;
