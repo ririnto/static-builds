@@ -233,6 +233,40 @@ Targets share the same root contract, but some targets vary in builder image, re
 - Documentation: Document approved target-specific variations in each target `README.md`.
 - Version variables: Follow naming convention `{TARGET}_VERSION` for consistency inside `metadata.json`.
 
+### Local Acceptance Snapshot
+
+On 2026-10-12 UTC, all nine targets passed `make build <target>` on `linux/amd64`, including their Dockerfile verification stages.
+The build code includes the helper relocation and lifecycle fixes delivered through [PR #45](https://github.com/ririnto/static-builds/pull/45).
+The capture used Docker 29.8.2, Buildx 0.37.2, and BuildKit 0.33.1 with the `docker-container` driver on an ARM64 Docker Desktop daemon.
+Builds ran sequentially with a four-CPU and eight-GiB builder limit and BuildKit worker parallelism set to one.
+The build images selected by metadata were Alpine 3.24.2, UBI 10 Minimal `10.2-1790753097`, and Go 1.27.2 for the Go targets.
+The following versions are the metadata selections for this dated capture.
+
+| Target | Version | Build and verification | Release package members |
+| --- | --- | --- | --- |
+| nginx | 1.30.5 | ACTUAL PASS | ACTUAL PASS |
+| nginx-upstream-healthcheck | 1.30.5 | ACTUAL PASS | ACTUAL PASS |
+| haproxy | 3.4.6 | ACTUAL PASS | ACTUAL PASS |
+| apache-exporter | 1.1.1 | ACTUAL PASS | ACTUAL PASS |
+| apache-httpd | 2.4.69 | ACTUAL PASS | ACTUAL PASS |
+| coredns | 1.14.7 | ACTUAL PASS | ACTUAL PASS |
+| dnsmasq | 2.93 | ACTUAL PASS | ACTUAL PASS |
+| vector | 0.58.0 | ACTUAL PASS | ACTUAL PASS |
+| monit | 6.0.0 | ACTUAL PASS | ACTUAL PASS |
+
+For each target, [package-release.sh](package-release.sh) packaged the exported artifacts into a temporary archive whose members exactly matched `release_files` in [metadata.json](metadata.json).
+Both nginx profiles passed their njs 1.0.1 HTTP and stream checks with QuickJS 0.17.0.
+The newly exported healthcheck binary also passed `proxy/tests/run-docker.sh .out/nginx-upstream-healthcheck/sbin/nginx`.
+That standalone suite covers the L4/L6/L7 classifications, verified TLS-only and HTTPS checks, stream payload expectations, configuration rejection, DNS replacement, recovery, IPv6, multiple workers, and VTS described in the [healthcheck profile](nginx-upstream-healthcheck/README.md#build-verification).
+The verifier, downloader, and Docker-runner lifecycle regressions passed all 24 standalone fixture cases under `proxy/tests/`.
+Shell lint and formatting also passed.
+
+REUSED: available release-source archives and shared layers within the task builder followed the normal cache behavior.
+Maintained branch archives were refreshed by the downloader.
+NOT RUN: release workflows, registry uploads, SARIF publication, other build platforms, and long-duration RSS or file-descriptor soak measurements.
+All task-created Docker resources and build caches were removed after validation, and the pre-existing resource inventory matched its baseline.
+Changes to build code or metadata require validation of the affected targets before creating release tags.
+
 ## Release Process
 
 ### Creating a Release
