@@ -20,7 +20,7 @@ import time
 from typing import Final
 
 
-_SCENARIOS: Final = ("success", "slow", "resistant", "gtimeout", "signal", "failure", "missing_timeout")
+_SCENARIOS: Final = ("success", "slow", "resistant", "gtimeout", "signal", "failure", "missing_timeout", "fixture_timeout")
 _HOST_COMMANDS: Final = ("sh", "awk", "dirname", "mkdir", "mktemp", "rm", "rmdir", "sleep", "mv")
 
 
@@ -31,10 +31,10 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         """
         scenario = self.path.split("/")[1]
         self.send_response(503 if scenario == "failure" else 200)
-        self.send_header("Content-Length", "100" if scenario in ("slow", "resistant", "gtimeout", "signal") else "7")
+        self.send_header("Content-Length", "100" if scenario in ("slow", "resistant", "gtimeout", "signal", "fixture_timeout") else "7")
         self.end_headers()
         try:
-            if scenario in ("slow", "resistant", "gtimeout", "signal"):
+            if scenario in ("slow", "resistant", "gtimeout", "signal", "fixture_timeout"):
                 for _ in range(100):
                     self.wfile.write(b"x")
                     self.wfile.flush()
@@ -68,6 +68,29 @@ def _running(pid):
         ["ps", "-p", str(pid), "-o", "stat="], capture_output=True, text=True, check=False,
     )
     return result.returncode == 0 and not result.stdout.strip().startswith("Z")
+
+
+def _stop_fixtures(process, wget_pid_file, timeout_pid_file):
+    recorded = tuple(int(path.read_text()) for path in (wget_pid_file, timeout_pid_file) if path.exists())
+    groups = (process.pid,)
+    if timeout_pid_file.exists():
+        groups += (int(timeout_pid_file.read_text()),)
+    for group in groups:
+        try:
+            os.killpg(group, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+    for pid in recorded:
+        try:
+            os.kill(pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+    process.communicate(timeout=3)
+    deadline = time.monotonic() + 3
+    while any(_running(pid) for pid in recorded) and time.monotonic() < deadline:
+        time.sleep(0.02)
+    if any(_running(pid) for pid in recorded):
+        raise AssertionError("The fixture left a downloader or deadline process running.")
 
 
 def _verify(repository, directory, server, wget, limiter, scenario):
@@ -128,6 +151,15 @@ def _verify(repository, directory, server, wget, limiter, scenario):
             if not pid_file.exists():
                 raise AssertionError("The cancellation fixture never started wget.")
             process.terminate()
+        if scenario == "fixture_timeout":
+            try:
+                process.communicate(timeout=1)
+            except subprocess.TimeoutExpired:
+                if not pid_file.exists() or not timeout_pid_file.exists():
+                    raise AssertionError("The failure-cleanup fixture never started both processes.")
+            else:
+                raise AssertionError("The failure-cleanup fixture did not exceed its driver deadline.")
+            return
         _, error = process.communicate(timeout=6)
         expected = 0 if scenario == "success" else 1
         if process.returncode != expected:
@@ -147,12 +179,9 @@ def _verify(repository, directory, server, wget, limiter, scenario):
             raise AssertionError(f"{scenario}: download temporary files or locks remain: {remaining}")
         print(f"PASS {scenario}")
     finally:
-        try:
-            os.killpg(process.pid, signal.SIGKILL)
-        except ProcessLookupError:
-            pass
-        if process.poll() is None:
-            process.communicate(timeout=3)
+        _stop_fixtures(process, pid_file, timeout_pid_file)
+        if scenario == "fixture_timeout":
+            print("PASS fixture_timeout cleanup")
 
 
 def _main():
