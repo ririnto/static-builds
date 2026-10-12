@@ -151,7 +151,7 @@
       "bin/apache-exporter"
     ],
     "env": {
-      "GO_VERSION": "1.27.1",
+      "GO_VERSION": "1.27.2",
       "APACHE_EXPORTER_VERSION": "1.1.1",
       "UBI10_MINIMAL_VERSION": "10.2-1790753097"
     },
@@ -198,7 +198,7 @@
       "coredns"
     ],
     "env": {
-      "GOLANG_IMAGE_TAG": "1.27.1-alpine",
+      "GOLANG_IMAGE_TAG": "1.27.2-alpine",
       "COREDNS_VERSION": "1.14.7",
       "UBI10_MINIMAL_VERSION": "10.2-1790753097"
     },
