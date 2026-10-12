@@ -205,7 +205,7 @@ The NGINX results classify the point where each probe succeeded or failed while 
 
 Both NGINX Docker verify stages reference shared scripts for common static-binary checks and njs HTTP and stream checks.
 Build scripts and fixture configurations live in separate source files rather than embedded Dockerfile or documentation scripts.
-The shared [verification script](../scripts/nginx-verify.sh) preserves the existing static-build verification contract.
+The shared [verification script](../nginx/nginx-verify.sh) preserves the existing static-build verification contract.
 It does not run healthcheck functional scenarios.
 The standalone suite lives under `proxy/tests/`, which is a test layout rather than a build target.
 Its [NGINX fixture template](../proxy/tests/fixtures/nginx.conf.template) and [certificate configuration](../proxy/tests/fixtures/ca.cnf.template) provide separate fixture sources.

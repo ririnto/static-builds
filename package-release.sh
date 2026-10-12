@@ -1,14 +1,13 @@
 #!/usr/bin/env sh
-# -*- coding: utf-8 -*-
 set -e
 if [ "$#" -ne 2 ]; then
   printf 'Usage: %s <target> <package-name>\n' "$0" >&2
   exit 1
 fi
-ROOT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
+ROOT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 target="$1"
 package_name="${2}.tar.gz"
-release_files="$(sh "${ROOT_DIR}/scripts/metadata.sh" get-release-files "${target}")"
+release_files="$(sh "${ROOT_DIR}/metadata.sh" get-release-files "${target}")"
 if [ -z "${release_files}" ]; then
   printf 'Error: No release files configured for %s\n' "$target" >&2
   exit 1

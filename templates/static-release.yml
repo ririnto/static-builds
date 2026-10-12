@@ -20,9 +20,9 @@ spec:
     BUILDKIT_CACHE_BACKEND: local
     BUILD_OUTPUT_DEST: "$CI_PROJECT_DIR/.out/$[[ inputs.target ]]"
   script:
-    - sh scripts/download.sh "$[[ inputs.target ]]"
-    - sh .gitlab/scripts/build-rootless.sh "$[[ inputs.target ]]"
-    - sh scripts/package-release.sh "$[[ inputs.target ]]" "$[[ inputs.package_name ]]"
+    - sh download.sh "$[[ inputs.target ]]"
+    - sh .gitlab/build-rootless.sh "$[[ inputs.target ]]"
+    - sh package-release.sh "$[[ inputs.target ]]" "$[[ inputs.package_name ]]"
   artifacts:
     paths:
       - ".out/$[[ inputs.target ]]/"

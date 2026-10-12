@@ -12,22 +12,19 @@ static-builds/
 +-- metadata.json           # Canonical build/release metadata
 +-- Makefile                # Local development build orchestration
 +-- .gitlab-ci.yml          # GitLab CI configuration
-+-- scripts/                # Shared build/release scripts
-|   +-- download.sh         # Source download dispatcher
-|   +-- metadata.sh         # Metadata query helper
-|   +-- package-release.sh  # Release package helper
++-- download.sh             # Source download dispatcher
++-- metadata.sh             # Metadata query helper
++-- package-release.sh      # Release package helper
 +-- .github/
-|   +-- scripts/
-|   |   +-- build.sh        # Docker Buildx build entry
-|   |   +-- release-guard.sh # Release tag validator
+|   +-- build.sh            # Docker Buildx build entry
+|   +-- release-guard.sh    # Release tag validator
 |   +-- workflows/
 |       +-- release-from-tag.yaml
 |       +-- template-release.yaml
 +-- .gitlab/
 |   +-- ci/
 |   |   +-- package-pipeline.jsonnet # GitLab child pipeline generator
-|   +-- scripts/
-|       +-- build-rootless.sh        # Rootless BuildKit build entry
+|   +-- build-rootless.sh   # Rootless BuildKit build entry
 +-- templates/              # GitLab CI components
 |   +-- static-release.yml
 +-- proxy/
@@ -35,7 +32,7 @@ static-builds/
 +-- .cache/                 # Build cache (gitignored)
 +-- .tmp/                   # Downloaded source cache (gitignored)
 +-- .out/                   # Build outputs (gitignored)
-+-- nginx/                  # Plain nginx target
++-- nginx/                  # Plain nginx target and shared nginx helpers
 +-- nginx-upstream-healthcheck/ # Upstream healthcheck nginx target
 +-- haproxy/
 +-- apache-exporter/
@@ -53,6 +50,8 @@ static-builds/
 | Add new target | Root + create dir | Follow nginx/ pattern |
 | CI release config | .github/workflows/, .gitlab-ci.yml, .gitlab/ci/, templates/ | GitHub workflows + GitLab component pipeline |
 | Build definition | */Dockerfile | Multi-stage target build |
+| Shared nginx helpers | nginx/*.sh | Both nginx targets reuse these build and verification files. |
+| Shared Make helpers | download.sh, metadata.sh, package-release.sh | Root-level source and package helpers. |
 | Build metadata | metadata.json | tag_prefix, release_files, env, downloads |
 | Functional healthcheck verification | proxy/tests/ | Separate from target Docker verification. |
 

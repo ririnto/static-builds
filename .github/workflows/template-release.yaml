@@ -31,7 +31,7 @@ jobs:
         env:
           TARGET: ${{ inputs.target }}
           TAG: ${{ inputs.tag }}
-        run: sh .github/scripts/release-guard.sh "$TARGET" "$TAG"
+        run: sh .github/release-guard.sh "$TARGET" "$TAG"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4.4.1
@@ -42,8 +42,8 @@ jobs:
           path: ${{ github.workspace }}/.tmp
           key: >-
             tmp-${{ inputs.target }}-${{ hashFiles('metadata.json',
-            'scripts/download.sh', 'scripts/metadata.sh',
-            'scripts/package-release.sh') }}
+            'download.sh', 'metadata.sh',
+            'package-release.sh') }}
           restore-keys: >-
             tmp-${{ inputs.target }}-
 
@@ -53,14 +53,14 @@ jobs:
           BUILD_OUTPUT_DEST: ${{ github.workspace }}/.out/${{ inputs.target }}
           TARGET: ${{ inputs.target }}
         run: |-
-          sh scripts/download.sh "$TARGET"
-          sh .github/scripts/build.sh "$TARGET"
+          sh download.sh "$TARGET"
+          sh .github/build.sh "$TARGET"
 
       - name: Verify release files exist
         env:
           TARGET: ${{ inputs.target }}
         run: |-
-          RELEASE_FILES="$(sh scripts/metadata.sh get-release-files "$TARGET")"
+          RELEASE_FILES="$(sh metadata.sh get-release-files "$TARGET")"
           test -n "${RELEASE_FILES}" || { echo "Error: No release files for ${TARGET}" >&2; exit 1; }
           for f in ${RELEASE_FILES}; do
             test -f ".out/${TARGET}/${f}" -o -d ".out/${TARGET}/${f}" \
@@ -85,7 +85,7 @@ jobs:
         env:
           TARGET: ${{ inputs.target }}
           TAG: ${{ inputs.tag }}
-        run: sh scripts/package-release.sh "$TARGET" "$TAG"
+        run: sh package-release.sh "$TARGET" "$TAG"
 
       - name: Upload release artifacts
         uses: actions/upload-artifact@v7.0.1

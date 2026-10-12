@@ -29,7 +29,7 @@ ADD ".tmp/nginx-${NGINX_VERSION}.tar.gz" /build/
 ADD ".tmp/nginx-module-vts-${NGINX_VTS_MODULE_VERSION}.tar.gz" "/build/nginx-${NGINX_VERSION}/"
 ADD ".tmp/njs-${NJS_VERSION}.tar.gz" /build/
 ADD ".tmp/quickjs-${QUICKJS_VERSION}.tar.gz" /build/
-COPY scripts/nginx-build.sh scripts/nginx-build-quickjs.sh scripts/nginx-configure.sh /usr/local/bin/
+COPY nginx/nginx-build.sh nginx/nginx-build-quickjs.sh nginx/nginx-configure.sh /usr/local/bin/
 RUN /usr/local/bin/nginx-build-quickjs.sh
 ENV NJS_QUICKJS=YES NJS_LIBXSLT=NO
 WORKDIR "/build/nginx-${NGINX_VERSION}"
@@ -48,7 +48,7 @@ ARG TARGET_PREFIX
 RUN --mount=type=cache,target=/var/cache/dnf \
     microdnf -y install file binutils strace openssl
 COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
-COPY scripts/nginx-stream-read.sh scripts/nginx-verify.sh /usr/local/bin/
+COPY nginx/nginx-stream-read.sh nginx/nginx-verify.sh /usr/local/bin/
 RUN /usr/local/bin/nginx-verify.sh
 
 

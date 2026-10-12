@@ -1,5 +1,6 @@
-DOWNLOAD_SCRIPT := $(CURDIR)/scripts/download.sh
-BUILD_SCRIPT := $(CURDIR)/.github/scripts/build.sh
+DOWNLOAD_SCRIPT := $(CURDIR)/download.sh
+BUILD_SCRIPT := $(CURDIR)/.github/build.sh
+SHELL_PATHS := download.sh metadata.sh package-release.sh nginx .github .gitlab proxy/tests
 
 ARGS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
 $(eval $(ARGS):;@:)
@@ -41,17 +42,12 @@ download:
 	sh "$(DOWNLOAD_SCRIPT)" "$(word 1,$(ARGS))"
 
 lint:
-	@find scripts .github/scripts .gitlab/scripts proxy/tests -name '*.sh' 2>/dev/null | while read -r file; do \
-		echo "shellcheck $$file"; \
-		if ! shellcheck "$$file"; then \
-			exit 1; \
-		fi; \
-	done
+	@find $(SHELL_PATHS) -type f -name '*.sh' -print0 | xargs -0 shellcheck
 
 shfmt-check:
-	@find scripts .github/scripts .gitlab/scripts proxy/tests -name '*.sh' 2>/dev/null \
-		| xargs shfmt -d -i 2 -ci
+	@find $(SHELL_PATHS) -type f -name '*.sh' -print0 \
+		| xargs -0 shfmt -d -i 2 -ci
 
 shfmt-write:
-	@find scripts .github/scripts .gitlab/scripts proxy/tests -name '*.sh' 2>/dev/null \
-		| xargs shfmt -w -i 2 -ci
+	@find $(SHELL_PATHS) -type f -name '*.sh' -print0 \
+		| xargs -0 shfmt -w -i 2 -ci

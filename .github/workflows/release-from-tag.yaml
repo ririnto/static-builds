@@ -29,8 +29,8 @@ jobs:
         env:
           TAG: ${{ github.ref_name }}
         run: |-
-          TARGET=$(sh scripts/metadata.sh get-target-from-tag "$TAG")
-          sh .github/scripts/release-guard.sh "$TARGET" "$TAG"
+          TARGET=$(sh metadata.sh get-target-from-tag "$TAG")
+          sh .github/release-guard.sh "$TARGET" "$TAG"
           printf 'target=%s\n' "$TARGET" >> "$GITHUB_OUTPUT"
 
   release:
