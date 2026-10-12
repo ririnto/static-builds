@@ -31,5 +31,7 @@ run-package-pipeline:
         job: generate-package-pipeline
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
+      when: manual
     - if: '$CI_COMMIT_BRANCH =~ /^feature\/.+$/'
+      when: manual
     - when: never

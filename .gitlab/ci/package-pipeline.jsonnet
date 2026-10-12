@@ -18,14 +18,11 @@ local targets =
   then [targetFilter]
   else std.objectFields(metadata);
 
-local allTargetsMode = targetFilter == '';
-
 local includes = [
   {
     component: std.extVar('component_ref'),
     inputs:
-      { stage: 'build', target: t, package_name: packageName(t) }
-      + (if allTargetsMode then { run_policy: 'manual' } else {}),
+      { stage: 'build', target: t, package_name: packageName(t) },
   }
   for t in targets
 ];
@@ -37,7 +34,7 @@ local publishJobs = {
     needs: [{ job: 'gitlab-static-package-' + t, artifacts: true }],
     script: [
       |||
-        curl --header "JOB-TOKEN: $CI_JOB_TOKEN" \
+        curl --fail-with-body --show-error --header "JOB-TOKEN: $CI_JOB_TOKEN" \
           --upload-file "%(pn)s.tar.gz" \
           "$CI_API_V4_URL/projects/$CI_PROJECT_ID/packages/generic/%(t)s/%(pn)s/%(pn)s.tar.gz"
       ||| % { pn: packageName(t), t: t },
