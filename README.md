@@ -13,7 +13,7 @@ Build statically-linked binaries using Docker multi-stage builds for portable, m
 ## Prerequisites
 
 Local builds require GNU Make, a POSIX-compatible `sh` with its standard built-ins, AWK, and common host utilities.
-The build scripts use `basename`, `dirname`, `mkdir`, `mktemp`, `mv`, `printf`, `pwd`, `rm`, `rmdir`, and `sleep`.
+The build scripts use `basename`, `dirname`, `mkdir`, `mktemp`, `mv`, `printf`, `pwd`, `rm`, `rmdir`, `sleep`, and `tr`.
 See the [Makefile](Makefile), [download script](scripts/download.sh), and [metadata helper](scripts/metadata.sh).
 
 Install `curl` or `wget` to download target sources, and allow network access to their upstream hosts.

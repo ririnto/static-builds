@@ -1,5 +1,4 @@
 #!/usr/bin/env sh
-# -*- coding: utf-8 -*-
 set -e
 ROOT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)
 METADATA_SCRIPT="${ROOT_DIR}/scripts/metadata.sh"
@@ -65,14 +64,16 @@ if [ ! -f "${ROOT_DIR}/${TARGET}/Dockerfile" ]; then
   echo "Error: Dockerfile not found in '${TARGET}'"
   exit 1
 fi
+METADATA_ENV=$(sh "${METADATA_SCRIPT}" get-env "${TARGET}")
 BUILDKIT_PLATFORM="${BUILDKIT_PLATFORM:-linux/amd64}"
 BUILDKIT_CACHE_BACKEND="${BUILDKIT_CACHE_BACKEND:-local}"
 BUILDKIT_NETWORK="${BUILDKIT_NETWORK:-default}"
 case "${BUILDKIT_CACHE_BACKEND}" in
   local)
-    mkdir -p "${ROOT_DIR}/.cache/${TARGET}"
-    CACHE_FROM="type=local,src=${ROOT_DIR}/.cache/${TARGET}"
-    CACHE_TO="type=local,dest=${ROOT_DIR}/.cache/${TARGET},mode=max"
+    CACHE_DIR="${CACHE_DIR:-${ROOT_DIR}/.cache/${TARGET}}"
+    mkdir -p "${CACHE_DIR}"
+    CACHE_FROM="type=local,src=${CACHE_DIR}"
+    CACHE_TO="type=local,dest=${CACHE_DIR},mode=max"
     ;;
   gha)
     CACHE_FROM="type=gha,scope=${TARGET}"
@@ -101,7 +102,7 @@ while IFS='=' read -r key value || [ -n "${key}" ]; do
   esac
   set -- "--build-arg=${key}=${value}" "$@"
 done <<EOF
-$(sh "${METADATA_SCRIPT}" get-env "${TARGET}")
+${METADATA_ENV}
 EOF
 cd "${ROOT_DIR}"
 docker buildx build \
