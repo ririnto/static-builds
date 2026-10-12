@@ -1,5 +1,5 @@
 DOWNLOAD_SCRIPT := $(CURDIR)/scripts/download.sh
-METADATA_SCRIPT := $(CURDIR)/scripts/metadata.sh
+BUILD_SCRIPT := $(CURDIR)/.github/scripts/build.sh
 
 ARGS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
 $(eval $(ARGS):;@:)
@@ -25,26 +25,13 @@ list-targets:
 build: download
 	$(eval TARGET := $(word 1,$(ARGS)))
 	$(eval BUILD_OUTPUT_DEST ?= $(CURDIR)/.out/$(TARGET))
-	$(eval CACHE_DIR := $(CURDIR)/.cache/$(TARGET))
-	@mkdir -p "$(BUILD_OUTPUT_DEST)" "$(CACHE_DIR)"
-	docker buildx build \
-		"--platform=$(BUILDKIT_PLATFORM)" \
-		"--network=$(BUILDKIT_NETWORK)" \
-		"--output=type=local,dest=$(BUILD_OUTPUT_DEST)" \
-		"--cache-from=type=local,src=$(CACHE_DIR)" \
-		"--cache-to=type=local,dest=$(CACHE_DIR),mode=max" \
-		$$(sh "$(METADATA_SCRIPT)" get-env "$(TARGET)" | while IFS='=' read -r k v; do \
-			case "$$k" in \
-			(*[!A-Z0-9_]*) \
-				continue \
-				;; \
-			esac; \
-			if [ -n "$$v" ]; then \
-				printf ' --build-arg=%s=%s' "$$k" "$$v"; \
-			fi; \
-		done) \
-		"--file=$(CURDIR)/$(TARGET)/Dockerfile" \
-		"$(CURDIR)"
+	$(eval CACHE_DIR ?= $(CURDIR)/.cache/$(TARGET))
+	BUILDKIT_PLATFORM="$(BUILDKIT_PLATFORM)" \
+		BUILDKIT_NETWORK="$(BUILDKIT_NETWORK)" \
+		BUILDKIT_CACHE_BACKEND="$(BUILDKIT_CACHE_BACKEND)" \
+		BUILD_OUTPUT_DEST="$(BUILD_OUTPUT_DEST)" \
+		CACHE_DIR="$(CACHE_DIR)" \
+		sh "$(BUILD_SCRIPT)" "$(TARGET)"
 
 download:
 	@if [ -z "$(word 1,$(ARGS))" ]; then \

@@ -1,5 +1,4 @@
 #!/usr/bin/env sh
-# -*- coding: utf-8 -*-
 set -e
 ROOT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)
 METADATA_SCRIPT="${ROOT_DIR}/scripts/metadata.sh"
@@ -18,6 +17,7 @@ if [ ! -f "${ROOT_DIR}/${TARGET}/Dockerfile" ]; then
   printf 'Error: Dockerfile not found in %s\n' "${TARGET}" >&2
   exit 1
 fi
+METADATA_ENV=$(sh "${METADATA_SCRIPT}" get-env "${TARGET}")
 if ! command -v buildctl-daemonless.sh >/dev/null 2>&1; then
   printf 'Error: buildctl-daemonless.sh not found in PATH\n' >&2
   exit 1
@@ -68,6 +68,6 @@ while IFS='=' read -r key value || [ -n "${key}" ]; do
   esac
   set -- "$@" --opt "build-arg:${key}=${value}"
 done <<EOF2
-$(sh "${METADATA_SCRIPT}" get-env "${TARGET}")
+${METADATA_ENV}
 EOF2
 "$@"
