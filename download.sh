@@ -85,7 +85,15 @@ download_tarball() {
         --max-time "${max_time}" \
         --output "${tmp_file}" "${url}" &
     else
-      wget -q \
+      if command -v timeout >/dev/null 2>&1; then
+        deadline_command=timeout
+      elif command -v gtimeout >/dev/null 2>&1; then
+        deadline_command=gtimeout
+      else
+        echo 'Error: wget downloads require timeout (GNU Coreutils or BusyBox) or gtimeout' >&2
+        return 1
+      fi
+      "${deadline_command}" -k 1 "${max_time}" wget -q \
         -T "${connect_timeout}" \
         -O "${tmp_file}" "${url}" &
     fi
