@@ -40,7 +40,8 @@
       "sbin/nginx",
       "conf/scripting.conf",
       "conf/scripting.js",
-      "conf/upstream-healthcheck.conf"
+      "conf/upstream-healthcheck.conf",
+      "README.md"
     ],
     "env": {
       "ALPINE_VERSION": "3.24.2",

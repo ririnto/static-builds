@@ -35,7 +35,9 @@ curl http://127.0.0.1:18081/njs
 ./.out/nginx/sbin/nginx -p "$PWD/.out/nginx/" -c conf/scripting.conf -s quit
 ```
 
-The Docker verification stage checks static linking, configuration parsing, and real HTTP/stream execution with the reported `QuickJS` engine and selected njs version.
+Both NGINX Docker verification stages reference the same separate scripts for static linking, configuration parsing, and HTTP/stream execution.
+The [verification script](../scripts/nginx-verify.sh) preserves their existing verification contract.
+The scripting checks require the reported `QuickJS` engine and selected njs version.
 It runs nginx with standard CLI clients and requires graceful shutdown.
 It does not introduce a separate verification framework.
 

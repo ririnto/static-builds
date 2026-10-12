@@ -1,0 +1,9 @@
+events {}
+stream {
+    upstream bad_stream {
+        zone bad_stream 64k;
+        server 127.0.0.1:19444;
+        healthcheck_tcp type=tls interval=1s timeout=1s;
+        healthcheck_trusted_certificate @FIXTURE_DIR@/ca.pem;
+    }
+}

@@ -1,0 +1,9 @@
+events {}
+http {
+    upstream bad_http {
+        zone bad_http 64k;
+        server 127.0.0.1:19454;
+        healthcheck type=https interval=1s timeout=1s;
+        healthcheck_trusted_certificate @FIXTURE_DIR@/ca.pem;
+    }
+}

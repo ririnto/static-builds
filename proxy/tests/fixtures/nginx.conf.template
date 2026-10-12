@@ -1,0 +1,280 @@
+worker_processes 2;
+error_log stderr notice;
+pid @FIXTURE_DIR@/nginx.pid;
+events {
+    worker_connections 2048;
+    accept_mutex off;
+}
+http {
+    resolver 127.0.0.1:15353 valid=1s ipv6=off;
+    resolver_timeout 1s;
+    vhost_traffic_status_zone;
+    upstream dynamic_http {
+        zone dynamic_http 256k;
+        server backend.local:19080 resolve;
+        server 127.0.0.1:19999 backup;
+        healthcheck type=http interval=100ms timeout=200ms fall=2 rise=2;
+    }
+    upstream l4_http {
+        zone l4_http 256k;
+        server 127.0.0.2:19080;
+        healthcheck type=tcp interval=100ms timeout=200ms fall=1 rise=2;
+    }
+    upstream l4_http_failure {
+        zone l4_http_failure 256k;
+        server 127.0.0.1:19999;
+        healthcheck type=tcp interval=100ms timeout=200ms fall=1 rise=2;
+    }
+    upstream ipv6_http {
+        zone ipv6_http 256k;
+        server [::1]:19084;
+        healthcheck type=tcp interval=100ms timeout=200ms fall=1 rise=2;
+    }
+    upstream tls_only {
+        zone tls_only 256k;
+        server 127.0.0.1:19444;
+        healthcheck type=tls interval=100ms timeout=300ms fall=1 rise=2;
+        healthcheck_tls_name backend.local;
+        healthcheck_trusted_certificate @FIXTURE_DIR@/ca.pem;
+    }
+    upstream tls_wrong_name {
+        zone tls_wrong_name 256k;
+        server 127.0.0.1:19444;
+        healthcheck type=tls interval=100ms timeout=300ms fall=1 rise=2;
+        healthcheck_tls_name wrong.local;
+        healthcheck_trusted_certificate @FIXTURE_DIR@/ca.pem;
+    }
+    upstream tls_wrong_ca {
+        zone tls_wrong_ca 256k;
+        server 127.0.0.1:19444;
+        healthcheck type=tls interval=100ms timeout=300ms fall=1 rise=2;
+        healthcheck_tls_name backend.local;
+        healthcheck_trusted_certificate @FIXTURE_DIR@/wrong-ca.pem;
+    }
+    upstream tls_plaintext {
+        zone tls_plaintext 256k;
+        server 127.0.0.2:19080;
+        healthcheck type=tls interval=100ms timeout=300ms fall=1 rise=2;
+        healthcheck_tls_name backend.local;
+        healthcheck_trusted_certificate @FIXTURE_DIR@/ca.pem;
+    }
+    upstream tls_stall {
+        zone tls_stall 256k;
+        server 127.0.0.1:19443;
+        healthcheck type=tls interval=100ms timeout=300ms fall=1 rise=2;
+        healthcheck_tls_name backend.local;
+        healthcheck_trusted_certificate @FIXTURE_DIR@/ca.pem;
+    }
+    upstream tls_expired {
+        zone tls_expired 256k;
+        server 127.0.0.1:19448;
+        healthcheck type=tls interval=100ms timeout=300ms fall=1 rise=2;
+        healthcheck_tls_name backend.local;
+        healthcheck_trusted_certificate @FIXTURE_DIR@/ca.pem;
+    }
+    upstream tls_future {
+        zone tls_future 256k;
+        server 127.0.0.1:19447;
+        healthcheck type=tls interval=100ms timeout=300ms fall=1 rise=2;
+        healthcheck_tls_name backend.local;
+        healthcheck_trusted_certificate @FIXTURE_DIR@/ca.pem;
+    }
+    upstream tls_recovery {
+        zone tls_recovery 256k;
+        server 127.0.0.1:19445;
+        healthcheck type=tls interval=100ms timeout=300ms fall=2 rise=2;
+        healthcheck_tls_name backend.local;
+        healthcheck_trusted_certificate @FIXTURE_DIR@/ca.pem;
+    }
+    upstream https_success {
+        zone https_success 256k;
+        server 127.0.0.1:19454;
+        healthcheck type=https interval=100ms timeout=500ms fall=1 rise=2 uri=/ok host=backend.local;
+        healthcheck_tls_name backend.local;
+        healthcheck_trusted_certificate @FIXTURE_DIR@/ca.pem;
+    }
+    upstream https_status {
+        zone https_status 256k;
+        server 127.0.0.1:19454;
+        healthcheck type=https interval=100ms timeout=500ms fall=1 rise=2 uri=/reject host=backend.local;
+        healthcheck_statuses 200;
+        healthcheck_tls_name backend.local;
+        healthcheck_trusted_certificate @FIXTURE_DIR@/ca.pem;
+    }
+    upstream https_timeout {
+        zone https_timeout 256k;
+        server 127.0.0.1:19454;
+        healthcheck type=https interval=100ms timeout=300ms fall=1 rise=2 uri=/slow host=backend.local;
+        healthcheck_tls_name backend.local;
+        healthcheck_trusted_certificate @FIXTURE_DIR@/ca.pem;
+    }
+    upstream https_malformed {
+        zone https_malformed 256k;
+        server 127.0.0.1:19455;
+        healthcheck type=https interval=100ms timeout=500ms fall=1 rise=2 uri=/ok host=backend.local;
+        healthcheck_tls_name backend.local;
+        healthcheck_trusted_certificate @FIXTURE_DIR@/ca.pem;
+    }
+    server {
+        listen 127.0.0.2:19080;
+        listen 127.0.0.4:19080;
+        location / { return 200 "$server_addr\n"; }
+    }
+    server {
+        listen 127.0.0.3:19080;
+        location / {
+            if (-f @FIXTURE_DIR@/recovered-http) { return 200 "$server_addr\n"; }
+            return 503;
+        }
+    }
+    server {
+        listen 127.0.0.1:19081;
+        location /route { proxy_pass http://dynamic_http; }
+        location /metrics {
+            add_header X-Worker $pid always;
+            healthcheck_metrics;
+        }
+        location /traffic {
+            vhost_traffic_status_display;
+            vhost_traffic_status_display_format prometheus;
+        }
+    }
+    server {
+        listen 127.0.0.1:19454 ssl;
+        ssl_certificate @FIXTURE_DIR@/valid.pem;
+        ssl_certificate_key @FIXTURE_DIR@/valid.key;
+        location /ok { return 200 ready; }
+        location /reject { return 503 unavailable; }
+        location /slow { proxy_pass http://127.0.0.1:19086; }
+    }
+}
+stream {
+    resolver 127.0.0.1:15353 valid=1s ipv6=off;
+    resolver_timeout 1s;
+    upstream dynamic_tcp {
+        zone dynamic_tcp 256k;
+        server backend.local:19082 resolve;
+        server 127.0.0.1:19999 backup;
+        healthcheck_tcp type=tcp interval=100ms timeout=200ms fall=2 rise=2;
+        healthcheck_send "PING\r\n";
+        healthcheck_expect "PONG" min_recv=4;
+    }
+    upstream l4_stream {
+        zone l4_stream 256k;
+        server 127.0.0.2:19082;
+        healthcheck_tcp type=tcp interval=100ms timeout=200ms fall=1 rise=2;
+    }
+    upstream l4_stream_failure {
+        zone l4_stream_failure 256k;
+        server 127.0.0.1:19999;
+        healthcheck_tcp type=tcp interval=100ms timeout=200ms fall=1 rise=2;
+    }
+    upstream tls_stream {
+        zone tls_stream 256k;
+        server 127.0.0.1:19444;
+        healthcheck_tcp type=tls interval=100ms timeout=300ms fall=1 rise=2;
+        healthcheck_tls_name backend.local;
+        healthcheck_trusted_certificate @FIXTURE_DIR@/ca.pem;
+    }
+    upstream stream_wrong_name {
+        zone stream_wrong_name 256k;
+        server 127.0.0.1:19444;
+        healthcheck_tcp type=tls interval=100ms timeout=300ms fall=1 rise=2;
+        healthcheck_tls_name wrong.local;
+        healthcheck_trusted_certificate @FIXTURE_DIR@/ca.pem;
+    }
+    upstream stream_wrong_ca {
+        zone stream_wrong_ca 256k;
+        server 127.0.0.1:19444;
+        healthcheck_tcp type=tls interval=100ms timeout=300ms fall=1 rise=2;
+        healthcheck_tls_name backend.local;
+        healthcheck_trusted_certificate @FIXTURE_DIR@/wrong-ca.pem;
+    }
+    upstream stream_plaintext {
+        zone stream_plaintext 256k;
+        server 127.0.0.2:19080;
+        healthcheck_tcp type=tls interval=100ms timeout=300ms fall=1 rise=2;
+        healthcheck_tls_name backend.local;
+        healthcheck_trusted_certificate @FIXTURE_DIR@/ca.pem;
+    }
+    upstream stream_stall {
+        zone stream_stall 256k;
+        server 127.0.0.1:19443;
+        healthcheck_tcp type=tls interval=100ms timeout=300ms fall=1 rise=2;
+        healthcheck_tls_name backend.local;
+        healthcheck_trusted_certificate @FIXTURE_DIR@/ca.pem;
+    }
+    upstream stream_expired {
+        zone stream_expired 256k;
+        server 127.0.0.1:19448;
+        healthcheck_tcp type=tls interval=100ms timeout=300ms fall=1 rise=2;
+        healthcheck_tls_name backend.local;
+        healthcheck_trusted_certificate @FIXTURE_DIR@/ca.pem;
+    }
+    upstream stream_future {
+        zone stream_future 256k;
+        server 127.0.0.1:19447;
+        healthcheck_tcp type=tls interval=100ms timeout=300ms fall=1 rise=2;
+        healthcheck_tls_name backend.local;
+        healthcheck_trusted_certificate @FIXTURE_DIR@/ca.pem;
+    }
+    upstream stream_tls_recovery {
+        zone stream_tls_recovery 256k;
+        server 127.0.0.1:19445;
+        healthcheck_tcp type=tls interval=100ms timeout=300ms fall=2 rise=2;
+        healthcheck_tls_name backend.local;
+        healthcheck_trusted_certificate @FIXTURE_DIR@/ca.pem;
+    }
+    upstream stream_tls_payload {
+        zone stream_tls_payload 256k;
+        server 127.0.0.1:19446;
+        healthcheck_tcp type=tls interval=100ms timeout=500ms fall=1 rise=2;
+        healthcheck_tls_name backend.local;
+        healthcheck_trusted_certificate @FIXTURE_DIR@/ca.pem;
+        healthcheck_send "PING\r\n";
+        healthcheck_expect "PONG" min_recv=4;
+    }
+    log_format application_bytes '$bytes_received';
+    server {
+        listen 127.0.0.1:19444 ssl;
+        ssl_certificate @FIXTURE_DIR@/valid.pem;
+        ssl_certificate_key @FIXTURE_DIR@/valid.key;
+        access_log @FIXTURE_DIR@/tls-application.log application_bytes;
+        return "TLS ready\n";
+    }
+    server {
+        listen 127.0.0.1:19446 ssl;
+        ssl_certificate @FIXTURE_DIR@/valid.pem;
+        ssl_certificate_key @FIXTURE_DIR@/valid.key;
+        proxy_pass 127.0.0.2:19082;
+    }
+    server {
+        listen 127.0.0.1:19447 ssl;
+        ssl_certificate @FIXTURE_DIR@/future.pem;
+        ssl_certificate_key @FIXTURE_DIR@/future.key;
+        return "Future certificate\n";
+    }
+    server {
+        listen 127.0.0.1:19448 ssl;
+        ssl_certificate @FIXTURE_DIR@/expired.pem;
+        ssl_certificate_key @FIXTURE_DIR@/expired.key;
+        return "Expired certificate\n";
+    }
+    server {
+        listen 127.0.0.2:19082;
+        listen 127.0.0.4:19082;
+        return "$server_addr PONG\r\n";
+    }
+    server {
+        listen 127.0.0.3:19082;
+        return "FAIL\n";
+    }
+    server {
+        listen 127.0.0.1:19083;
+        proxy_pass dynamic_tcp;
+    }
+    server {
+        listen [::1]:19084;
+        return "IPv6 ready\n";
+    }
+}

@@ -5,11 +5,7 @@ The healthcheck code is compiled into the binary as `ngx_http_upstream_healthche
 
 ## Build and packaged files
 
-Build this target with:
-
-```sh
-make build nginx-upstream-healthcheck
-```
+Build this target with `make build nginx-upstream-healthcheck`.
 
 Build metadata selects the NGINX, njs, QuickJS-NG, and VTS release versions.
 
@@ -32,9 +28,13 @@ Release packages include these paths beneath the target prefix:
 - `conf/scripting.conf`
 - `conf/scripting.js`
 - `conf/upstream-healthcheck.conf`
+- `README.md`
 
-The packaged healthcheck configuration shows HTTP, stream TCP, and protected localhost metrics examples.
+The packaged healthcheck configuration shows HTTP, HTTPS, TLS-only, stream TCP, TLS stream, and protected localhost metrics examples.
+It uses `conf/backend-ca.pem` as an example trust bundle, which you must provide for your backends.
 Replace its resolver and backend names for your environment before using it.
+Canonical `metadata.json` selects the configuration and this README for release packaging.
+The healthcheck profile needs no additional runtime library.
 
 ## njs scripting
 
@@ -43,65 +43,28 @@ Set `js_engine qjs;` in each context that imports an njs script.
 The [official engine guidance](https://nginx.org/en/docs/njs/engine.html) recommends QuickJS for new configurations.
 The packaged `conf/scripting.conf` and `conf/scripting.js` provide the scripting example.
 
-The healthcheck C module remains responsible for active probes that must use NGINX's selected peer.
-njs does not expose that resolved peer address or arbitrary raw TCP sockets to JavaScript.
-Pure njs checks therefore cannot safely cover dynamic multi-address DNS peers and stream TCP protocols.
+The existing C module performs active probes against NGINX's selected peer and shares health state across workers.
+The target already compiles njs with QuickJS-NG, but the available JavaScript APIs do not provide the peer and socket operations this checker needs.
+
+| Capability | njs support | Fit for these checks |
+| --- | --- | --- |
+| Periodic execution | [`js_periodic`](https://nginx.org/en/docs/http/ngx_http_js_module.html#js_periodic) and the [stream equivalent](https://nginx.org/en/docs/stream/ngx_stream_js_module.html#js_periodic) run handlers on a schedule. | Scheduling exists, but a handler cannot select NGINX's current resolved upstream peer. |
+| Shared state | [njs shared dictionaries](https://nginx.org/en/docs/njs/reference.html) share values between workers. | Shared storage does not provide peer selection, asynchronous socket operations, or healthcheck lifecycle hooks. |
+| HTTPS requests | [`ngx.fetch()`](https://nginx.org/en/docs/njs/reference.html#ngx_fetch) supports asynchronous HTTP requests with TLS verification controls in [HTTP](https://nginx.org/en/docs/http/ngx_http_js_module.html) and [stream](https://nginx.org/en/docs/stream/ngx_stream_js_module.html) contexts. | It can check an HTTPS URL, but it does not target the exact resolved peer selected by NGINX and it sends an HTTP request. |
+| Arbitrary TCP and TLS-only probes | Stream njs supports session callbacks and HTTPS fetches. | It exposes no general outbound TCP client or TLS-only client that stops after certificate verification. |
+| Resolved peer and routing APIs | NGINX exposes upstream peer storage to native modules. | njs has no API for the actual resolved peer address or the peer used by client routing. |
+| Native module loading | [`js_load_http_native_module`](https://nginx.org/en/docs/http/ngx_http_js_module.html#js_load_http_native_module) and [`js_load_stream_native_module`](https://nginx.org/en/docs/stream/ngx_stream_js_module.html#js_load_stream_native_module) load native modules. | A custom C module would still be required to add peer and socket APIs, so this does not reduce maintenance. |
+
+The target uses QuickJS-NG 0.17.0 with njs 1.0.1 and links both into the static NGINX binary.
+Using njs for the current probe contract would still require custom C integration for upstream peer selection and event-driven socket work.
+The existing C implementation therefore remains the smaller maintained path for dynamic multi-address peers and arbitrary stream protocols.
 
 ## HTTP health checks
 
 Configure `healthcheck` inside each checked HTTP `upstream` block.
 The upstream requires a shared `zone` and a built-in round-robin-compatible peer list.
 
-```nginx
-http {
-    resolver 127.0.0.53 valid=10s;
-    resolver_timeout 2s;
-    vhost_traffic_status_zone;
-
-    upstream api {
-        zone api 256k;
-        server api.internal:8080 resolve;
-        server fallback.internal:8080 backup;
-        healthcheck type=http interval=2s timeout=1s fall=3 rise=2
-                    uri=/readyz host=api.internal;
-        healthcheck_statuses 200 204;
-    }
-
-    upstream secure_api {
-        zone secure_api 256k;
-        server secure-api.internal:8443 resolve;
-        healthcheck type=https interval=5s timeout=2s fall=3 rise=2
-                    uri=/readyz host=secure-api.internal;
-        healthcheck_tls_name secure-api.internal;
-        healthcheck_trusted_certificate conf/backend-ca.pem;
-    }
-
-    server {
-        listen 8080;
-        location /api/ {
-            proxy_pass http://api;
-        }
-        location /secure/ {
-            proxy_pass https://secure_api;
-            proxy_ssl_server_name on;
-            proxy_ssl_name secure-api.internal;
-            proxy_ssl_verify on;
-            proxy_ssl_trusted_certificate conf/backend-ca.pem;
-        }
-    }
-
-    server {
-        listen 127.0.0.1:18080;
-        location = /health-metrics {
-            healthcheck_metrics;
-        }
-        location = /traffic-metrics {
-            vhost_traffic_status_display;
-            vhost_traffic_status_display_format prometheus;
-        }
-    }
-}
-```
+Use the HTTP examples in [upstream-healthcheck.conf](upstream-healthcheck.conf).
 
 Replace the resolver, backend names, CA file, and listener addresses for your environment.
 Healthcheck TLS settings and proxy TLS settings are independent.
@@ -141,35 +104,7 @@ The default concurrency is 16 probes and the health state zone defaults to one m
 Configure `healthcheck_tcp` inside a checked `stream` `upstream` block with a shared `zone`.
 The default `type=tcp` probe succeeds after connecting to the selected peer.
 
-```nginx
-stream {
-    resolver 127.0.0.53 valid=10s;
-    resolver_timeout 2s;
-
-    upstream cache {
-        zone cache 256k;
-        server cache.internal:6379 resolve;
-        server cache-backup.internal:6379 backup;
-        healthcheck_tcp type=tcp interval=2s timeout=1s fall=3 rise=2
-                        concurrency=16 shm_size=1m max_response=4096;
-        healthcheck_send "PING\r\n";
-        healthcheck_expect "+PONG\r\n" min_recv=7;
-    }
-
-    upstream secure_service {
-        zone secure_service 256k;
-        server secure-service.internal:443 resolve;
-        healthcheck_tcp type=tls interval=5s timeout=2s fall=3 rise=2;
-        healthcheck_tls_name secure-service.internal;
-        healthcheck_trusted_certificate conf/backend-ca.pem;
-    }
-
-    server {
-        listen 6379;
-        proxy_pass cache;
-    }
-}
-```
+Use the stream examples in [upstream-healthcheck.conf](upstream-healthcheck.conf).
 
 For TLS-only stream checks, omit send and expect directives to stop after the verified handshake.
 With payload and expectation directives, the probe continues over TLS and checks the application response.
@@ -215,48 +150,85 @@ Use a separate VTS endpoint when you also need traffic metrics.
 
 | Metric family | Examples |
 | --- | --- |
-| HTTP peer state | `nginx_healthcheck_peer_up`, `nginx_healthcheck_check_status`, and `nginx_healthcheck_check_code`. |
-| Stream peer state | `nginx_stream_healthcheck_peer_up` and `nginx_stream_healthcheck_check_status`. |
+| HTTP peer state | `nginx_healthcheck_peer_up`, `nginx_healthcheck_check_status`, `nginx_healthcheck_check_code`, and `nginx_healthcheck_check_result`. |
+| Stream peer state | `nginx_stream_healthcheck_peer_up`, `nginx_stream_healthcheck_check_status`, and `nginx_stream_healthcheck_check_result`. |
 | Per-peer counters | Completed checks, failed checks, and transitions from ready to down. |
 | Per-peer timing | Last check duration, time since state change, and last check timestamp. |
 | Upstream state | Active probes, scheduler freshness, configured concurrency, and checker errors. |
 
 HTTP peer metrics use the `nginx_healthcheck_` prefix and stream peer metrics use `nginx_stream_healthcheck_`.
-Both families include peer readiness, administrative state, checks, failures, transitions, result status, duration, state age, last check time, and rise and fall streaks.
+Both families include peer readiness, administrative state, checks, failures, transitions, one-hot result classification, duration, state age, last check time, and rise and fall streaks.
 HTTP metrics also expose the last parsed HTTP status code.
 Upstream metrics expose the last peer scan, active probes, checker worker PID, concurrency, concurrency-limited scans, and memory failures.
 
 An untested peer reports check status `-1` and must not be treated as a successful check.
 Peer check status is `-1` before a result, `0` for failure, and `1` for success.
-The status gauge does not classify failures by reason.
+This boolean describes the last completed probe, while `peer_up` describes current routing eligibility.
+Local resource failures or shutdown aborts can classify the peer as `SOCKERR` while retaining its previous completed boolean result.
+The `check_result` metric families emit one series for each result name on every peer, with one current result set to `1` and all others set to `0`.
+The older boolean status and HTTP code gauges remain available.
 TLS-only checks report no HTTP response code because they do not send an HTTP request.
 The transition counter records failures and resource failures that change a ready peer to down.
 It does not count a successful recovery as another failure.
 
+| Result | Meaning |
+| --- | --- |
+| `UNKNOWN` | No probe or local failure has classified the peer yet. |
+| `SOCKERR` | The checker could not create or operate its local socket or event state. |
+| `L4OK` | The TCP connection succeeded for a connect-only check. |
+| `L4TOUT` | The TCP connection did not complete before its timeout. |
+| `L4CON` | The TCP connection failed, including a refused connection. |
+| `L6OK` | The TLS handshake, trusted certificate chain, and hostname verification succeeded. |
+| `L6TOUT` | The TLS handshake did not complete before its timeout. |
+| `L6RSP` | The TLS handshake or certificate/name verification failed. |
+| `L7OK` | The HTTP status was accepted, the stream response requirement was met, or a send-only payload was written. |
+| `L7TOUT` | The HTTP or stream application exchange did not complete before its timeout. |
+| `L7RSP` | The HTTP response was malformed or missing, or a stream response ended without a match. |
+| `L7STS` | The HTTP response was valid but its status was not configured as accepted. |
+
 ## HAProxy behavior comparison
 
-This target covers connect checks and bounded send/expect checks for its supported peer model.
-It does not claim full HAProxy healthcheck parity.
+This repository tracks HAProxy 3.4.6 on the 3.4 series.
+The result names follow layer distinctions documented by the [HAProxy 3.4 configuration manual](https://docs.haproxy.org/3.4/configuration.html).
+The NGINX results classify the point where each probe succeeded or failed while retaining NGINX's selected-peer routing.
 
-| Area | This target | HAProxy behavior outside this target |
+| Area | This target | HAProxy 3.4 behavior |
 | --- | --- | --- |
-| L4 and L6 reachability | Checks connect to the actual selected NGINX peer address. | HAProxy exposes check transport controls such as [`check-ssl`](https://docs.haproxy.org/3.0/configuration.html#check-ssl). |
-| TCP exchange | Supports one send payload, one expected byte sequence, and a minimum receive length. | HAProxy supports multiple TCP check steps through [`tcp-check connect`](https://docs.haproxy.org/3.0/configuration.html#tcp-check%20connect). |
-| HTTP checks | Sends a GET request and checks accepted response status codes. | HAProxy also supports body and header expectations through [`http-check expect`](https://docs.haproxy.org/3.0/configuration.html#http-check%20expect). |
-| Check routing | Checks the peer selected by NGINX's current peer list. | Independent check address and port overrides are not available here. |
-| TLS controls | Verifies CA trust and hostname for TLS and HTTPS probes. | ALPN selection is not implemented here. |
-| Protocol checks | Supports a single protocol payload and byte expectation. | Dedicated LDAP, MySQL, PostgreSQL, Redis, SMTP, and SPOP checks are not implemented here. |
-| Check modes | Supports active checks. | Passive checks, agent checks, and external checks are outside this target. |
+| L4 and L6 | `L4OK`, `L4TOUT`, `L4CON`, `L6OK`, `L6TOUT`, and `L6RSP` distinguish connect and verified TLS outcomes. | HAProxy's [`tcp-check expect`](https://docs.haproxy.org/3.4/configuration.html#tcp-check%20expect) exposes corresponding L4 and L6 status classes. |
+| L7 | `L7OK`, `L7TOUT`, `L7RSP`, and `L7STS` distinguish application success, timeout, response failure, and rejected HTTP status. | HAProxy exposes L7 check statuses and configurable status, body, and header expectations. |
+| Peer routing | Checks each peer from NGINX's current upstream peer list. | HAProxy supports explicit check addresses, ports, connection steps, and [`check-ssl`](https://docs.haproxy.org/3.4/configuration.html#check-ssl) options. |
+| TLS verification | Requires a trusted CA and hostname for TLS and HTTPS checks. | HAProxy exposes certificate verification, hostname checks, and separate SNI controls. |
+| TCP exchange | Supports one send payload, one expected byte sequence, and a minimum receive length. | HAProxy supports multiple TCP check steps and protocol-specific check rules. |
+| Scope | Supports active HTTP, HTTPS, TCP, TLS-only, and bounded stream send/expect checks. | This target does not claim complete HAProxy healthcheck parity. |
 
 ## Build verification
 
-The Docker verify stage checks the ELF type and dynamic dependencies, prints `nginx -V`, and runs `nginx -t` on the scripting configuration.
-HTTP and stream scripting responses report the actual `QuickJS` engine and selected njs version.
-It starts the binary and uses `curl` for HTTP njs and Bash `/dev/tcp` for stream njs.
-The healthcheck scenario generates a temporary certificate with OpenSSL and starts local NGINX, DNS, and socket fixtures.
-It runs `nginx -t`, HTTP requests with `curl`, stream requests with Bash `/dev/tcp`, and OpenSSL-backed TLS probes.
-The scenario covers TLS-only checks in HTTP and stream, wrong hostnames and CAs, TLS-to-plaintext failures, handshake timeouts, and failed L4 connections.
-It also exercises IPv6 connectivity, multi-address DNS replacement, TCP send/expect routing, HTTP and TLS peer recovery, health metrics, and VTS metrics.
+Both NGINX Docker verify stages reference shared scripts for common static-binary checks and njs HTTP and stream checks.
+Build scripts and fixture configurations live in separate source files rather than embedded Dockerfile or documentation scripts.
+The shared [verification script](../scripts/nginx-verify.sh) preserves the existing static-build verification contract.
+It does not run healthcheck functional scenarios.
+The standalone suite lives under `proxy/tests/`, which is a test layout rather than a build target.
+Its [NGINX fixture template](../proxy/tests/fixtures/nginx.conf.template) and [certificate configuration](../proxy/tests/fixtures/ca.cnf.template) provide separate fixture sources.
 
-These checks run as part of `make build nginx-upstream-healthcheck`.
-The packaged binary targets Linux and cannot run directly on macOS.
+Validate runner cleanup offline with `python3 proxy/tests/verify-runner.py`.
+Check shell syntax with `bash -n proxy/tests/run.sh proxy/tests/run-docker.sh`.
+Run `make lint` and `make shfmt-check` for shell lint and formatting.
+
+The Python 3 check uses a local Docker CLI fixture to exercise partial creation, signal cleanup, ownership guards, and exit-status retention.
+It runs offline without a Docker daemon.
+
+Run [proxy/tests/run.sh](../proxy/tests/run.sh) against an already-built Linux binary with `proxy/tests/run.sh .out/nginx-upstream-healthcheck/sbin/nginx`.
+
+The local runner needs Bash, core utilities, grep, sed, curl, dnsmasq, OpenSSL, `setsid`, and socat.
+It creates loopback fixtures and certificate files under a temporary directory, then removes the fixture process groups and files on exit or signal.
+The fixtures cover HTTP and stream L4 connection results, verified TLS-only checks with no client application bytes, HTTPS status and timeout results, TLS protocol and certificate failures, stream TLS payload expectations, dynamic DNS replacement, fall/rise and recovery, IPv6, metrics visibility across workers, and VTS metrics.
+The suite also checks that HTTP and stream TLS configurations fail when either the TLS name or trusted CA is missing.
+It validates literal HTTP and stream proxy destinations that create implicit upstreams without healthcheck settings.
+
+On macOS or another host without the required Linux runtime tools, use [proxy/tests/run-docker.sh](../proxy/tests/run-docker.sh).
+Run `proxy/tests/run-docker.sh .out/nginx-upstream-healthcheck/sbin/nginx`.
+
+The wrapper derives the UBI 10 Minimal tag from `metadata.json`, passes that maintained image reference to the test image build, mounts the binary read-only, and creates one uniquely named container with a four-CPU and eight-GiB cap.
+It defaults to the repository's `linux/amd64` build platform; pass `--platform linux/arm64` when the binary was built for another platform.
+It removes its container and image on normal completion or interruption.
+Neither runner is part of `make build nginx-upstream-healthcheck`, so build verification does not imply functional-suite acceptance.
