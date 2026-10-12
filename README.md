@@ -347,9 +347,11 @@ Selected release contents:
 
 ## GitLab CI
 
-- GitLab pipelines on `main` and `feature/*` expose manual package jobs that generate a child pipeline with `.gitlab/ci/package-pipeline.jsonnet`.
+- GitLab pipelines on `main` and `feature/*` generate a child configuration with `.gitlab/ci/package-pipeline.jsonnet`.
+- One manual parent trigger starts the child pipeline, which builds and publishes its selected targets automatically.
 - `feature/*` branches append `-beta` to the package version.
 - GitLab uploads to Package Registry only.
   GitHub uploads to Release only.
+- Rejected registry uploads fail their publishing jobs.
 - The generated child pipeline includes the local component at `templates/static-release.yml`.
 - GitHub release packaging and GitLab package generation both reuse `scripts/package-release.sh`.
