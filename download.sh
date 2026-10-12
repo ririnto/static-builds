@@ -12,7 +12,7 @@ case "${TARGET}" in
     exit 1
     ;;
 esac
-ROOT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
+ROOT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 
 # Download a tarball from a URL to a destination file with retry support.
 # Refresh branch archives on every call and reuse cached release archives.
@@ -129,7 +129,7 @@ download_tarball() {
   return 1
 }
 
-downloads=$(sh "${ROOT_DIR}/scripts/metadata.sh" get-downloads "${TARGET}")
+downloads=$(sh "${ROOT_DIR}/metadata.sh" get-downloads "${TARGET}")
 download_pid=''
 trap 'if [ -n "${download_pid}" ]; then kill -TERM "${download_pid}" 2>/dev/null || :; wait "${download_pid}" 2>/dev/null || :; fi; exit 1' HUP INT TERM
 while IFS="$(printf '	')" read -r url file_name || [ -n "${url}" ]; do

@@ -14,7 +14,7 @@ Build statically-linked binaries using Docker multi-stage builds for portable, m
 
 Local builds require GNU Make, a POSIX-compatible `sh` with its standard built-ins, AWK, and common host utilities.
 The build scripts use `basename`, `dirname`, `mkdir`, `mktemp`, `mv`, `printf`, `pwd`, `rm`, `rmdir`, `sleep`, and `tr`.
-See the [Makefile](Makefile), [download script](scripts/download.sh), and [metadata helper](scripts/metadata.sh).
+See the [Makefile](Makefile), [download script](download.sh), and [metadata helper](metadata.sh).
 
 Install `curl` or `wget` to download target sources, and allow network access to their upstream hosts.
 Target download URLs and build arguments come from [metadata.json](metadata.json).
@@ -57,28 +57,26 @@ docker run --rm \
 +-- metadata.json           # Canonical build/release metadata
 +-- Makefile                # Local development build orchestration
 +-- .gitlab-ci.yml          # GitLab CI configuration
-+-- scripts/                # Shared build/release scripts
-|   +-- download.sh         # Source download dispatcher
-|   +-- metadata.sh         # Metadata query helper
-|   +-- package-release.sh  # Release package helper
++-- download.sh             # Source download dispatcher
++-- metadata.sh             # Metadata query helper
++-- package-release.sh      # Release package helper
 +-- .github/
-|   +-- scripts/
-|   |   +-- build.sh        # Docker Buildx build entry
-|   |   +-- release-guard.sh # Release tag validator
+|   +-- build.sh            # Docker Buildx build entry
+|   +-- release-guard.sh    # Release tag validator
 |   +-- workflows/
 |       +-- release-from-tag.yaml
 |       +-- template-release.yaml
 +-- .gitlab/
 |   +-- ci/
 |   |   +-- package-pipeline.jsonnet # GitLab child pipeline generator
-|   +-- scripts/
-|       +-- build-rootless.sh        # Rootless BuildKit build entry
+|   +-- build-rootless.sh   # Rootless BuildKit build entry
 +-- templates/              # GitLab CI components
 |   +-- static-release.yml
 +-- .tmp/                   # Downloaded source cache (gitignored)
 +-- .cache/                 # Build cache (gitignored)
 +-- .out/                   # Build outputs (gitignored)
 |   +-- <target>/           # Local artifacts (for example `sbin/`, `bin/`)
++-- nginx/                  # Shared nginx build and verification helpers
 +-- <target>/               # Build target directory
     +-- Dockerfile          # Multi-stage build definition
     +-- ...
@@ -312,7 +310,7 @@ Invalid examples:
 
 ## How It Works
 
-1. `scripts/download.sh` resolves each target's download resources from `metadata.json`, then the build script runs Docker Buildx.
+1. `download.sh` resolves each target's download resources from `metadata.json`, then the build script runs Docker Buildx.
 2. Docker BuildKit executes the multi-stage Dockerfile via `docker buildx build`.
 3. Built artifacts go to `.out/<target>/` for both local builds and CI.
 4. Verify stages run inside UBI10 Minimal, and the final exported artifact comes from the target's `scratch` stage.
@@ -354,4 +352,4 @@ Selected release contents:
   GitHub uploads to Release only.
 - Rejected registry uploads fail their publishing jobs.
 - The generated child pipeline includes the local component at `templates/static-release.yml`.
-- GitHub release packaging and GitLab package generation both reuse `scripts/package-release.sh`.
+- GitHub release packaging and GitLab package generation both reuse `package-release.sh`.

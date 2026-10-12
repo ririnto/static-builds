@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 set -e
-ROOT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)
-METADATA_SCRIPT="${ROOT_DIR}/scripts/metadata.sh"
+ROOT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
+METADATA_SCRIPT="${ROOT_DIR}/metadata.sh"
 
 # Print usage information and exit.
 #

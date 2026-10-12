@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 set -e
 
-ROOT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
+ROOT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 
 # Print an error message to stderr and exit.
 #

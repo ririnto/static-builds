@@ -36,7 +36,7 @@ curl http://127.0.0.1:18081/njs
 ```
 
 Both NGINX Docker verification stages reference the same separate scripts for static linking, configuration parsing, and HTTP/stream execution.
-The [verification script](../scripts/nginx-verify.sh) preserves their existing verification contract.
+The [verification script](../nginx/nginx-verify.sh) preserves their existing verification contract.
 The scripting checks require the reported `QuickJS` engine and selected njs version.
 It runs nginx with standard CLI clients and requires graceful shutdown.
 It does not introduce a separate verification framework.

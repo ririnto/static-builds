@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 set -e
-ROOT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)
+ROOT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 
 # Print an error message to stderr.
 #
@@ -39,7 +39,7 @@ parse_tag() {
 # @return-type str
 get_official_version() {
   target="$1"
-  metadata_script="${ROOT_DIR}/scripts/metadata.sh"
+  metadata_script="${ROOT_DIR}/metadata.sh"
   version=$(sh "$metadata_script" get-official-version "$target")
   if [ -z "$version" ]; then
     err "Error: official version not found for $target"
@@ -62,7 +62,7 @@ main() {
   fi
   target="$1"
   tag="$2"
-  tag_prefix=$(sh "${ROOT_DIR}/scripts/metadata.sh" get-tag-prefix "$target") || exit 1
+  tag_prefix=$(sh "${ROOT_DIR}/metadata.sh" get-tag-prefix "$target") || exit 1
   case "$tag" in
     "${tag_prefix}"-*) ;;
     *)

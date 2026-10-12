@@ -28,7 +28,7 @@ fi
 BIN_DIR=$(cd "$(dirname "$NGINX_BIN")" && pwd -P)
 NGINX_BIN="$BIN_DIR/$(basename "$NGINX_BIN")"
 REPOSITORY_ROOT=$(cd "$(dirname "$0")/../.." && pwd -P)
-METADATA_ENV=$(sh "$REPOSITORY_ROOT/scripts/metadata.sh" get-env nginx-upstream-healthcheck)
+METADATA_ENV=$(sh "$REPOSITORY_ROOT/metadata.sh" get-env nginx-upstream-healthcheck)
 UBI_VERSION=
 while IFS='=' read -r name value; do
   if [ "$name" = UBI10_MINIMAL_VERSION ]; then
