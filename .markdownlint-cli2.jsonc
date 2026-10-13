@@ -1,7 +1,14 @@
 {
   "config": {
     "$schema": "https://raw.githubusercontent.com/DavidAnson/markdownlint/v0.41.1/schema/markdownlint-config-schema.json",
+    "code-block-style": {
+      "style": "fenced"
+    },
     "line-length": false,
+    "no-duplicate-heading": {
+      "siblings_only": true
+    },
+    "no-emphasis-as-heading": true,
     "no-inline-html": {
       "allowed_elements": [
         "details",
@@ -14,13 +21,6 @@
         "br"
       ]
     },
-    "no-duplicate-heading": {
-      "siblings_only": true
-    },
-    "code-block-style": {
-      "style": "fenced"
-    },
-    "no-emphasis-as-heading": true,
     "table-column-style": {
       "style": "compact"
     }
