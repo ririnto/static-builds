@@ -17,7 +17,7 @@ Preserve technical meaning, permission requirements, code, metadata, exact quota
 Keep code blocks and recorded command output intact when editing prose.
 Exclude generated files and vendored material from mechanical prose changes.
 Check Markdown rendering, relative links, and instruction loading paths after editing.
-Use the repository's `.markdownlint.jsonc` when running Markdown lint.
+Use the repository's `.markdownlint-cli2.jsonc` when running Markdown lint.
 
 ### Markdown validation
 
@@ -36,7 +36,7 @@ lychee --config .lychee.toml '**/*.md'
 
 The lint command requires Node.js 22 or newer with npm.
 Use rumdl 0.2.79 and Lychee 0.24.2, matching the workflow's tool versions.
-The existing Markdown rules remain enabled through `.markdownlint.jsonc`.
+The existing Markdown rules remain enabled through `.markdownlint-cli2.jsonc`.
 The CLI configuration respects Git ignore files and excludes the vendored healthcheck module.
 The fence check supplements Markdown lint with rumdl's built-in MD046 rule, including missing closing fences.
 Lychee checks relative file paths and heading fragments offline, excluding network URLs.
