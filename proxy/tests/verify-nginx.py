@@ -44,35 +44,45 @@ def _read_process_state(process_id: int) -> str | None:
             text=True,
             check=False,
         )
-        return result.stdout.strip().split(maxsplit=1)[0] if result.stdout.strip() else None
-    stat_tail = stat_line[stat_line.rfind(")") + 2 :]
-    return stat_tail.split(maxsplit=1)[0]
+        state = result.stdout.strip().split(maxsplit=1)[0] if result.stdout.strip() else None
+    else:
+        stat_tail = stat_line[stat_line.rfind(")") + 2 :]
+        state = stat_tail.split(maxsplit=1)[0]
+    return state
 
 
 def _process_running(process_id: int) -> bool:
     return _read_process_state(process_id) not in (None, "Z")
 
 
-def _group_running(group_id: int) -> bool:
+def _process_groups():
     if Path("/proc").is_dir():
         for stat_path in Path("/proc").glob("[0-9]*/stat"):
             try:
                 stat_line = stat_path.read_text()
             except FileNotFoundError:
-                continue
-            stat_tail = stat_line[stat_line.rfind(")") + 2 :].split()
-            if len(stat_tail) >= 3 and stat_tail[2] == str(group_id) and stat_tail[0] != "Z":
-                return True
-        return False
-    result = subprocess.run(
-        ["ps", "-axo", "pgid=,stat="],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
+                pass
+            else:
+                stat_tail = stat_line[stat_line.rfind(")") + 2 :].split()
+                if len(stat_tail) >= 3:
+                    yield stat_tail[2], stat_tail[0]
+    else:
+        result = subprocess.run(
+            ["ps", "-axo", "pgid=,stat="],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        for line in result.stdout.splitlines():
+            fields = line.split()
+            if len(fields) >= 2:
+                yield fields[0], fields[1]
+
+
+def _group_running(group_id: int) -> bool:
     return any(
-        len(fields := line.split()) >= 2 and fields[0] == str(group_id) and not fields[1].startswith("Z")
-        for line in result.stdout.splitlines()
+        group == str(group_id) and not state.startswith("Z")
+        for group, state in _process_groups()
     )
 
 
@@ -226,14 +236,18 @@ def _create_tools(directory: Path) -> Path:
 
 def _wait_for_probe(marker_path: Path, process: subprocess.Popen[str]) -> int:
     deadline = time.monotonic() + 8
-    while time.monotonic() < deadline:
+    probe_id = None
+    while probe_id is None and time.monotonic() < deadline:
         if marker_path.exists():
-            return int(marker_path.read_text())
-        if process.poll() is not None:
+            probe_id = int(marker_path.read_text())
+        elif process.poll() is not None:
             output, error = process.communicate()
             raise AssertionError(f"Verifier exited before the active probe started: {output}\n{error}")
-        time.sleep(0.02)
-    raise AssertionError("Verifier did not start the active HTTP probe")
+        else:
+            time.sleep(0.02)
+    if probe_id is None:
+        raise AssertionError("Verifier did not start the active HTTP probe")
+    return probe_id
 
 
 def _run_scenario(repository: Path, scenario: tuple[str, int, signal.Signals | None, bool], real_timeout: str) -> None:

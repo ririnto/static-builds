@@ -43,11 +43,11 @@ Remove these overrides when upstream dependencies select supported patched versi
 `check` runs Markdown lint, code-fence validation, relative-link validation, ShellCheck, and shell formatting checks.
 `fix` applies Markdown lint fixes and the existing Makefile shell formatter.
 The existing Markdown rules remain enabled through `.markdownlint-cli2.jsonc`.
-The CLI configuration respects Git ignore files and excludes the vendored healthcheck module.
+The CLI configuration respects Git ignore files.
 The fence check supplements Markdown lint with rumdl's built-in MD046 rule, including missing closing fences.
 Lychee checks relative file paths and heading fragments offline, excluding network URLs.
-Its `.lychee.toml` configuration explicitly excludes generated and vendored paths, including when checking Git worktrees.
-All checks exclude ignored build outputs, source caches, and the vendored healthcheck module.
+Its `.lychee.toml` configuration explicitly excludes generated paths, including when checking Git worktrees.
+All checks exclude ignored build outputs and source caches.
 These checks run without building targets or invoking release jobs.
 Node dependencies are development-only and are excluded from the Docker build context.
 Dockerfiles copy explicit target inputs and release packaging selects only metadata-listed target outputs.
@@ -94,6 +94,15 @@ Review the complete posted change before merging.
 Publish through the feature branch and pull request rather than pushing changes directly to `main`.
 
 ## Verification
+
+Run `python3 proxy/tests/verify-metadata.py` after changing metadata queries or parsing.
+The standalone downloader, nginx verifier, and Docker runner regressions run with `python3 proxy/tests/verify-download.py`, `python3 proxy/tests/verify-nginx.py`, and `python3 proxy/tests/verify-runner.py`.
+The downloader and nginx verifier require GNU Coreutils `timeout` or `gtimeout`.
+The downloader also requires wget and OpenSSL.
+Linux containers running process-lifecycle fixtures need an init process to reap orphaned children.
+Use Docker's `--init` option when running these fixtures in a container.
+The native healthcheck module is maintained project source.
+Changes to its scheduling, probe I/O, or cleanup require a target build and the separate [functional suite](../nginx-upstream-healthcheck/README.md#build-verification).
 
 For documentation changes, check Markdown syntax, rendering, relative links, and preservation of code and recorded output.
 For build changes, run `make build <target>` for each affected target before creating release tags.

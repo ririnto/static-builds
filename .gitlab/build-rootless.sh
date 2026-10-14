@@ -1,6 +1,7 @@
 #!/usr/bin/env sh
 set -e
 ROOT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
+. "${ROOT_DIR}/build-env.sh"
 METADATA_SCRIPT="${ROOT_DIR}/metadata.sh"
 if [ "$#" -lt 1 ]; then
   printf 'Usage: %s <target>\n' "$0" >&2
@@ -56,17 +57,9 @@ set -- buildctl-daemonless.sh build \
   --import-cache "${CACHE_FROM}" \
   --export-cache "${CACHE_TO}"
 while IFS='=' read -r key value || [ -n "${key}" ]; do
-  case "${key}" in
-    '' | \#*) continue ;;
-  esac
-  if [ -z "${value}" ]; then
-    continue
+  if normalize_build_env "${key}" "${value}"; then
+    set -- "$@" --opt "build-arg:${key}=$(build_env_value)"
   fi
-  value=$(printf '%s\n' "${value}" | tr -d '\r')
-  case "${key}" in
-    *[!A-Z0-9_]*) continue ;;
-  esac
-  set -- "$@" --opt "build-arg:${key}=${value}"
 done <<EOF2
 ${METADATA_ENV}
 EOF2

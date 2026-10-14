@@ -57,10 +57,12 @@ docker run --rm \
 ```text
 .
 +-- metadata.json           # Canonical build/release metadata
++-- build-env.sh            # Shared build argument normalization
 +-- Makefile                # Local development build orchestration
 +-- .gitlab-ci.yml          # GitLab CI configuration
 +-- download.sh             # Source download dispatcher
 +-- metadata.sh             # Metadata query helper
++-- metadata.awk            # Metadata JSON parser
 +-- package-release.sh      # Release package helper
 +-- .github/
 |   +-- build.sh            # Docker Buildx build entry

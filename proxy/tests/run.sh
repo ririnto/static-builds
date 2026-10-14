@@ -42,7 +42,10 @@ process_group_running() {
   local state
   local process_group
   local running=1
-  for stat_file in /proc/[0-9]*/stat; do
+  set -- /proc/[0-9]*/stat
+  while [ "$running" -ne 0 ] && [ "$#" -gt 0 ]; do
+    stat_file=$1
+    shift
     if IFS= read -r stat_line <"$stat_file"; then
       stat_fields=${stat_line##*) }
       read -r -a stat_parts <<<"$stat_fields"
@@ -50,7 +53,6 @@ process_group_running() {
       process_group=${stat_parts[2]}
       if [ "$process_group" = "$group_id" ] && [ "$state" != Z ]; then
         running=0
-        break
       fi
     fi
   done
@@ -74,17 +76,17 @@ cleanup() {
       fi
     fi
   done
-  for ((attempt = 0; attempt < 30; attempt++)); do
+  running=1
+  for ((attempt = 0; attempt < 30 && running != 0; attempt++)); do
     running=0
     for group in "${FIXTURE_GROUPS[@]}"; do
       if process_group_running "$group"; then
         running=1
       fi
     done
-    if [ "$running" -eq 0 ]; then
-      break
+    if [ "$running" -ne 0 ]; then
+      sleep 0.1
     fi
-    sleep 0.1
   done
   for group in "${FIXTURE_GROUPS[@]}"; do
     if process_group_running "$group"; then
@@ -260,12 +262,8 @@ metric_value() {
   local upstream_matches
   local peer_matches
   local result_matches
-  while IFS= read -r line; do
-    case "$line" in
-      "$family{"*) ;;
-      *) continue ;;
-    esac
-    if [[ "$line" =~ $sample_pattern ]]; then
+  while [ "$valid" -eq 1 ] && IFS= read -r line; do
+    if [[ "$line" == "$family{"* && "$line" =~ $sample_pattern ]]; then
       labels=${line#*\{}
       labels=${labels%%\}*}
       case ",$labels," in
@@ -288,15 +286,13 @@ metric_value() {
         sample_value=${line##* }
         matched=$((matched + 1))
       fi
-    else
+    elif [[ "$line" == "$family{"* ]]; then
       printf 'Invalid quoted peer labels in metric family %s.\n' "$family" >&2
       valid=0
-      break
     fi
   done <"$METRICS_FILE"
   if [ "$valid" -eq 1 ] && [ "$matched" -eq 1 ]; then
     printf '%s\n' "$sample_value"
-    return 0
   else
     return 1
   fi
@@ -349,18 +345,15 @@ wait_for_result() {
   local expected=$4
   local attempt
   local reached=0
-  for ((attempt = 0; attempt < 120; attempt++)); do
+  for ((attempt = 0; attempt < 120 && reached == 0; attempt++)); do
     if fetch_metrics && assert_one_hot "$family" "$upstream" "$peer" "$expected"; then
       reached=1
     fi
-    if [ "$reached" -eq 1 ]; then
-      break
+    if [ "$reached" -eq 0 ]; then
+      sleep 0.1
     fi
-    sleep 0.1
   done
-  if [ "$reached" -eq 1 ]; then
-    return 0
-  else
+  if [ "$reached" -eq 0 ]; then
     printf 'Timed out waiting for %s upstream %s peer %s to report %s.\n' \
       "$family" "$upstream" "$peer" "$expected" >&2
     return 1
@@ -382,20 +375,17 @@ wait_for_readiness() {
   local value
   local attempt
   local reached=0
-  for ((attempt = 0; attempt < 120; attempt++)); do
+  for ((attempt = 0; attempt < 120 && reached == 0; attempt++)); do
     if fetch_metrics && value=$(metric_value "$family" "$upstream" "$peer"); then
       if [ "$value" = "$expected" ]; then
         reached=1
       fi
     fi
-    if [ "$reached" -eq 1 ]; then
-      break
+    if [ "$reached" -eq 0 ]; then
+      sleep 0.1
     fi
-    sleep 0.1
   done
-  if [ "$reached" -eq 1 ]; then
-    return 0
-  else
+  if [ "$reached" -eq 0 ]; then
     printf 'Timed out waiting for %s upstream %s peer %s readiness=%s.\n' \
       "$family" "$upstream" "$peer" "$expected" >&2
     return 1
@@ -426,11 +416,7 @@ assert_config_rejected() {
       cat "$output_path" >&2
     fi
   fi
-  if [ "$accepted" -eq 0 ] && [ "$message_found" -eq 1 ]; then
-    return 0
-  else
-    return 1
-  fi
+  [ "$accepted" -eq 0 ] && [ "$message_found" -eq 1 ]
 }
 
 # Sends a bounded request through the stream proxy and checks its first response line.
@@ -464,11 +450,7 @@ assert_stream_response() {
   else
     printf 'Could not connect to stream listener %s:%s.\n' "$host" "$port" >&2
   fi
-  if [ "$succeeded" -eq 1 ]; then
-    return 0
-  else
-    return 1
-  fi
+  [ "$succeeded" -eq 1 ]
 }
 
 # Confirms health metrics remain visible when both NGINX workers serve requests.
@@ -480,7 +462,7 @@ assert_multiworker_metrics() {
   local first_worker=
   local second_worker=
   local observed=0
-  for ((attempt = 0; attempt < 120; attempt++)); do
+  for ((attempt = 0; attempt < 120 && observed == 0; attempt++)); do
     if fetch_metrics; then
       worker=$(sed -n 's/^[Xx]-[Ww]orker: *//p' "$HEADERS_FILE" | tr -d '\r')
       if [ -n "$worker" ] && assert_one_hot nginx_healthcheck_check_result \
@@ -492,7 +474,6 @@ assert_multiworker_metrics() {
           printf 'Shared health metrics served by workers %s and %s.\n' \
             "$first_worker" "$second_worker"
           observed=1
-          break
         fi
       fi
     fi
@@ -500,9 +481,7 @@ assert_multiworker_metrics() {
       sleep 0.05
     fi
   done
-  if [ "$observed" -eq 1 ]; then
-    return 0
-  else
+  if [ "$observed" -eq 0 ]; then
     printf 'Did not observe the shared result metric from two NGINX workers.\n' >&2
     return 1
   fi

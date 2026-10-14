@@ -12,7 +12,7 @@
   "private": true,
   "scripts": {
     "check": "run-p check:*",
-    "check:fences": "rumdl check --enable MD046 --no-cache --respect-gitignore --exclude 'nginx-upstream-healthcheck/ngx_http_upstream_healthcheck_module/**' .",
+    "check:fences": "rumdl check --enable MD046 --no-cache --respect-gitignore .",
     "check:links": "lychee --config .lychee.toml '**/*.md'",
     "check:markdownlint-cli2": "markdownlint-cli2",
     "check:shellcheck": "make lint",
