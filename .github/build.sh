@@ -1,6 +1,7 @@
 #!/usr/bin/env sh
 set -e
 ROOT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
+. "${ROOT_DIR}/build-env.sh"
 METADATA_SCRIPT="${ROOT_DIR}/metadata.sh"
 
 # Print usage information and exit.
@@ -88,19 +89,9 @@ esac
 BUILD_OUTPUT_DEST="${BUILD_OUTPUT_DEST:-${ROOT_DIR}/.out/${TARGET}}"
 mkdir -p "${BUILD_OUTPUT_DEST}"
 while IFS='=' read -r key value || [ -n "${key}" ]; do
-  case "${key}" in
-    '' | \#*) continue ;;
-  esac
-  if [ -z "${value}" ]; then
-    continue
+  if normalize_build_env "${key}" "${value}"; then
+    set -- "--build-arg=${key}=$(build_env_value)" "$@"
   fi
-  value=$(printf '%s\n' "${value}" | tr -d '\r')
-  case "${key}" in
-    *[!A-Z0-9_]*)
-      continue
-      ;;
-  esac
-  set -- "--build-arg=${key}=${value}" "$@"
 done <<EOF
 ${METADATA_ENV}
 EOF

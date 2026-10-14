@@ -4,5 +4,4 @@ hidden = true
 no_progress = true
 exclude_path = [
   '(^|/)(\.out|\.tmp|\.cache|\.git|node_modules|\.venv|venv)(/|$)',
-  '(^|/)nginx-upstream-healthcheck/ngx_http_upstream_healthcheck_module(/|$)',
 ]

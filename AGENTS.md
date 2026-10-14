@@ -10,10 +10,12 @@ Builds nginx, nginx-upstream-healthcheck, haproxy, apache-exporter, apache-httpd
 ```text
 static-builds/
 +-- metadata.json           # Canonical build/release metadata
++-- build-env.sh            # Shared build argument normalization
 +-- Makefile                # Local development build orchestration
 +-- .gitlab-ci.yml          # GitLab CI configuration
 +-- download.sh             # Source download dispatcher
 +-- metadata.sh             # Metadata query helper
++-- metadata.awk            # Metadata JSON parser
 +-- package-release.sh      # Release package helper
 +-- package.json            # Contributor check and fix scripts
 +-- pnpm-lock.yaml          # Locked Node-side tooling
@@ -55,7 +57,7 @@ static-builds/
 | CI release config | .github/workflows/, .gitlab-ci.yml, .gitlab/ci/, templates/ | GitHub workflows + GitLab component pipeline |
 | Build definition | */Dockerfile | Multi-stage target build |
 | Shared nginx helpers | nginx/*.sh | Both nginx targets reuse these build and verification files. |
-| Shared Make helpers | download.sh, metadata.sh, package-release.sh | Root-level source and package helpers. |
+| Shared Make helpers | build-env.sh, download.sh, metadata.sh, metadata.awk, package-release.sh | Root-level source and package helpers. |
 | Build metadata | metadata.json | tag_prefix, release_files, env, downloads |
 | Functional healthcheck verification | proxy/tests/ | Separate from target Docker verification. |
 
@@ -63,7 +65,11 @@ static-builds/
 
 - New top-level directories outside STRUCTURE MUST NOT be added (for example, `docs/`, `tests/`).
 - EditorConfig: 4-space indent (2 for .sh/.yaml)
-- Inside functions, prefer positive guarded blocks over early returns when equivalent behavior stays clear.
+- Prefer explicit loop conditions and positive guarded blocks over mid-function returns, `continue`, and loop `break` statements.
+  Use plain `if` / `else if` / `else` chains for repeated guards when evaluation order and cleanup remain identical.
+  Preserve natural final returns, required failure propagation, and switch fall-through prevention.
+  Preserve cancellation, resource ownership, concurrency admission, and short-circuit evaluation without artificial flags or deeper nesting.
+  Existing lint rules and formatter output take precedence over these control-flow preferences.
 - Keep scripts and executable source in separate files and reference them from Dockerfiles, configurations, and documentation.
   Do not embed script bodies in those files.
 - `metadata.json` MUST be the canonical source of build and release metadata for all targets.

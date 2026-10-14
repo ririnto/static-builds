@@ -58,14 +58,23 @@ download_tarball() {
         lock_wait=$((lock_wait + 1))
       done
       lock_dir="${dest_file}.lock"
+      fetch_tarball
       ;;
     *)
       if [ -f "${dest_file}" ] && [ -s "${dest_file}" ]; then
         echo "File exists: ${dest_file}" >&2
-        return 0
+      else
+        fetch_tarball
       fi
       ;;
   esac
+}
+
+# Fetch the configured tarball with retry deadlines and atomic publication.
+# Requires download_tarball to initialize destination, retry and cleanup state.
+# @return 0 for a nonempty successful download, 1 on failure.
+# @return-type int
+fetch_tarball() {
   case "${url}" in
     https://*) ;;
     *)
@@ -77,7 +86,8 @@ download_tarball() {
     echo "Error: Failed to create temporary file in ${dest_dir}" >&2
     return 1
   }
-  while [ "${attempt}" -le "${retries}" ]; do
+  rc=1
+  while [ "${attempt}" -le "${retries}" ] && [ "${rc}" -ne 0 ]; do
     rm -f "${tmp_file}"
     if command -v curl >/dev/null 2>&1; then
       curl --fail --location --silent --show-error \
@@ -107,50 +117,50 @@ download_tarball() {
     if [ "${rc}" -eq 0 ]; then
       if [ -s "${tmp_file}" ]; then
         mv -f "${tmp_file}" "${dest_file}"
-        return 0
+      else
+        rm -f "${tmp_file}"
+        echo "Error: Downloaded file is empty: ${dest_file} (from ${url})" >&2
+        return 1
       fi
+    else
       rm -f "${tmp_file}"
-      echo "Error: Downloaded file is empty: ${dest_file} (from ${url})" >&2
-      return 1
-    fi
-    rm -f "${tmp_file}"
-    echo "Error: Download failed (attempt ${attempt}/${retries}, exit=${rc}): ${url} -> ${dest_file}" >&2
-    attempt=$((attempt + 1))
-    if [ "${attempt}" -le "${retries}" ]; then
-      pow=1
-      i=1
-      while [ "$i" -lt "$attempt" ]; do
-        pow=$((pow * 2))
-        i=$((i + 1))
-      done
-      delay=$((base_delay * pow))
-      if [ "${delay}" -gt 60 ]; then
-        delay=60
+      echo "Error: Download failed (attempt ${attempt}/${retries}, exit=${rc}): ${url} -> ${dest_file}" >&2
+      attempt=$((attempt + 1))
+      if [ "${attempt}" -le "${retries}" ]; then
+        pow=1
+        i=1
+        while [ "$i" -lt "$attempt" ]; do
+          pow=$((pow * 2))
+          i=$((i + 1))
+        done
+        delay=$((base_delay * pow))
+        if [ "${delay}" -gt 60 ]; then
+          delay=60
+        fi
+        echo "Retrying in ${delay} seconds..." >&2
+        sleep "${delay}" &
+        child_pid=$!
+        wait "${child_pid}"
+        child_pid=''
       fi
-      echo "Retrying in ${delay} seconds..." >&2
-      sleep "${delay}" &
-      child_pid=$!
-      wait "${child_pid}"
-      child_pid=''
     fi
   done
-  return 1
+  [ "${rc}" -eq 0 ]
 }
 
 downloads=$(sh "${ROOT_DIR}/metadata.sh" get-downloads "${TARGET}")
 download_pid=''
 trap 'if [ -n "${download_pid}" ]; then kill -TERM "${download_pid}" 2>/dev/null || :; wait "${download_pid}" 2>/dev/null || :; fi; exit 1' HUP INT TERM
 while IFS="$(printf '	')" read -r url file_name || [ -n "${url}" ]; do
-  if [ -z "${url}" ] || [ -z "${file_name}" ]; then
-    continue
+  if [ -n "${url}" ] && [ -n "${file_name}" ]; then
+    (
+      download_tarball "${url}" "${ROOT_DIR}/.tmp/${file_name}"
+      exit 0
+    ) &
+    download_pid=$!
+    wait "${download_pid}"
+    download_pid=''
   fi
-  (
-    download_tarball "${url}" "${ROOT_DIR}/.tmp/${file_name}"
-    exit 0
-  ) &
-  download_pid=$!
-  wait "${download_pid}"
-  download_pid=''
 done <<EOF
 ${downloads}
 EOF

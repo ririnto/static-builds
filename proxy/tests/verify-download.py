@@ -35,11 +35,11 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         self.end_headers()
         try:
             if scenario in ("slow", "resistant", "gtimeout", "signal", "fixture_timeout"):
-                for _ in range(100):
+                remaining = 100
+                while remaining > 0:
                     self.wfile.write(b"x")
                     self.wfile.flush()
-                    if self.server.stopping.wait(0.1):
-                        break
+                    remaining = 0 if self.server.stopping.wait(0.1) else remaining - 1
             else:
                 self.wfile.write(b"archive")
         except (BrokenPipeError, ConnectionResetError, ssl.SSLError):
@@ -95,7 +95,7 @@ def _stop_fixtures(process, wget_pid_file, timeout_pid_file):
 
 def _verify(repository, directory, server, wget, limiter, scenario):
     directory.mkdir()
-    for name in ("download.sh", "metadata.sh"):
+    for name in ("download.sh", "metadata.sh", "metadata.awk"):
         shutil.copyfile(repository / name, directory / name)
     binary = directory / "bin"
     binary.mkdir()
@@ -159,25 +159,25 @@ def _verify(repository, directory, server, wget, limiter, scenario):
                     raise AssertionError("The failure-cleanup fixture never started both processes.")
             else:
                 raise AssertionError("The failure-cleanup fixture did not exceed its driver deadline.")
-            return
-        _, error = process.communicate(timeout=6)
-        expected = 0 if scenario == "success" else 1
-        if process.returncode != expected:
-            raise AssertionError(f"{scenario}: exit {process.returncode}, expected {expected}\n{error}")
-        elapsed = time.monotonic() - started
-        if scenario in ("slow", "resistant", "gtimeout") and elapsed > 4:
-            raise AssertionError(f"The one-second deadline took {elapsed:.2f} seconds.")
-        if scenario == "missing_timeout" and "require timeout" not in error:
-            raise AssertionError(f"Missing timeout prerequisite was not diagnosed: {error}")
-        if pid_file.exists() and _running(int(pid_file.read_text())):
-            raise AssertionError(f"{scenario}: wget survived downloader completion.")
-        if timeout_pid_file.exists() and _running(int(timeout_pid_file.read_text())):
-            raise AssertionError(f"{scenario}: timeout survived downloader completion.")
-        remaining = list((directory / ".tmp").iterdir())
-        expected_files = [directory / ".tmp" / "fixture.tar.gz"] if scenario == "success" else []
-        if remaining != expected_files:
-            raise AssertionError(f"{scenario}: download temporary files or locks remain: {remaining}")
-        print(f"PASS {scenario}")
+        else:
+            _, error = process.communicate(timeout=6)
+            expected = 0 if scenario == "success" else 1
+            if process.returncode != expected:
+                raise AssertionError(f"{scenario}: exit {process.returncode}, expected {expected}\n{error}")
+            elapsed = time.monotonic() - started
+            if scenario in ("slow", "resistant", "gtimeout") and elapsed > 4:
+                raise AssertionError(f"The one-second deadline took {elapsed:.2f} seconds.")
+            if scenario == "missing_timeout" and "require timeout" not in error:
+                raise AssertionError(f"Missing timeout prerequisite was not diagnosed: {error}")
+            if pid_file.exists() and _running(int(pid_file.read_text())):
+                raise AssertionError(f"{scenario}: wget survived downloader completion.")
+            if timeout_pid_file.exists() and _running(int(timeout_pid_file.read_text())):
+                raise AssertionError(f"{scenario}: timeout survived downloader completion.")
+            remaining = list((directory / ".tmp").iterdir())
+            expected_files = [directory / ".tmp" / "fixture.tar.gz"] if scenario == "success" else []
+            if remaining != expected_files:
+                raise AssertionError(f"{scenario}: download temporary files or locks remain: {remaining}")
+            print(f"PASS {scenario}")
     finally:
         _stop_fixtures(process, pid_file, timeout_pid_file)
         if scenario == "fixture_timeout":

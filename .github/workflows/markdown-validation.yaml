@@ -36,7 +36,6 @@ jobs:
           path: .
           args: >-
             --enable MD046 --no-cache --respect-gitignore
-            --exclude nginx-upstream-healthcheck/ngx_http_upstream_healthcheck_module/**
 
   links:
     name: Relative links
