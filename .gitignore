@@ -86,6 +86,7 @@ bin/
 *.log
 
 .cache/
+node_modules/
 .cache-gh/
 */.cache/
 

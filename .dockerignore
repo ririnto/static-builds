@@ -1,10 +1,12 @@
 .git
 .github
+.husky
 .vscode
 .idea
 .out
 .cache
 .ruff_cache
+node_modules
 third-party
 **/.cache
 **/.omc

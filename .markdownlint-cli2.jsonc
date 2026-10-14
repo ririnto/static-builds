@@ -26,6 +26,9 @@
     }
   },
   "gitignore": true,
+  "globs": [
+    "**/*.md"
+  ],
   "ignores": [
     "nginx-upstream-healthcheck/ngx_http_upstream_healthcheck_module/**"
   ]
