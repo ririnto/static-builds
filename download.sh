@@ -70,6 +70,31 @@ download_tarball() {
   esac
 }
 
+# Wait for the next retry with the existing bounded exponential backoff.
+# Requires download_tarball to initialize retry and cleanup state.
+#
+# @return 0 after the wait, or when retries are exhausted.
+# @return-type int
+wait_retry() {
+  if [ "${attempt}" -le "${retries}" ]; then
+    pow=1
+    i=1
+    while [ "$i" -lt "$attempt" ]; do
+      pow=$((pow * 2))
+      i=$((i + 1))
+    done
+    delay=$((base_delay * pow))
+    if [ "${delay}" -gt 60 ]; then
+      delay=60
+    fi
+    echo "Retrying in ${delay} seconds..." >&2
+    sleep "${delay}" &
+    child_pid=$!
+    wait "${child_pid}"
+    child_pid=''
+  fi
+}
+
 # Fetch the configured tarball with retry deadlines and atomic publication.
 # Requires download_tarball to initialize destination, retry and cleanup state.
 # @return 0 for a nonempty successful download, 1 on failure.
@@ -126,23 +151,7 @@ fetch_tarball() {
       rm -f "${tmp_file}"
       echo "Error: Download failed (attempt ${attempt}/${retries}, exit=${rc}): ${url} -> ${dest_file}" >&2
       attempt=$((attempt + 1))
-      if [ "${attempt}" -le "${retries}" ]; then
-        pow=1
-        i=1
-        while [ "$i" -lt "$attempt" ]; do
-          pow=$((pow * 2))
-          i=$((i + 1))
-        done
-        delay=$((base_delay * pow))
-        if [ "${delay}" -gt 60 ]; then
-          delay=60
-        fi
-        echo "Retrying in ${delay} seconds..." >&2
-        sleep "${delay}" &
-        child_pid=$!
-        wait "${child_pid}"
-        child_pid=''
-      fi
+      wait_retry
     fi
   done
   [ "${rc}" -eq 0 ]

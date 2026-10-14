@@ -1616,41 +1616,41 @@ ngx_http_upstream_healthcheck_admit_probe(ngx_http_upstream_healthcheck_conf_t *
     ngx_http_upstream_rr_peer_t   *peer;
 
     state = conf->state;
-        group = peer_state->group;
-        peer = peer_state->peer;
-        ngx_http_upstream_rr_peers_wlock(group);
-        ngx_shmtx_lock(&state->shpool->mutex);
+    group = peer_state->group;
+    peer = peer_state->peer;
+    ngx_http_upstream_rr_peers_wlock(group);
+    ngx_shmtx_lock(&state->shpool->mutex);
 
-        if (peer_state->removed || peer_state->busy || peer_state->admin_down
-            || now < peer_state->next_due || peer->zombie)
-        {
-            *after_id = peer_state->id;
-            if (peer->zombie && !peer_state->busy) {
-                peer_state->removed = 1;
-                ngx_http_upstream_healthcheck_remove_peer_locked(state,
-                                                                peer_state);
-            }
-            ngx_shmtx_unlock(&state->shpool->mutex);
-            ngx_http_upstream_rr_peers_unlock(group);
-        } else if (state->active_probes >= conf->concurrency) {
-            ngx_shmtx_unlock(&state->shpool->mutex);
-            ngx_http_upstream_rr_peers_unlock(group);
-            *capped = 1;
-        } else {
-            peer_state->busy = 1;
-            peer_state->next_due = now + conf->interval;
-            state->active_probes++;
-            state->schedule_cursor = peer_state->id;
-            *after_id = peer_state->id;
-
-            ngx_shmtx_unlock(&state->shpool->mutex);
-            ngx_http_upstream_rr_peers_unlock(group);
-
-            (*started)++;
-            if (ngx_http_upstream_healthcheck_start(conf, peer_state) != NGX_OK) {
-                ngx_http_upstream_healthcheck_start_failed(conf, peer_state, 1);
-            }
+    if (peer_state->removed || peer_state->busy || peer_state->admin_down
+        || now < peer_state->next_due || peer->zombie)
+    {
+        *after_id = peer_state->id;
+        if (peer->zombie && !peer_state->busy) {
+            peer_state->removed = 1;
+            ngx_http_upstream_healthcheck_remove_peer_locked(state,
+                                                            peer_state);
         }
+        ngx_shmtx_unlock(&state->shpool->mutex);
+        ngx_http_upstream_rr_peers_unlock(group);
+    } else if (state->active_probes >= conf->concurrency) {
+        ngx_shmtx_unlock(&state->shpool->mutex);
+        ngx_http_upstream_rr_peers_unlock(group);
+        *capped = 1;
+    } else {
+        peer_state->busy = 1;
+        peer_state->next_due = now + conf->interval;
+        state->active_probes++;
+        state->schedule_cursor = peer_state->id;
+        *after_id = peer_state->id;
+
+        ngx_shmtx_unlock(&state->shpool->mutex);
+        ngx_http_upstream_rr_peers_unlock(group);
+
+        (*started)++;
+        if (ngx_http_upstream_healthcheck_start(conf, peer_state) != NGX_OK) {
+            ngx_http_upstream_healthcheck_start_failed(conf, peer_state, 1);
+        }
+    }
 }
 
 static ngx_http_upstream_healthcheck_peer_t *
@@ -3577,39 +3577,39 @@ ngx_stream_upstream_healthcheck_admit_probe(ngx_stream_upstream_healthcheck_conf
     ngx_stream_upstream_rr_peer_t   *peer;
 
     state = conf->state;
-        group = peer_state->group;
-        peer = peer_state->peer;
-        ngx_stream_upstream_rr_peers_wlock(group);
-        ngx_shmtx_lock(&state->shpool->mutex);
-        if (peer_state->removed || peer_state->busy || peer_state->admin_down
-            || now < peer_state->next_due || peer->zombie)
-        {
-            *after_id = peer_state->id;
-            if (peer->zombie && !peer_state->busy) {
-                peer_state->removed = 1;
-                ngx_stream_upstream_healthcheck_remove_peer_locked(state,
-                                                                  peer_state);
-            }
-            ngx_shmtx_unlock(&state->shpool->mutex);
-            ngx_stream_upstream_rr_peers_unlock(group);
-        } else if (state->active_probes >= conf->concurrency) {
-            ngx_shmtx_unlock(&state->shpool->mutex);
-            ngx_stream_upstream_rr_peers_unlock(group);
-            *capped = 1;
-        } else {
-            peer_state->busy = 1;
-            peer_state->next_due = now + conf->interval;
-            state->active_probes++;
-            state->schedule_cursor = peer_state->id;
-            *after_id = peer_state->id;
-            ngx_shmtx_unlock(&state->shpool->mutex);
-            ngx_stream_upstream_rr_peers_unlock(group);
-
-            (*started)++;
-            if (ngx_stream_upstream_healthcheck_start(conf, peer_state) != NGX_OK) {
-                ngx_stream_upstream_healthcheck_start_failed(conf, peer_state, 1);
-            }
+    group = peer_state->group;
+    peer = peer_state->peer;
+    ngx_stream_upstream_rr_peers_wlock(group);
+    ngx_shmtx_lock(&state->shpool->mutex);
+    if (peer_state->removed || peer_state->busy || peer_state->admin_down
+        || now < peer_state->next_due || peer->zombie)
+    {
+        *after_id = peer_state->id;
+        if (peer->zombie && !peer_state->busy) {
+            peer_state->removed = 1;
+            ngx_stream_upstream_healthcheck_remove_peer_locked(state,
+                                                              peer_state);
         }
+        ngx_shmtx_unlock(&state->shpool->mutex);
+        ngx_stream_upstream_rr_peers_unlock(group);
+    } else if (state->active_probes >= conf->concurrency) {
+        ngx_shmtx_unlock(&state->shpool->mutex);
+        ngx_stream_upstream_rr_peers_unlock(group);
+        *capped = 1;
+    } else {
+        peer_state->busy = 1;
+        peer_state->next_due = now + conf->interval;
+        state->active_probes++;
+        state->schedule_cursor = peer_state->id;
+        *after_id = peer_state->id;
+        ngx_shmtx_unlock(&state->shpool->mutex);
+        ngx_stream_upstream_rr_peers_unlock(group);
+
+        (*started)++;
+        if (ngx_stream_upstream_healthcheck_start(conf, peer_state) != NGX_OK) {
+            ngx_stream_upstream_healthcheck_start_failed(conf, peer_state, 1);
+        }
+    }
 }
 
 static ngx_stream_upstream_healthcheck_peer_t *

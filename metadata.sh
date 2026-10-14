@@ -89,6 +89,30 @@ EOF
   printf '%s\n' "$value"
 }
 
+# Update the longest matching tag prefix and its ambiguity state.
+# Requires get_target_from_tag to initialize the best-match state.
+#
+# @param tag Release tag.
+# @param candidate Target name.
+# @param prefix Candidate tag prefix.
+# @return Updated best-match state in the calling shell.
+# @return-type None
+consider_tag_prefix() {
+  case "$1" in
+    "$3"-*)
+      prefix_length=${#3}
+      if [ "$prefix_length" -gt "$best_length" ]; then
+        best_target="$2"
+        best_prefix="$3"
+        best_length=$prefix_length
+        ambiguous=0
+      elif [ "$prefix_length" -eq "$best_length" ] && [ "$2" != "$best_target" ]; then
+        ambiguous=1
+      fi
+      ;;
+  esac
+}
+
 # Resolve a release tag to the target with its longest matching tag prefix.
 #
 # @param tag Release tag beginning with a canonical tag_prefix followed by a hyphen.
@@ -104,19 +128,7 @@ get_target_from_tag() {
   ambiguous=0
   while IFS="$tab" read -r record_type record_target record_field record_value _; do
     if [ "$record_type" = 'SCALAR' ] && [ "$record_field" = 'tag_prefix' ] && [ -n "$record_value" ]; then
-      case "$tag" in
-        "$record_value"-*)
-          prefix_length=${#record_value}
-          if [ "$prefix_length" -gt "$best_length" ]; then
-            best_target="$record_target"
-            best_prefix="$record_value"
-            best_length=$prefix_length
-            ambiguous=0
-          elif [ "$prefix_length" -eq "$best_length" ] && [ "$record_target" != "$best_target" ]; then
-            ambiguous=1
-          fi
-          ;;
-      esac
+      consider_tag_prefix "$tag" "$record_target" "$record_value"
     fi
   done <<EOF
 $records
