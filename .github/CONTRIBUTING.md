@@ -26,16 +26,22 @@ It also supports manual runs.
 Every pull request is checked because deleting a linked file can break documentation without changing Markdown.
 The checks use maintained markdownlint-cli2, rumdl, and Lychee releases.
 
-Run the same checks from the repository root:
+Install Node.js 24 LTS and pnpm 11.28.2 for Node-side tooling.
+Use rumdl 0.2.79 and Lychee 0.24.2, matching the workflow's tool versions.
+Install ShellCheck and shfmt for the existing Makefile shell gates.
+Run the checks from the repository root:
 
 ```sh
-npx --yes markdownlint-cli2@0.23.2 '**/*.md'
-rumdl check --enable MD046 --no-cache --respect-gitignore --exclude 'nginx-upstream-healthcheck/ngx_http_upstream_healthcheck_module/**' .
-lychee --config .lychee.toml '**/*.md'
+pnpm install --frozen-lockfile
+pnpm run check
+pnpm run fix
 ```
 
-The lint command requires Node.js 22 or newer with npm.
-Use rumdl 0.2.79 and Lychee 0.24.2, matching the workflow's tool versions.
+The root package manifest owns Node-side tooling and its lockfile records dependency resolution.
+`pnpm-workspace.yaml` selects patched smol-toml and KaTeX versions for development tooling.
+Remove these overrides when upstream dependencies select supported patched versions themselves.
+`check` runs Markdown lint, code-fence validation, relative-link validation, ShellCheck, and shell formatting checks.
+`fix` applies Markdown lint fixes and the existing Makefile shell formatter.
 The existing Markdown rules remain enabled through `.markdownlint-cli2.jsonc`.
 The CLI configuration respects Git ignore files and excludes the vendored healthcheck module.
 The fence check supplements Markdown lint with rumdl's built-in MD046 rule, including missing closing fences.
@@ -43,6 +49,21 @@ Lychee checks relative file paths and heading fragments offline, excluding netwo
 Its `.lychee.toml` configuration explicitly excludes generated and vendored paths, including when checking Git worktrees.
 All checks exclude ignored build outputs, source caches, and the vendored healthcheck module.
 These checks run without building targets or invoking release jobs.
+Node dependencies are development-only and are excluded from the Docker build context.
+Dockerfiles copy explicit target inputs and release packaging selects only metadata-listed target outputs.
+
+Run `pnpm audit --prod --audit-level low` for production dependency scope.
+Report `pnpm audit --audit-level low` findings separately, including upstream findings without available patches.
+Do not add audit exclusions or change lint rules to hide findings.
+
+### Git hooks
+
+Dependency installation runs Husky's `prepare` script in this checkout.
+Husky installs the tracked `.husky/pre-commit` and `.husky/pre-push` hooks through `.husky/_`.
+The hooks invoke `pnpm run pre-commit` and `pnpm run pre-push` respectively.
+Both scripts run the complete contributor checks and block Git operations when a check fails.
+Install the documented native tools before committing or pushing.
+Preserve existing hook owners through reviewed composition when adopting these hooks in an existing checkout.
 
 ## YAML filenames
 

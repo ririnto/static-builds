@@ -15,6 +15,10 @@ static-builds/
 +-- download.sh             # Source download dispatcher
 +-- metadata.sh             # Metadata query helper
 +-- package-release.sh      # Release package helper
++-- package.json            # Contributor check and fix scripts
++-- pnpm-lock.yaml          # Locked Node-side tooling
++-- pnpm-workspace.yaml     # Targeted tooling dependency overrides
++-- .husky/                 # Contributor Git hooks
 +-- .github/
 |   +-- build.sh            # Docker Buildx build entry
 |   +-- release-guard.sh    # Release tag validator
@@ -139,9 +143,31 @@ The repository MUST NOT enforce checksum verification or pinning for upstream so
 
 Follow [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md) for prose, YAML filenames, commits, issues, and pull requests.
 
+## DEVELOPMENT LIFECYCLE
+
+- Define the affected targets and observable acceptance evidence before changing source or tooling.
+- Complete each bounded change with its applicable checks before starting dependent work.
+- Reproduce failures through the real build or verifier entrypoint and fix their root causes.
+- Test observable behavior rather than implementation details or repeated configuration values.
+- Inspect exported binaries and release package members when changing build or packaging behavior.
+  Static checks alone do not establish runtime acceptance.
+- Review the complete posted diff and confirm its current head before normal server-side integration.
+- Record actual, reused, failed, and unrun evidence separately.
+- Confirm named `main` contains the merge and the issue closes before declaring delivery complete.
+- Stop task-owned processes and descendants before removing unused temporary resources.
+  Preserve shared resources, unique uncommitted work, and artifacts needed for recovery.
+
+These rules adapt the applicable [pstack lifecycle principles](https://github.com/cursor/plugins/tree/main/pstack).
+The [Sinon Harness tooling](https://github.com/ririnto/sinon/tree/main/plugins/harness/tooling) supplies the relevant pnpm baseline.
+This repository has no browser frontend, React application, or Gradle project.
+Apply target build verification rather than frontend or Gradle tooling.
+
 ## COMMANDS
 
 ```bash
+pnpm install --frozen-lockfile
+pnpm run check
+pnpm run fix
 make list-targets
 make build nginx
 make build nginx-upstream-healthcheck

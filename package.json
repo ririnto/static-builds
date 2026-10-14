@@ -1,0 +1,27 @@
+{
+  "devDependencies": {
+    "husky": "9.1.7",
+    "markdownlint-cli2": "0.23.3",
+    "npm-run-all2": "9.0.3"
+  },
+  "engines": {
+    "node": "^24.15.0"
+  },
+  "name": "static-builds",
+  "packageManager": "pnpm@11.28.2",
+  "private": true,
+  "scripts": {
+    "check": "run-p check:*",
+    "check:fences": "rumdl check --enable MD046 --no-cache --respect-gitignore --exclude 'nginx-upstream-healthcheck/ngx_http_upstream_healthcheck_module/**' .",
+    "check:links": "lychee --config .lychee.toml '**/*.md'",
+    "check:markdownlint-cli2": "markdownlint-cli2",
+    "check:shellcheck": "make lint",
+    "check:shfmt": "make shfmt-check",
+    "fix": "run-p fix:*",
+    "fix:markdownlint-cli2": "markdownlint-cli2 --fix",
+    "fix:shfmt": "make shfmt-write",
+    "pre-commit": "run-s check",
+    "pre-push": "run-s check",
+    "prepare": "husky"
+  }
+}
