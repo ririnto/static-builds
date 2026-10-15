@@ -1,0 +1,14 @@
+{
+  "extends": "@tsconfig/node-lts/tsconfig.json",
+  "compilerOptions": {
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "include": [
+    "no-box-drawing.test.ts",
+    "no-box-drawing.ts",
+    "oxfmt.config.ts",
+    "oxlint.config.ts"
+  ]
+}
