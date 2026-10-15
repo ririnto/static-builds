@@ -19,7 +19,7 @@ static-builds/
 +-- package-release.sh      # Release package helper
 +-- package.json            # Contributor check and fix scripts
 +-- pnpm-lock.yaml          # Locked Node-side tooling
-+-- pnpm-workspace.yaml     # Targeted tooling dependency overrides
++-- pnpm-workspace.yaml     # Dependency catalog and targeted tooling overrides
 +-- .husky/                 # Contributor Git hooks
 +-- .github/
 |   +-- build.sh            # Docker Buildx build entry
@@ -65,6 +65,16 @@ static-builds/
 
 - New top-level directories outside STRUCTURE MUST NOT be added (for example, `docs/`, `tests/`).
 - EditorConfig: 4-space indent (2 for .sh/.yaml)
+- Use pnpm catalogs with `^x.y.z` caret ranges for Node dependencies and required dependency overrides.
+  Reference catalog entries from `package.json` and overrides instead of duplicating versions.
+  Keep the package manager version free of hash suffixes.
+- Keep Husky's `prepare` script and tracked pre-commit and pre-push hooks connected to real contributor checks.
+  Verify successful Git operations and failure propagation through those hooks.
+- Ultracite MUST be the only caller of oxlint and oxfmt when those tools are used.
+  Never invoke oxlint or oxfmt directly.
+- Preserve the Markdownlint baseline with `gitignore: true`, compact tables, and recursively sorted configuration keys.
+  Never suppress, disable, or reconfigure lint rules to make changes pass.
+- Test observable behavior without hard-pinning prose or instruction wording.
 - Prefer explicit loop conditions and positive guarded blocks over mid-function returns, `continue`, and loop `break` statements.
   Use plain `if` / `else if` / `else` chains for repeated guards when evaluation order and cleanup remain identical.
   Preserve natural final returns, required failure propagation, and switch fall-through prevention.

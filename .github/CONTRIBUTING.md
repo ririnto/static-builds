@@ -37,13 +37,19 @@ pnpm run check
 pnpm run fix
 ```
 
-The root package manifest owns Node-side tooling and its lockfile records dependency resolution.
-`pnpm-workspace.yaml` selects patched smol-toml and KaTeX versions for development tooling.
+The root package manifest references Node-side tooling through the default pnpm catalog.
+`pnpm-workspace.yaml` owns `^x.y.z` caret ranges and catalog-backed smol-toml and KaTeX overrides for development tooling.
+Prefer supported upstream LTS lines, or supported stable releases when no LTS line exists.
+Keep the package manager version free of hash suffixes.
+The lockfile records the resolved dependency graph.
 Remove these overrides when upstream dependencies select supported patched versions themselves.
 `check` runs Markdown lint, code-fence validation, relative-link validation, ShellCheck, and shell formatting checks.
 `fix` applies Markdown lint fixes and the existing Makefile shell formatter.
 The existing Markdown rules remain enabled through `.markdownlint-cli2.jsonc`.
 The CLI configuration respects Git ignore files.
+Preserve compact Markdown tables and recursively sorted Markdownlint configuration keys.
+Use Ultracite as the only caller of oxlint and oxfmt when those tools are needed.
+Never invoke oxlint or oxfmt directly or weaken lint rules to make changes pass.
 The fence check supplements Markdown lint with rumdl's built-in MD046 rule, including missing closing fences.
 Lychee checks relative file paths and heading fragments offline, excluding network URLs.
 Its `.lychee.toml` configuration explicitly excludes generated paths, including when checking Git worktrees.
@@ -94,6 +100,12 @@ Review the complete posted change before merging.
 Publish through the feature branch and pull request rather than pushing changes directly to `main`.
 
 ## Verification
+
+Test observable behavior without hard-pinning prose or instruction wording.
+Prefer equivalent condition inversion over mid-function returns, continues, and loop breaks.
+Preserve evaluation order, cleanup, allocation-failure handling, and required failure propagation.
+Keep guards when inversion requires artificial flags or deeper nesting, and record the reason in an issue.
+Existing lint rules and formatter output take precedence.
 
 Run `python3 proxy/tests/verify-metadata.py` after changing metadata queries or parsing.
 The standalone downloader, nginx verifier, and Docker runner regressions run with `python3 proxy/tests/verify-download.py`, `python3 proxy/tests/verify-nginx.py`, and `python3 proxy/tests/verify-runner.py`.

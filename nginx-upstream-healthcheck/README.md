@@ -236,6 +236,7 @@ On macOS or another host without the required Linux runtime tools, use [proxy/te
 Run `proxy/tests/run-docker.sh .out/nginx-upstream-healthcheck/sbin/nginx`.
 
 The wrapper derives the UBI 10 Minimal tag from `metadata.json`, passes that maintained image reference to the test image build, mounts the binary read-only, and creates one uniquely named container with a four-CPU and eight-GiB cap.
-It defaults to the repository's `linux/amd64` build platform; pass `--platform linux/arm64` when the binary was built for another platform.
+It defaults to the repository's `linux/amd64` build platform.
+Pass `--platform linux/arm64` when the binary was built for another platform.
 It removes its container and image on normal completion or interruption.
 Neither runner is part of `make build nginx-upstream-healthcheck`, so build verification does not imply functional-suite acceptance.

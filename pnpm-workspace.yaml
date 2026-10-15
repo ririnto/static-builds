@@ -1,3 +1,10 @@
+catalog:
+  husky: ^9.1.7
+  katex: ^0.18.2
+  markdownlint-cli2: ^0.23.3
+  npm-run-all2: ^9.0.3
+  smol-toml: ^1.9.0
+
 overrides:
-  markdownlint-cli2>smol-toml: 1.9.0
-  micromark-extension-math>katex: 0.18.2
+  markdownlint-cli2>smol-toml: 'catalog:'
+  micromark-extension-math>katex: 'catalog:'
