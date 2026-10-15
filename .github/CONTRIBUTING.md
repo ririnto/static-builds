@@ -21,12 +21,13 @@ Use the repository's `.markdownlint-cli2.jsonc` when running Markdown lint.
 
 ### Markdown validation
 
-The [Markdown validation workflow](workflows/markdown-validation.yaml) reports lint, code-fence, and relative-link checks on every pull request.
+The [Markdown validation workflow](workflows/markdown-validation.yaml) reports Markdown, code-fence, and relative-link checks on every pull request.
 It also supports manual runs.
 Every pull request is checked because deleting a linked file can break documentation without changing Markdown.
 The checks use maintained markdownlint-cli2, rumdl, and Lychee releases.
+The Markdown job also runs the custom rule tests, TypeScript validation, and Ultracite checks.
 
-Install Node.js 24 LTS and pnpm 11.28.2 for Node-side tooling.
+Install Node.js 24.22.0 and pnpm 12.11.2 for Node-side tooling.
 Use rumdl 0.2.79 and Lychee 0.24.2, matching the workflow's tool versions.
 Install ShellCheck and shfmt for the existing Makefile shell gates.
 Run the checks from the repository root:
@@ -37,15 +38,16 @@ pnpm run check
 pnpm run fix
 ```
 
-The root package manifest references Node-side tooling through the default pnpm catalog.
+The root package manifest references Node-side tooling through the pnpm workspace catalog.
 `pnpm-workspace.yaml` owns `^x.y.z` caret ranges and catalog-backed smol-toml and KaTeX overrides for development tooling.
 Prefer supported upstream LTS lines, or supported stable releases when no LTS line exists.
 Keep the package manager version free of hash suffixes.
 The lockfile records the resolved dependency graph.
 Remove these overrides when upstream dependencies select supported patched versions themselves.
-`check` runs Markdown lint, code-fence validation, relative-link validation, ShellCheck, and shell formatting checks.
-`fix` applies Markdown lint fixes and the existing Makefile shell formatter.
+`check` runs Markdown lint, custom rule tests, TypeScript validation, Ultracite, code-fence validation, relative-link validation, ShellCheck, and shell formatting checks.
+`fix` applies Markdown lint fixes, Ultracite formatting, and the existing Makefile shell formatter.
 The existing Markdown rules remain enabled through `.markdownlint-cli2.jsonc`.
+The `docs/no-box-drawing` rule rejects Unicode box drawing characters in Markdown text and fenced code.
 The CLI configuration respects Git ignore files.
 Preserve compact Markdown tables and recursively sorted Markdownlint configuration keys.
 Use Ultracite as the only caller of oxlint and oxfmt when those tools are needed.

@@ -1,27 +1,39 @@
 {
-  "devDependencies": {
-    "husky": "catalog:",
-    "markdownlint-cli2": "catalog:",
-    "npm-run-all2": "catalog:"
-  },
-  "engines": {
-    "node": "^24.15.0"
-  },
   "name": "static-builds",
-  "packageManager": "pnpm@11.28.2",
   "private": true,
+  "type": "module",
   "scripts": {
     "check": "run-p check:*",
     "check:fences": "rumdl check --enable MD046 --no-cache --respect-gitignore .",
+    "check:lint-rules": "node --test no-box-drawing.test.ts",
     "check:links": "lychee --config .lychee.toml '**/*.md'",
     "check:markdownlint-cli2": "markdownlint-cli2",
     "check:shellcheck": "make lint",
     "check:shfmt": "make shfmt-check",
+    "check:typescript": "tsc --noEmit",
+    "check:ultracite": "ultracite check no-box-drawing.ts no-box-drawing.test.ts oxlint.config.ts oxfmt.config.ts package.json pnpm-workspace.yaml tsconfig.json .markdownlint-cli2.jsonc .github/workflows/markdown-validation.yaml",
     "fix": "run-p fix:*",
     "fix:markdownlint-cli2": "markdownlint-cli2 --fix",
     "fix:shfmt": "make shfmt-write",
+    "fix:ultracite": "ultracite fix no-box-drawing.ts no-box-drawing.test.ts oxlint.config.ts oxfmt.config.ts package.json pnpm-workspace.yaml tsconfig.json .markdownlint-cli2.jsonc .github/workflows/markdown-validation.yaml",
     "pre-commit": "run-s check",
     "pre-push": "run-s check",
     "prepare": "husky"
-  }
+  },
+  "devDependencies": {
+    "@tsconfig/node-lts": "catalog:",
+    "@types/node": "catalog:",
+    "husky": "catalog:",
+    "markdownlint": "catalog:",
+    "markdownlint-cli2": "catalog:",
+    "npm-run-all2": "catalog:",
+    "oxfmt": "catalog:",
+    "oxlint": "catalog:",
+    "typescript": "catalog:",
+    "ultracite": "catalog:"
+  },
+  "engines": {
+    "node": "^24.22.0"
+  },
+  "packageManager": "pnpm@12.11.2"
 }

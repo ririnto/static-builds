@@ -9,17 +9,38 @@ permissions:
 
 jobs:
   markdownlint:
-    name: Markdown lint
+    name: Markdown and tooling checks
     runs-on: ubuntu-26.04
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v7.0.1
 
-      - name: Check Markdown rules
-        uses: DavidAnson/markdownlint-cli2-action@v24.2.0
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6.1.0
         with:
-          globs: '**/*.md'
+          version: 12.11.2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 24.22.0
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check Markdown rules
+        run: pnpm run check:markdownlint-cli2
+
+      - name: Check custom Markdown rules
+        run: pnpm run check:lint-rules
+
+      - name: Check TypeScript
+        run: pnpm run check:typescript
+
+      - name: Check Ultracite
+        run: pnpm run check:ultracite
 
   fences:
     name: Code fences

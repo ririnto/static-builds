@@ -1,32 +1,24 @@
 {
+  "$schema": "https://raw.githubusercontent.com/DavidAnson/markdownlint-cli2/refs/tags/v0.23.3/schema/markdownlint-cli2-config-schema.json",
   "config": {
-    "$schema": "https://raw.githubusercontent.com/DavidAnson/markdownlint/v0.41.1/schema/markdownlint-config-schema.json",
     "code-block-style": {
       "style": "fenced"
     },
+    "docs/no-box-drawing": true,
     "line-length": false,
     "no-duplicate-heading": {
       "siblings_only": true
     },
     "no-emphasis-as-heading": true,
     "no-inline-html": {
-      "allowed_elements": [
-        "details",
-        "summary",
-        "kbd",
-        "img",
-        "code"
-      ],
-      "table_allowed_elements": [
-        "br"
-      ]
+      "allowed_elements": ["details", "summary", "kbd", "img", "code"],
+      "table_allowed_elements": ["br"]
     },
     "table-column-style": {
       "style": "compact"
     }
   },
+  "customRules": ["./no-box-drawing.ts"],
   "gitignore": true,
-  "globs": [
-    "**/*.md"
-  ]
+  "globs": ["**/*.md"]
 }
