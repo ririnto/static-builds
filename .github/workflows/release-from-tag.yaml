@@ -28,10 +28,7 @@ jobs:
         id: resolve
         env:
           TAG: ${{ github.ref_name }}
-        run: |-
-          TARGET=$(sh metadata.sh get-target-from-tag "$TAG")
-          sh .github/release-guard.sh "$TARGET" "$TAG"
-          printf 'target=%s\n' "$TARGET" >> "$GITHUB_OUTPUT"
+        run: sh .github/release-resolve.sh "$TAG"
 
   release:
     needs: resolve-target
