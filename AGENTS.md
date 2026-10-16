@@ -20,6 +20,7 @@ static-builds/
 +-- package.json            # Contributor check and fix scripts
 +-- pnpm-lock.yaml          # Locked Node-side tooling
 +-- pnpm-workspace.yaml     # Dependency catalog and targeted tooling overrides
++-- rules/                  # Custom Markdownlint rule implementations
 +-- .husky/                 # Contributor Git hooks
 +-- .github/
 |   +-- build.sh            # Docker Buildx build entry
@@ -74,6 +75,16 @@ static-builds/
   Never invoke oxlint or oxfmt directly.
 - Preserve the Markdownlint baseline with `gitignore: true`, compact tables, and recursively sorted configuration keys.
   Never suppress, disable, or reconfigure lint rules to make changes pass.
+- Keep custom Markdownlint rule implementations under `rules/`.
+- Use named capture groups and name-based access for regex matches and subgroups, including full matches.
+  Use named backreferences and replacement references.
+- Prefer parsers or literal operations when they express the match more clearly.
+  Preserve match selection, Unicode, offsets, evaluation order, effects, and resource lifetime.
+  Preserve optionality, flags, iteration, replacements, failures, and required interfaces.
+- Inline single-use production values when behavior, cost, inferred type, and effects remain unchanged.
+- Preserve required production interfaces and keep helpers only for actual reuse.
+  Inline concrete single-use test values when clear.
+  Test actual production interfaces without test-only seams.
 - Test observable behavior without hard-pinning prose or instruction wording.
 - Prefer explicit loop conditions and positive guarded blocks over mid-function returns, `continue`, and loop `break` statements.
   Use plain `if` / `else if` / `else` chains for repeated guards when evaluation order and cleanup remain identical.
