@@ -6,8 +6,8 @@
     "types": ["node"]
   },
   "include": [
-    "no-box-drawing.test.ts",
-    "no-box-drawing.ts",
+    "rules/no-box-drawing.test.ts",
+    "rules/no-box-drawing.ts",
     "oxfmt.config.ts",
     "oxlint.config.ts"
   ]

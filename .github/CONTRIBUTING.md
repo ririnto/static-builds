@@ -47,9 +47,11 @@ Remove these overrides when upstream dependencies select supported patched versi
 `check` runs Markdown lint, custom rule tests, TypeScript validation, Ultracite, code-fence validation, relative-link validation, ShellCheck, and shell formatting checks.
 `fix` applies Markdown lint fixes, Ultracite formatting, and the existing Makefile shell formatter.
 The existing Markdown rules remain enabled through `.markdownlint-cli2.jsonc`.
-The `docs/no-box-drawing` rule rejects Unicode box drawing characters in Markdown text and fenced code.
+The rule in `rules/no-box-drawing.ts` rejects Unicode box drawing characters in Markdown text and fenced code.
+It reads each full match through the named `boxDrawing` group and reports only the first match on each line.
 The CLI configuration respects Git ignore files.
 Preserve compact Markdown tables and recursively sorted Markdownlint configuration keys.
+The root `oxfmt.config.ts` ignores Markdown files and sets `trailingComma` to `none`.
 Use Ultracite as the only caller of oxlint and oxfmt when those tools are needed.
 Never invoke oxlint or oxfmt directly or weaken lint rules to make changes pass.
 The fence check supplements Markdown lint with rumdl's built-in MD046 rule, including missing closing fences.

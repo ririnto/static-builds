@@ -1,6 +1,6 @@
 import type { Rule } from "markdownlint";
 
-const boxDrawingPattern = /[\u2500-\u257F]/u;
+const boxDrawingPattern = /(?<boxDrawing>[\u{2500}-\u{257F}])/u;
 
 /**
  * Reports Unicode box drawing characters in Markdown.
@@ -10,12 +10,12 @@ const rule: Rule = {
   function: (params, onError) => {
     for (const [index, line] of params.lines.entries()) {
       const match = boxDrawingPattern.exec(line);
-      if (match) {
+      if (match?.groups?.boxDrawing) {
         onError({
           context: line.trim(),
           detail: "Use ASCII tree markers such as +-- and | instead.",
           lineNumber: index + 1,
-          range: [match.index + 1, match[0].length]
+          range: [match.index + 1, match.groups.boxDrawing.length]
         });
       }
     }
@@ -24,7 +24,5 @@ const rule: Rule = {
   parser: "none",
   tags: ["docs", "unicode"]
 };
-
-export { rule as "module.exports" };
 
 export default rule;
