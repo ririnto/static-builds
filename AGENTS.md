@@ -205,7 +205,6 @@ Follow [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md) for contributor proced
 - Reproduce failures through the real build or verifier entrypoint and fix their root causes.
 - Inspect exported binaries and release package members when changing build or packaging behavior.
   Static checks alone do not establish runtime acceptance.
-- Review the complete posted diff and confirm its current head before normal server-side integration.
 - Record actual, reused, failed, and unrun evidence separately, including unavailable checks.
 - Confirm named `main` contains the merge and the issue closes before declaring delivery complete.
 - Stop task-owned processes and descendants before removing unused temporary resources.

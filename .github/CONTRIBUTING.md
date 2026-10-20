@@ -77,7 +77,7 @@ Use one sentence per source line in commit bodies, issues, and pull requests.
 Open an ordinary pull request against `main` using the repository's pull request template.
 Link the issue and report the commands and results that cover the change.
 Mark failed and unrun checks as such.
-Review the complete posted change before merging.
+Review the complete posted change and confirm its current head before normal server-side integration.
 Publish through the feature branch and pull request rather than pushing changes directly to `main`.
 
 ## Verification
