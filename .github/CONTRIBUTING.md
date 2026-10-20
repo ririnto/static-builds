@@ -1,21 +1,13 @@
 # Contributing
 
 Read [AGENTS.md](../AGENTS.md) and the affected target's README before changing the repository.
+AGENTS.md owns repository conventions, and this guide owns contributor procedures and tool setup.
 Document the problem, affected targets, and acceptance criteria in an issue.
 Use the bug report template for failures and the change request template for improvements.
 Link related issues instead of expanding a completed issue's scope.
 
 ## Documentation
 
-Write one complete sentence per source line.
-Separate paragraphs with a blank line.
-Keep spaces between words and use lists for separate instructions.
-Do not join independent instructions with semicolons or other punctuation.
-Apply these rules to maintained Markdown, contributor instructions, AGENTS.md, and SKILL.md files when present.
-
-Preserve technical meaning, permission requirements, code, metadata, exact quotations, licenses, and Markdown table syntax.
-Keep code blocks and recorded command output intact when editing prose.
-Exclude generated files and vendored material from mechanical prose changes.
 Check Markdown rendering, relative links, and instruction loading paths after editing.
 Use the repository's `.markdownlint-cli2.jsonc` when running Markdown lint.
 
@@ -39,21 +31,16 @@ pnpm run fix
 ```
 
 The root package manifest references Node-side tooling through the pnpm workspace catalog.
-`pnpm-workspace.yaml` owns `^x.y.z` caret ranges and catalog-backed smol-toml and KaTeX overrides for development tooling.
-Prefer supported upstream LTS lines, or supported stable releases when no LTS line exists.
-Keep the package manager version free of hash suffixes.
+`pnpm-workspace.yaml` defines catalog-backed `smol-toml` and `katex` development overrides.
 The lockfile records the resolved dependency graph.
-Remove these overrides when upstream dependencies select supported patched versions themselves.
+Follow [AGENTS.md](../AGENTS.md) for catalog, version, and override conventions.
 `check` runs Markdown lint, custom rule tests, TypeScript validation, Ultracite, code-fence validation, relative-link validation, ShellCheck, and shell formatting checks.
 `fix` applies Markdown lint fixes, Ultracite formatting, and the existing Makefile shell formatter.
-The existing Markdown rules remain enabled through `.markdownlint-cli2.jsonc`.
 The rule in `rules/no-box-drawing.ts` rejects Unicode box drawing characters in Markdown text and fenced code.
 It reads each full match through the named `boxDrawing` group and reports only the first match on each line.
 The CLI configuration respects Git ignore files.
-Preserve compact Markdown tables and recursively sorted Markdownlint configuration keys.
 The root `oxfmt.config.ts` ignores Markdown files and sets `trailingComma` to `none`.
-Use Ultracite as the only caller of oxlint and oxfmt when those tools are needed.
-Never invoke oxlint or oxfmt directly or weaken lint rules to make changes pass.
+Follow the Markdownlint baseline and Ultracite caller requirements in [AGENTS.md](../AGENTS.md).
 The fence check supplements Markdown lint with rumdl's built-in MD046 rule, including missing closing fences.
 Lychee checks relative file paths and heading fragments offline, excluding network URLs.
 Its `.lychee.toml` configuration explicitly excludes generated paths, including when checking Git worktrees.
@@ -77,17 +64,7 @@ Preserve existing hook owners through reviewed composition when adopting these h
 
 ## YAML filenames
 
-Use `.yaml` when the consuming platform supports that extension.
-Check filename discovery rules and repository references before renaming YAML files.
-GitHub workflows and Dependabot configuration already use `.yaml` here.
-
-Keep `.gitlab-ci.yml` as GitLab's default pipeline entrypoint.
-Renaming it would require changing the project's configured CI/CD path.
-See [GitLab's pipeline tutorial](https://docs.gitlab.com/ci/quick_start/).
-
-Keep `templates/static-release.yml` because GitLab CI/CD components require `.yml` component filenames.
-See [GitLab's component directory structure](https://docs.gitlab.com/ci/components/#directory-structure).
-The parent pipeline and child pipeline generator consume the `static-release` component.
+Follow the YAML filename conventions in [AGENTS.md](../AGENTS.md).
 
 ## Commits and pull requests
 
@@ -105,14 +82,15 @@ Publish through the feature branch and pull request rather than pushing changes 
 
 ## Verification
 
-Test observable behavior without hard-pinning prose or instruction wording.
-Prefer equivalent condition inversion over mid-function returns, continues, and loop breaks.
-Preserve evaluation order, cleanup, allocation-failure handling, and required failure propagation.
-Keep guards when inversion requires artificial flags or deeper nesting, and record the reason in an issue.
-Existing lint rules and formatter output take precedence.
+Follow behavior and control-flow conventions in [AGENTS.md](../AGENTS.md).
+Explain in the issue when existing guards remain because inversion requires artificial flags or deeper nesting.
 
 Run `python3 proxy/tests/verify-metadata.py` after changing metadata queries or parsing.
-The standalone downloader, nginx verifier, and Docker runner regressions run with `python3 proxy/tests/verify-download.py`, `python3 proxy/tests/verify-nginx.py`, and `python3 proxy/tests/verify-runner.py`.
+
+- Run `python3 proxy/tests/verify-download.py` for downloader regressions.
+- Run `python3 proxy/tests/verify-nginx.py` for nginx verifier regressions.
+- Run `python3 proxy/tests/verify-runner.py` for Docker runner regressions.
+
 The downloader and nginx verifier require GNU Coreutils `timeout` or `gtimeout`.
 The downloader also requires wget and OpenSSL.
 Linux containers running process-lifecycle fixtures need an init process to reap orphaned children.
@@ -120,9 +98,7 @@ Use Docker's `--init` option when running these fixtures in a container.
 The native healthcheck module is maintained project source.
 Changes to its scheduling, probe I/O, or cleanup require a target build and the separate [functional suite](../nginx-upstream-healthcheck/README.md#build-verification).
 
-For documentation changes, check Markdown syntax, rendering, relative links, and preservation of code and recorded output.
 For build changes, run `make build <target>` for each affected target before creating release tags.
-Report unavailable tools and checks that could not run.
 The release workflows run on release tags or reusable workflow calls.
 The separate Markdown validation workflow runs on pull requests or manual requests with read-only repository access.
 Do not create release tags to validate documentation changes.
