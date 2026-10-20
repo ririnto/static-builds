@@ -143,7 +143,7 @@ static-builds/
 - Put each independent instruction in its own complete sentence or list item.
 - Apply these authoring rules when writing or revising maintained Markdown, contributor instructions, `AGENTS.md`, and `SKILL.md` files.
 - Preserve technical meaning, permission requirements, code, metadata, exact quotations, licenses, and Markdown table syntax.
-- Keep code blocks and recorded command output intact.
+- Keep code blocks and recorded command output intact when editing prose.
 - Exclude generated files and vendored material from mechanical prose changes.
 
 ## YAML FILENAMES
