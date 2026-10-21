@@ -188,7 +188,7 @@ It does not count a successful recovery as another failure.
 
 ## HAProxy behavior comparison
 
-This repository tracks HAProxy 3.4.6 on the 3.4 series.
+This repository tracks HAProxy 3.4.7 on the 3.4 series.
 The result names follow layer distinctions documented by the [HAProxy 3.4 configuration manual](https://docs.haproxy.org/3.4/configuration.html).
 The NGINX results classify the point where each probe succeeded or failed while retaining NGINX's selected-peer routing.
 
