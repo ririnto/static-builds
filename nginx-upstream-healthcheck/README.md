@@ -39,6 +39,8 @@ The healthcheck profile needs no additional runtime library.
 ## njs scripting
 
 Both NGINX targets include njs 1.0.2 for HTTP and stream scripting.
+The release fixes XML security issues CVE-2026-101025 and CVE-2026-101019 and changes XML node-mutation compatibility and Fetch response validation.
+Review the [official njs 1.0.2 release notes](https://nginx.org/en/docs/njs/changes.html#njs1.0.2) before upgrading existing scripts that use XML or Fetch.
 Set `js_engine qjs;` in each context that imports an njs script.
 The [official engine guidance](https://nginx.org/en/docs/njs/engine.html) recommends QuickJS for new configurations.
 The packaged `conf/scripting.conf` and `conf/scripting.js` provide the scripting example.

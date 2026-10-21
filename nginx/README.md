@@ -26,6 +26,10 @@ Set `js_engine qjs` to select the statically linked QuickJS-NG engine.
 The [official engine guidance](https://nginx.org/en/docs/njs/engine.html) recommends QuickJS for new configurations.
 The optional libxslt dependency is excluded from this target.
 
+The njs 1.0.2 release fixes XML security issues CVE-2026-101025 and CVE-2026-101019 and hardens Fetch response handling.
+It also changes XML node-mutation compatibility and Fetch response validation.
+Review the [official njs 1.0.2 release notes](https://nginx.org/en/docs/njs/changes.html#njs1.0.2) before upgrading existing scripts that use XML or Fetch.
+
 On a compatible Linux host, run the packaged example from its deployment prefix:
 
 ```sh

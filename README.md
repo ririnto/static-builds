@@ -156,7 +156,7 @@ Each target must follow this structure:
        "env": {
          "ALPINE_VERSION": "3.24.2",
          "YOUR_TARGET_VERSION": "1.0.0",
-         "UBI10_MINIMAL_VERSION": "10.2-1790753097"
+         "UBI10_MINIMAL_VERSION": "10.2-1792457157"
        }
      }
    }
