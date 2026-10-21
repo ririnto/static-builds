@@ -1,6 +1,6 @@
 # NGINX Upstream Healthcheck
 
-This target builds NGINX Open Source stable release 1.30.5 as a static musl PIE with active HTTP and stream health checks, njs, and VTS metrics.
+This target builds NGINX Open Source stable release 1.30.6 as a static musl PIE with active HTTP and stream health checks, njs, and VTS metrics.
 The healthcheck code is compiled into the binary as `ngx_http_upstream_healthcheck_module`.
 
 ## Build and packaged files
@@ -11,8 +11,8 @@ Build metadata selects the NGINX, njs, QuickJS-NG, and VTS release versions.
 
 | Component | Version | Purpose |
 | --- | --- | --- |
-| NGINX Open Source | 1.30.5 | Provides the HTTP and stream servers. |
-| njs | 1.0.1 | Provides JavaScript scripting in HTTP and stream. |
+| NGINX Open Source | 1.30.6 | Provides the HTTP and stream servers. |
+| njs | 1.0.2 | Provides JavaScript scripting in HTTP and stream. |
 | QuickJS-NG | 0.17.0 | Provides the recommended JavaScript engine for njs. |
 | nginx-module-vts | 0.2.7 | Provides NGINX traffic metrics. |
 
@@ -38,7 +38,9 @@ The healthcheck profile needs no additional runtime library.
 
 ## njs scripting
 
-Both NGINX targets include njs 1.0.1 for HTTP and stream scripting.
+Both NGINX targets include njs 1.0.2 for HTTP and stream scripting.
+The release fixes XML security issues CVE-2026-101025 and CVE-2026-101019 and changes XML node-mutation compatibility and Fetch response validation.
+Review the [official njs 1.0.2 release notes](https://nginx.org/en/docs/njs/changes.html#njs1.0.2) before upgrading existing scripts that use XML or Fetch.
 Set `js_engine qjs;` in each context that imports an njs script.
 The [official engine guidance](https://nginx.org/en/docs/njs/engine.html) recommends QuickJS for new configurations.
 The packaged `conf/scripting.conf` and `conf/scripting.js` provide the scripting example.
@@ -55,7 +57,7 @@ The target already compiles njs with QuickJS-NG, but the available JavaScript AP
 | Resolved peer and routing APIs | NGINX exposes upstream peer storage to native modules. | njs has no API for the actual resolved peer address or the peer used by client routing. |
 | Native module loading | [`js_load_http_native_module`](https://nginx.org/en/docs/http/ngx_http_js_module.html#js_load_http_native_module) and [`js_load_stream_native_module`](https://nginx.org/en/docs/stream/ngx_stream_js_module.html#js_load_stream_native_module) load native modules. | A custom C module would still be required to add peer and socket APIs, so this does not reduce maintenance. |
 
-The target uses QuickJS-NG 0.17.0 with njs 1.0.1 and links both into the static NGINX binary.
+The target uses QuickJS-NG 0.17.0 with njs 1.0.2 and links both into the static NGINX binary.
 Using njs for the current probe contract would still require custom C integration for upstream peer selection and event-driven socket work.
 The existing C implementation therefore remains the smaller maintained path for dynamic multi-address peers and arbitrary stream protocols.
 
@@ -188,7 +190,7 @@ It does not count a successful recovery as another failure.
 
 ## HAProxy behavior comparison
 
-This repository tracks HAProxy 3.4.6 on the 3.4 series.
+This repository tracks HAProxy 3.4.7 on the 3.4 series.
 The result names follow layer distinctions documented by the [HAProxy 3.4 configuration manual](https://docs.haproxy.org/3.4/configuration.html).
 The NGINX results classify the point where each probe succeeded or failed while retaining NGINX's selected-peer routing.
 

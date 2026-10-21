@@ -15,7 +15,7 @@ import time
 from typing import Final
 
 
-_EXPECTED_ENGINE: Final = "njs 1.0.1 engine QuickJS"
+_EXPECTED_ENGINE: Final = "njs 1.0.2 engine QuickJS"
 _SCENARIOS: Final = (
     ("success", 0, None, False),
     ("http_error_first", 22, None, False),
@@ -264,7 +264,7 @@ def _run_scenario(repository: Path, scenario: tuple[str, int, signal.Signals | N
             **os.environ,
             "PATH": os.pathsep.join((str(tools), os.environ.get("PATH", ""))),
             "TARGET_PREFIX": str(target),
-            "NJS_VERSION": "1.0.1",
+            "NJS_VERSION": "1.0.2",
             "NGINX_EXPECTED_ENGINE": _EXPECTED_ENGINE,
             "NGINX_SCENARIO": name,
             "NGINX_RESISTANT": "1" if resistant else "0",
