@@ -1,7 +1,6 @@
 # Contributing
 
-Read [AGENTS.md](../AGENTS.md) and the affected target's README before changing the repository.
-AGENTS.md owns repository conventions, and this guide owns contributor procedures and tool setup.
+Read the affected target's README before changing the repository.
 Document the problem, affected targets, and acceptance criteria in an issue.
 Use the bug report template for failures and the change request template for improvements.
 Link related issues instead of expanding a completed issue's scope.
