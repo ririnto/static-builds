@@ -1,6 +1,8 @@
 # Vector Static Build
 
 This target packages the upstream `x86_64-unknown-linux-musl` Vector binary as a static artifact.
+Review the [0.59.0 upgrade guide](https://vector.dev/releases/0.59.0/) and [0.60.0 upgrade guide](https://vector.dev/releases/0.60.0/) before upgrading consumer configurations.
+Vector 0.60.0 removes `datadog_metrics.series_api_version: v1` and requires an explicit InfluxDB sink `version`.
 
 ## Modules and Features
 

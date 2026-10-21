@@ -19,8 +19,8 @@ Every pull request is checked because deleting a linked file can break documenta
 The checks use maintained markdownlint-cli2, rumdl, and Lychee releases.
 The Markdown job also runs the custom rule tests, TypeScript validation, and Ultracite checks.
 
-Install Node.js 24.22.0 and pnpm 12.11.2 for Node-side tooling.
-Use rumdl 0.2.79 and Lychee 0.24.2, matching the workflow's tool versions.
+Install Node.js 24.22.0 and pnpm 12.14.0 for Node-side tooling.
+Use rumdl 0.3.0 and Lychee 0.24.2, matching the workflow's tool versions.
 Install ShellCheck and shfmt for the existing Makefile shell gates.
 Run the checks from the repository root:
 
@@ -31,7 +31,7 @@ pnpm run fix
 ```
 
 The root package manifest references Node-side tooling through the pnpm workspace catalog.
-`pnpm-workspace.yaml` defines catalog-backed `smol-toml` and `katex` development overrides.
+`pnpm-workspace.yaml` defines catalog-backed `markdown-it`, `smol-toml`, and `katex` development overrides.
 The lockfile records the resolved dependency graph.
 Follow [AGENTS.md](../AGENTS.md) for catalog, version, and override conventions.
 `check` runs Markdown lint, custom rule tests, TypeScript validation, Ultracite, code-fence validation, relative-link validation, ShellCheck, and shell formatting checks.

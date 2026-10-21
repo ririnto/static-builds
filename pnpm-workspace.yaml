@@ -3,11 +3,12 @@ catalog:
   "@types/node": ^24.19.2
   husky: ^9.1.7
   katex: ^0.19.0
+  markdown-it: ^15.0.3
   markdownlint: ^0.42.0
   markdownlint-cli2: ^0.23.3
   npm-run-all2: ^9.0.3
-  oxfmt: ^0.73.0
-  oxlint: ^1.88.0
+  oxfmt: ^0.74.0
+  oxlint: ^1.89.0
   smol-toml: ^1.9.1
   typescript: ^7.0.2
   ultracite: ^8.0.1
@@ -15,5 +16,6 @@ catalog:
 minimumReleaseAge: 0
 
 overrides:
+  markdownlint-cli2>markdown-it: "catalog:"
   markdownlint-cli2>smol-toml: "catalog:"
   micromark-extension-math>katex: "catalog:"
