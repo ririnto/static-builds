@@ -32,14 +32,12 @@ pnpm run fix
 The root package manifest references Node-side tooling through the pnpm workspace catalog.
 `pnpm-workspace.yaml` defines catalog-backed `markdown-it`, `smol-toml`, and `katex` development overrides.
 The lockfile records the resolved dependency graph.
-Follow [AGENTS.md](../AGENTS.md) for catalog, version, and override conventions.
 `check` runs Markdown lint, custom rule tests, TypeScript validation, Ultracite, code-fence validation, relative-link validation, ShellCheck, and shell formatting checks.
 `fix` applies Markdown lint fixes, Ultracite formatting, and the existing Makefile shell formatter.
 The rule in `rules/no-box-drawing.ts` rejects Unicode box drawing characters in Markdown text and fenced code.
 It reads each full match through the named `boxDrawing` group and reports only the first match on each line.
 The CLI configuration respects Git ignore files.
 The root `oxfmt.config.ts` ignores Markdown files and sets `trailingComma` to `none`.
-Follow the Markdownlint baseline and Ultracite caller requirements in [AGENTS.md](../AGENTS.md).
 The fence check supplements Markdown lint with rumdl's built-in MD046 rule, including missing closing fences.
 Lychee checks relative file paths and heading fragments offline, excluding network URLs.
 Its `.lychee.toml` configuration explicitly excludes generated paths, including when checking Git worktrees.
@@ -61,10 +59,6 @@ Both scripts run the complete contributor checks and block Git operations when a
 Install the documented native tools before committing or pushing.
 Preserve existing hook owners through reviewed composition when adopting these hooks in an existing checkout.
 
-## YAML filenames
-
-Follow the YAML filename conventions in [AGENTS.md](../AGENTS.md).
-
 ## Commits and pull requests
 
 Create a feature branch from the current `main` branch.
@@ -81,7 +75,6 @@ Publish through the feature branch and pull request rather than pushing changes 
 
 ## Verification
 
-Follow behavior and control-flow conventions in [AGENTS.md](../AGENTS.md).
 Explain in the issue when existing guards remain because inversion requires artificial flags or deeper nesting.
 
 Run `python3 proxy/tests/verify-metadata.py` after changing metadata queries or parsing.
