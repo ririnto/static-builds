@@ -16,7 +16,7 @@ The [Markdown validation workflow](workflows/markdown-validation.yaml) reports M
 It also supports manual runs.
 Every pull request is checked because deleting a linked file can break documentation without changing Markdown.
 The checks use maintained markdownlint-cli2, rumdl, and Lychee releases.
-The Markdown job also runs the custom rule tests, TypeScript validation, and Ultracite checks.
+The Markdown job also runs the rule tests, TypeScript validation, and Ultracite checks.
 
 Install Node.js 24.22.0 and pnpm 12.15.0 for Node-side tooling.
 Use rumdl 0.3.0 and Lychee 0.24.2, matching the workflow's tool versions.
@@ -32,12 +32,16 @@ pnpm run fix
 The root package manifest references Node-side tooling through the pnpm workspace catalog.
 `pnpm-workspace.yaml` defines the catalog-backed `katex` development override required by `micromark-extension-math`.
 The lockfile records the resolved dependency graph.
-`check` runs Markdown lint, custom rule tests, TypeScript validation, Ultracite, code-fence validation, relative-link validation, ShellCheck, and shell formatting checks.
-`fix` applies Markdown lint fixes, Ultracite formatting, and the existing Makefile shell formatter.
-The rule in `rules/no-box-drawing.ts` rejects Unicode box drawing characters in Markdown text and fenced code.
-It reads each full match through the named `boxDrawing` group and reports only the first match on each line.
+`check` runs Markdown lint, rule tests, TypeScript validation, Ultracite, code-fence validation, relative-link validation, ShellCheck, and shell formatting checks.
+`fix` applies Markdown lint fixes, Ultracite formatting for selected configuration files, and the existing Makefile shell formatter.
+Markdownlint loads the upstream `markdownlint-rule-search-replace` package through `customRules`.
+Its configured box-drawing check preserves the [maintained rule contract](https://github.com/ririnto/sinon/blob/main/plugins/harness/docs/tools/lint-rule-mapping.md#markdown-policies).
+It reports the first Unicode box-drawing character per line, including fenced code, without automatic replacements.
+The existing rule tests exercise the actual configuration through Markdownlint's public API.
+Their direct `markdown-it` dependency supplies the legacy parser required by the upstream rule.
 The CLI configuration respects Git ignore files.
-The root `oxfmt.config.ts` ignores Markdown files and sets `trailingComma` to `none`.
+Only the supported `customRules` spelling loads packages through the installed CLI2 loader.
+The lowercase `customrules` spelling does not register rules through this entrypoint.
 The fence check supplements Markdown lint with rumdl's built-in MD046 rule, including missing closing fences.
 Lychee checks relative file paths and heading fragments offline, excluding network URLs.
 Its `.lychee.toml` configuration explicitly excludes generated paths, including when checking Git worktrees.
@@ -45,6 +49,42 @@ All checks exclude ignored build outputs and source caches.
 These checks run without building targets or invoking release jobs.
 Node dependencies are development-only and are excluded from the Docker build context.
 Dockerfiles copy explicit target inputs and release packaging selects only metadata-listed target outputs.
+
+### Contributor toolchain standards
+
+The TypeScript lint, formatter, and compiler configurations form one contributor-tooling group.
+`oxlint.config.ts` extends `ultracite/oxlint/core` and preserves its environment, ignore patterns, rules, and test overrides.
+The preset supplies native ESLint, TypeScript, Unicorn, Oxc, import, JSDoc, Node, and Promise plugins.
+There are no project JavaScript plugins or local rule implementations.
+`check:ultracite` checks the retained rule test, both root TypeScript configurations, and its explicit configuration-file list.
+`check:typescript` checks those TypeScript files through `tsconfig.json` and the Node LTS compiler preset.
+Type-aware Oxlint rules are not active because this invocation does not enable type-aware analysis or install its companion engine.
+The njs runtime example in `nginx/scripting.js` is outside this contributor-tooling group and requires its own runtime-aware validation.
+
+The table maps effective enforcement to engineering qualities rather than adding another prose rule set.
+
+| Pillar | Effective enforcement | Applicable scope and rationale |
+| --- | --- | --- |
+| Performance | Ultracite core `no-await-in-loop`, `unicorn/prefer-set-has`, and `unicorn/prefer-array-some`. | The linted TypeScript tooling avoids unnecessary sequential work and unsuitable collection operations. |
+| Stability | Ultracite core `no-unsafe-finally`, `no-unsafe-optional-chaining`, `no-constant-condition`, and `import/no-cycle`, plus TypeScript checking and ShellCheck. | Tooling and maintained shell scripts receive static checks for unsafe control flow, invalid accesses, types, and shell failures. |
+| Consistency | Core `prefer-named-capture-group` and `require-unicode-regexp`, Markdownlint `table-column-style`, and configured upstream `search-replace`. | Linted tooling and maintained Markdown retain readable regex captures, compact tables, and portable tree markers. |
+| Maintainability | Core `no-unused-vars` and `import/no-duplicates`, rumdl MD046, and offline Lychee checks. | Tooling and documentation avoid unused bindings, duplicate imports, unclosed fences, and broken local references. |
+
+These static checks do not establish measured performance improvements or target runtime acceptance.
+
+### Formatter safety
+
+`oxfmt.config.ts` spreads `ultracite/oxfmt`, preserves its required ignores, and sets `trailingComma` to `none`.
+It also excludes Markdown, JavaScript, and TypeScript files from Oxfmt.
+The inherited formatter can sort bound imports, rewrite recognized embedded or Tailwind literals, and normalize comments or raw literal spellings.
+Executable source therefore remains lint-only under the contributor commands.
+`fix:ultracite` omits executable source because Ultracite fixes invoke both lint fixes and formatting.
+The source files remain in `check:ultracite` and TypeScript validation.
+
+The retained formatter scope is `package.json`, `pnpm-workspace.yaml`, `tsconfig.json`, `.markdownlint-cli2.jsonc`, and the Markdown validation workflow.
+Formatter acceptance for that scope requires unchanged parsed values, meaningful member order, literal contents, and comments, followed by an idempotent second pass.
+Conditional package exports and YAML command scalars require fresh safety verification when their contents change.
+Ultracite remains the only direct caller of Oxlint and Oxfmt.
 
 Run `pnpm audit --prod --audit-level low` for production dependency scope.
 Report `pnpm audit --audit-level low` findings separately, including upstream findings without available patches.
@@ -54,7 +94,7 @@ Do not add audit exclusions or change lint rules to hide findings.
 
 Dependency installation runs Husky's `prepare` script in this checkout.
 Husky installs the tracked `.husky/pre-commit` and `.husky/pre-push` hooks through `.husky/_`.
-The hooks invoke `pnpm run pre-commit` and `pnpm run pre-push` respectively.
+The hooks invoke `corepack pnpm run pre-commit` and `corepack pnpm run pre-push` respectively.
 Both scripts run the complete contributor checks and block Git operations when a check fails.
 Install the documented native tools before committing or pushing.
 Preserve existing hook owners through reviewed composition when adopting these hooks in an existing checkout.

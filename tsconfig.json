@@ -7,7 +7,6 @@
   },
   "include": [
     "rules/no-box-drawing.test.ts",
-    "rules/no-box-drawing.ts",
     "oxfmt.config.ts",
     "oxlint.config.ts"
   ]
