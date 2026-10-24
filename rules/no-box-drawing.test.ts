@@ -8,7 +8,9 @@ import type { Configuration, Rule } from "markdownlint";
 import { applyFixes } from "markdownlint";
 import { lint } from "markdownlint/sync";
 
-const { config }: { config: Configuration } = JSON.parse(
+const { config }: { config: Configuration } = createRequire(import.meta.url)(
+  "markdownlint-cli2/parsers/jsonc"
+).default(
   readFileSync(new URL("../.markdownlint-cli2.jsonc", import.meta.url), "utf-8")
 );
 const searchReplace: Rule = createRequire(import.meta.url)(
