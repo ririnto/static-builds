@@ -30,7 +30,7 @@ pnpm run fix
 ```
 
 The root package manifest references Node-side tooling through the pnpm workspace catalog.
-`pnpm-workspace.yaml` defines catalog-backed `markdown-it`, `smol-toml`, and `katex` development overrides.
+`pnpm-workspace.yaml` defines the catalog-backed `katex` development override required by `micromark-extension-math`.
 The lockfile records the resolved dependency graph.
 `check` runs Markdown lint, custom rule tests, TypeScript validation, Ultracite, code-fence validation, relative-link validation, ShellCheck, and shell formatting checks.
 `fix` applies Markdown lint fixes, Ultracite formatting, and the existing Makefile shell formatter.
