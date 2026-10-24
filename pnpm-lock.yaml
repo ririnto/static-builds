@@ -173,12 +173,18 @@ catalogs:
     husky:
       specifier: ^9.1.7
       version: 9.1.7
+    markdown-it:
+      specifier: ^15.0.3
+      version: 15.0.3
     markdownlint:
       specifier: ^0.42.0
       version: 0.42.0
     markdownlint-cli2:
       specifier: ^0.24.0
       version: 0.24.0
+    markdownlint-rule-search-replace:
+      specifier: ^1.2.0
+      version: 1.2.0
     npm-run-all2:
       specifier: ^9.0.4
       version: 9.0.4
@@ -214,12 +220,18 @@ importers:
       husky:
         specifier: 'catalog:'
         version: 9.1.7
+      markdown-it:
+        specifier: 'catalog:'
+        version: 15.0.3
       markdownlint:
         specifier: 'catalog:'
         version: 0.42.0
       markdownlint-cli2:
         specifier: 'catalog:'
         version: 0.24.0
+      markdownlint-rule-search-replace:
+        specifier: 'catalog:'
+        version: 1.2.0
       npm-run-all2:
         specifier: 'catalog:'
         version: 9.0.4
@@ -994,6 +1006,18 @@ packages:
     resolution: {integrity: sha512-c5hU2MDoTlS230MLzdNlkIyxImXq5acxGKz4nYz4aDhH/2BgFtpsA7iK9/OoTHMgZ4FuR0wedTQA31K6Lp9I/Q==}
     engines: {node: '>=22'}
     hasBin: true
+
+  markdownlint-micromark@0.1.2:
+    resolution: {integrity: sha512-jRxlQg8KpOfM2IbCL9RXM8ZiYWz2rv6DlZAnGv8ASJQpUh6byTBnEsbuMZ6T2/uIgntyf7SKg/mEaEBo1164fQ==}
+    engines: {node: '>=14.18.0'}
+
+  markdownlint-rule-helpers@0.21.0:
+    resolution: {integrity: sha512-27WM6H76t79EZjEl3jSabV0ZzXsC5QaSslI/5N1XuXV0mJRA6i3BPMGFrtZUbhlCNgtY6oC9h5JhtpDMv95tKg==}
+    engines: {node: '>=16'}
+
+  markdownlint-rule-search-replace@1.2.0:
+    resolution: {integrity: sha512-l2eeVjb0ijxO+dO1ZrODcht+qnJ0VuiAAdBx1J8oa2kAugXl3NhxAGjfNuTfEJae5OQbdSGT+NjMczyzBXvWMA==}
+    engines: {node: '>=16'}
 
   markdownlint@0.42.0:
     resolution: {integrity: sha512-kzsCV/rPWRFn3jUhcB919YF4Qgeh0g9tcogoXFadGSo6Zxj6662YOqWXv0jDn8nv5KCCxDfMKJZv6N4HkNkvTg==}
@@ -1894,6 +1918,16 @@ snapshots:
       smol-toml: 1.9.1
     transitivePeerDependencies:
       - supports-color
+
+  markdownlint-micromark@0.1.2: {}
+
+  markdownlint-rule-helpers@0.21.0:
+    dependencies:
+      markdownlint-micromark: 0.1.2
+
+  markdownlint-rule-search-replace@1.2.0:
+    dependencies:
+      markdownlint-rule-helpers: 0.21.0
 
   markdownlint@0.42.0:
     dependencies:

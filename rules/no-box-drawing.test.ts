@@ -1,21 +1,37 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { test } from "node:test";
 
+import MarkdownIt from "markdown-it";
+import type { Configuration, Rule } from "markdownlint";
+import { applyFixes } from "markdownlint";
 import { lint } from "markdownlint/sync";
 
-import noBoxDrawing from "./no-box-drawing.ts";
+const { config }: { config: Configuration } = JSON.parse(
+  readFileSync(new URL("../.markdownlint-cli2.jsonc", import.meta.url), "utf-8")
+);
+const searchReplace: Rule = createRequire(import.meta.url)(
+  "markdownlint-rule-search-replace"
+);
+const lintOptions = {
+  config,
+  customRules: [searchReplace],
+  markdownItFactory: () => new MarkdownIt()
+};
 
 const violations = (input: string) =>
   (
     lint({
-      config: { default: false, "docs/no-box-drawing": true },
-      customRules: [noBoxDrawing],
+      ...lintOptions,
       strings: { input }
     }).input ?? []
-  ).map(({ lineNumber, errorRange }) => ({
-    errorRange,
-    lineNumber
-  }));
+  )
+    .filter(({ ruleNames }) => ruleNames.includes("search-replace"))
+    .map(({ lineNumber, errorRange }) => ({
+      errorRange,
+      lineNumber
+    }));
 
 test("accepts ASCII tree markers and characters outside the rule range", () => {
   assert.deepEqual(
@@ -68,5 +84,23 @@ test("reports matching columns and line numbers across multiline Markdown", () =
       { errorRange: [4, 1], lineNumber: 2 },
       { errorRange: [4, 1], lineNumber: 4 }
     ]
+  );
+});
+
+test("reports UTF-16 columns after astral characters", () => {
+  assert.deepEqual(
+    violations(`${String.fromCodePoint(0x1_f6_00)} ${String.fromCodePoint(0x25_00)}`),
+    [{ errorRange: [4, 1], lineNumber: 1 }]
+  );
+});
+
+test("leaves box drawing content unchanged when applying fixes", () => {
+  const input = `# Diagnostic only\n\nA box ${String.fromCodePoint(0x25_00)} remains.\n`;
+  assert.equal(
+    applyFixes(
+      input,
+      lint({ ...lintOptions, strings: { input } }).input ?? []
+    ),
+    input
   );
 });

@@ -6,8 +6,10 @@ catalog:
   "@types/node": ^24.19.2
   husky: ^9.1.7
   katex: ^0.19.0
+  markdown-it: ^15.0.3
   markdownlint: ^0.42.0
   markdownlint-cli2: ^0.24.0
+  markdownlint-rule-search-replace: ^1.2.0
   npm-run-all2: ^9.0.4
   oxfmt: ^0.74.0
   oxlint: ^1.89.0
