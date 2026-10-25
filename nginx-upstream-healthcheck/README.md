@@ -66,7 +66,7 @@ The existing C implementation therefore remains the smaller maintained path for 
 Configure `healthcheck` inside each checked HTTP `upstream` block.
 The upstream requires a shared `zone` and a built-in round-robin-compatible peer list.
 
-Use the HTTP examples in [upstream-healthcheck.conf](upstream-healthcheck.conf).
+Use the HTTP examples in [upstream-healthcheck.conf](conf/upstream-healthcheck.conf).
 
 Replace the resolver, backend names, CA file, and listener addresses for your environment.
 Healthcheck TLS settings and proxy TLS settings are independent.
@@ -106,7 +106,7 @@ The default concurrency is 16 probes and the health state zone defaults to one m
 Configure `healthcheck_tcp` inside a checked `stream` `upstream` block with a shared `zone`.
 The default `type=tcp` probe succeeds after connecting to the selected peer.
 
-Use the stream examples in [upstream-healthcheck.conf](upstream-healthcheck.conf).
+Use the stream examples in [upstream-healthcheck.conf](conf/upstream-healthcheck.conf).
 
 For TLS-only stream checks, omit send and expect directives to stop after the verified handshake.
 With payload and expectation directives, the probe continues over TLS and checks the application response.
@@ -207,7 +207,8 @@ The NGINX results classify the point where each probe succeeded or failed while 
 
 Both NGINX Docker verify stages reference shared scripts for common static-binary checks and njs HTTP and stream checks.
 Build scripts and fixture configurations live in separate source files rather than embedded Dockerfile or documentation scripts.
-The shared [verification script](../nginx/nginx-verify.sh) preserves the existing static-build verification contract.
+The source-checkout verification commands below use scripts and fixtures that are not included in release packages.
+The shared `nginx/nginx-verify.sh` script preserves the existing static-build verification contract.
 Each HTTP probe has a 15-second GNU `timeout` deadline, with curl request limits of two seconds for the retrying probe and five seconds for the second probe.
 On success, failure, `INT`, or `TERM`, it cancels active probes and forwards `QUIT` to the supervised nginx process group.
 GNU `timeout` escalates resistant probes to `KILL` after one second and resistant nginx processes after two seconds.
@@ -217,7 +218,7 @@ Run `python3 proxy/tests/verify-nginx.py` from the repository root to check canc
 This standalone regression requires Python 3 and GNU Coreutils `timeout` or `gtimeout` and does not invoke Docker.
 It does not run healthcheck functional scenarios.
 The standalone suite lives under `proxy/tests/`, which is a test layout rather than a build target.
-Its [NGINX fixture template](../proxy/tests/fixtures/nginx.conf.template) and [certificate configuration](../proxy/tests/fixtures/ca.cnf.template) provide separate fixture sources.
+The `proxy/tests/fixtures/nginx.conf.template` and `proxy/tests/fixtures/ca.cnf.template` files provide separate fixture sources.
 
 Validate runner cleanup offline with `python3 proxy/tests/verify-runner.py`.
 Check shell syntax with `bash -n proxy/tests/run.sh proxy/tests/run-docker.sh`.
@@ -226,7 +227,7 @@ Run `make lint` and `make shfmt-check` for shell lint and formatting.
 The Python 3 check uses a local Docker CLI fixture to exercise partial creation, signal cleanup, ownership guards, and exit-status retention.
 It runs offline without a Docker daemon.
 
-Run [proxy/tests/run.sh](../proxy/tests/run.sh) against an already-built Linux binary with `proxy/tests/run.sh .out/nginx-upstream-healthcheck/sbin/nginx`.
+Run `proxy/tests/run.sh` against an already-built Linux binary with `proxy/tests/run.sh .out/nginx-upstream-healthcheck/sbin/nginx`.
 
 The local runner needs Bash, core utilities, grep, sed, curl, dnsmasq, OpenSSL, `setsid`, and socat.
 It creates loopback fixtures and certificate files under a temporary directory, then removes the fixture process groups and files on exit or signal.
@@ -234,7 +235,7 @@ The fixtures cover HTTP and stream L4 connection results, verified TLS-only chec
 The suite also checks that HTTP and stream TLS configurations fail when either the TLS name or trusted CA is missing.
 It validates literal HTTP and stream proxy destinations that create implicit upstreams without healthcheck settings.
 
-On macOS or another host without the required Linux runtime tools, use [proxy/tests/run-docker.sh](../proxy/tests/run-docker.sh).
+On macOS or another host without the required Linux runtime tools, use `proxy/tests/run-docker.sh`.
 Run `proxy/tests/run-docker.sh .out/nginx-upstream-healthcheck/sbin/nginx`.
 
 The wrapper derives the UBI 10 Minimal tag from `metadata.json`, passes that maintained image reference to the test image build, mounts the binary read-only, and creates one uniquely named container with a four-CPU and eight-GiB cap.

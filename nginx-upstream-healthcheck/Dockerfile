@@ -40,7 +40,7 @@ RUN /usr/local/bin/nginx-configure.sh \
     "--add-module=/build/njs-${NJS_VERSION}/nginx"
 RUN /usr/local/bin/nginx-build.sh
 COPY nginx/scripting.conf nginx/scripting.js ${TARGET_PREFIX}/conf/
-COPY nginx-upstream-healthcheck/upstream-healthcheck.conf ${TARGET_PREFIX}/conf/
+COPY nginx-upstream-healthcheck/conf/upstream-healthcheck.conf ${TARGET_PREFIX}/conf/
 COPY nginx-upstream-healthcheck/README.md ${TARGET_PREFIX}/README.md
 
 
