@@ -153,7 +153,6 @@ ARG OPENTELEMETRY_PROTO_VERSION
 ARG NLOHMANN_JSON_VERSION
 ARG HARDENING_CFLAGS
 ADD ".tmp/opentelemetry-cpp-${OPENTELEMETRY_CPP_VERSION}.tar.gz" /tmp/
-COPY haproxy/opentelemetry-cpp-cstdint.patch /tmp/
 COPY haproxy/haproxy-apply-otel-patches.sh /usr/local/bin/
 ADD ".tmp/opentelemetry-proto-${OPENTELEMETRY_PROTO_VERSION}.tar.gz" /tmp/
 ADD ".tmp/nlohmann-json-${NLOHMANN_JSON_VERSION}.tar.gz" /tmp/

@@ -7,10 +7,10 @@
       "conf/scripting.js"
     ],
     "env": {
-      "ALPINE_VERSION": "3.24.2",
+      "ALPINE_VERSION": "3",
       "NGINX_VERSION": "1.30.6",
       "NGINX_VTS_MODULE_VERSION": "0.2.7",
-      "UBI10_MINIMAL_VERSION": "10.2-1792457157",
+      "UBI10_MINIMAL_VERSION": "10.2",
       "NJS_VERSION": "1.0.2",
       "QUICKJS_VERSION": "0.17.0"
     },
@@ -44,10 +44,10 @@
       "README.md"
     ],
     "env": {
-      "ALPINE_VERSION": "3.24.2",
+      "ALPINE_VERSION": "3",
       "NGINX_VERSION": "1.30.6",
       "NGINX_VTS_MODULE_VERSION": "0.2.7",
-      "UBI10_MINIMAL_VERSION": "10.2-1792457157",
+      "UBI10_MINIMAL_VERSION": "10.2",
       "NJS_VERSION": "1.0.2",
       "QUICKJS_VERSION": "0.17.0"
     },
@@ -78,20 +78,20 @@
     ],
     "env": {
       "ABSEIL_CPP_VERSION": "20260817.0",
-      "ALPINE_VERSION": "3.24.2",
-      "GRPC_VERSION": "1.84.0",
+      "ALPINE_VERSION": "3",
+      "GRPC_VERSION": "1.84.1",
       "GRPC_PROTO_REF": "master",
       "HAPROXY_OTEL_ADDON_VERSION": "2.3.0",
       "HAPROXY_OTEL_C_WRAPPER_VERSION": "3.4.0",
       "HAPROXY_VERSION": "3.4.7",
       "HAPROXY_VERSION_SERIES": "3.4",
       "NLOHMANN_JSON_VERSION": "3.12.0",
-      "OPENTELEMETRY_CPP_VERSION": "1.29.0",
+      "OPENTELEMETRY_CPP_VERSION": "1.30.0",
       "OPENTELEMETRY_PROTO_VERSION": "1.11.1",
       "PROTOBUF_VERSION": "36.2",
       "RAPIDYAML_VERSION": "0.16.0",
       "RE2_VERSION": "2025-11-05",
-      "UBI10_MINIMAL_VERSION": "10.2-1792457157"
+      "UBI10_MINIMAL_VERSION": "10.2"
     },
     "downloads": [
       {
@@ -151,9 +151,9 @@
       "bin/apache-exporter"
     ],
     "env": {
-      "GO_VERSION": "1.27.3",
+      "GO_VERSION": "1",
       "APACHE_EXPORTER_VERSION": "1.1.1",
-      "UBI10_MINIMAL_VERSION": "10.2-1792457157"
+      "UBI10_MINIMAL_VERSION": "10.2"
     },
     "downloads": [
       {
@@ -170,8 +170,8 @@
       "bin/rotatelogs"
     ],
     "env": {
-      "ALPINE_VERSION": "3.24.2",
-      "UBI10_MINIMAL_VERSION": "10.2-1792457157",
+      "ALPINE_VERSION": "3",
+      "UBI10_MINIMAL_VERSION": "10.2",
       "HTTPD_VERSION": "2.4.69",
       "APR_VERSION": "1.7.6",
       "APR_UTIL_VERSION": "1.6.5"
@@ -198,9 +198,9 @@
       "coredns"
     ],
     "env": {
-      "GOLANG_IMAGE_TAG": "1.27.3-alpine",
-      "COREDNS_VERSION": "1.14.7",
-      "UBI10_MINIMAL_VERSION": "10.2-1792457157"
+      "GOLANG_IMAGE_TAG": "1-alpine",
+      "COREDNS_VERSION": "1.15.0",
+      "UBI10_MINIMAL_VERSION": "10.2"
     },
     "downloads": [
       {
@@ -216,9 +216,9 @@
       "sbin/dnsmasq"
     ],
     "env": {
-      "ALPINE_VERSION": "3.24.2",
+      "ALPINE_VERSION": "3",
       "DNSMASQ_VERSION": "2.93",
-      "UBI10_MINIMAL_VERSION": "10.2-1792457157"
+      "UBI10_MINIMAL_VERSION": "10.2"
     },
     "downloads": [
       {
@@ -234,9 +234,9 @@
       "bin/vector"
     ],
     "env": {
-      "ALPINE_VERSION": "3.24.2",
+      "ALPINE_VERSION": "3",
       "VECTOR_VERSION": "0.60.0",
-      "UBI10_MINIMAL_VERSION": "10.2-1792457157"
+      "UBI10_MINIMAL_VERSION": "10.2"
     },
     "downloads": [
       {
@@ -252,9 +252,9 @@
       "bin/monit"
     ],
     "env": {
-      "ALPINE_VERSION": "3.24.2",
+      "ALPINE_VERSION": "3",
       "MONIT_VERSION": "6.0.0",
-      "UBI10_MINIMAL_VERSION": "10.2-1792457157"
+      "UBI10_MINIMAL_VERSION": "10.2"
     },
     "downloads": [
       {

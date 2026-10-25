@@ -14,7 +14,7 @@ spec:
   rules:
     - when: $[[ inputs.run_policy ]]
   image:
-    name: moby/buildkit:v0.34.1-rootless
+    name: moby/buildkit:rootless
     entrypoint: [""]
   variables:
     BUILDKIT_CACHE_BACKEND: local

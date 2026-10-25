@@ -59,7 +59,7 @@ docker run --rm \
 +-- metadata.json           # Canonical build/release metadata
 +-- build-env.sh            # Shared build argument normalization
 +-- Makefile                # Local development build orchestration
-+-- .gitlab-ci.yml          # GitLab CI configuration
++-- .gitlab-ci.yaml         # GitLab CI configuration
 +-- download.sh             # Source download dispatcher
 +-- metadata.sh             # Metadata query helper
 +-- metadata.awk            # Metadata JSON parser
@@ -74,6 +74,7 @@ docker run --rm \
 |   +-- ci/
 |   |   +-- package-pipeline.jsonnet # GitLab child pipeline generator
 |   +-- build-rootless.sh   # Rootless BuildKit build entry
+|   +-- install-validation-tools.sh
 +-- templates/              # GitLab CI components
 |   +-- static-release.yml
 +-- .tmp/                   # Downloaded source cache (gitignored)
@@ -154,9 +155,9 @@ Each target must follow this structure:
          "bin/your-target"
        ],
        "env": {
-         "ALPINE_VERSION": "3.24.2",
+         "ALPINE_VERSION": "3",
          "YOUR_TARGET_VERSION": "1.0.0",
-         "UBI10_MINIMAL_VERSION": "10.2-1792457157"
+         "UBI10_MINIMAL_VERSION": "10.2"
        }
      }
    }
@@ -384,6 +385,8 @@ Selected release contents:
 
 ## GitLab CI
 
+- Configure the GitLab project to use `.gitlab-ci.yaml` as its custom CI/CD configuration path after merge.
+- The GitLab check job runs the complete contributor check entrypoint before package generation and retains the manual parent trigger for publication.
 - GitLab pipelines on `main` and `feature/*` generate a child configuration with `.gitlab/ci/package-pipeline.jsonnet`.
 - One manual parent trigger starts the child pipeline, which builds and publishes its selected targets automatically.
 - `feature/*` branches append `-beta` to the package version.
@@ -391,4 +394,6 @@ Selected release contents:
   GitHub uploads to Release only.
 - Rejected registry uploads fail their publishing jobs.
 - The generated child pipeline includes the local component at `templates/static-release.yml`.
+- GitLab component discovery requires the conventional `templates/*.yml` filename, so `templates/static-release.yml` remains the supported exception to the `.yaml` filename rule.
+- The parent configuration uses the supported custom configuration path documented by [GitLab](https://docs.gitlab.com/ci/pipelines/settings/#specify-a-custom-cicd-configuration-file), while the local component follows [GitLab's component discovery convention](https://docs.gitlab.com/ci/components/).
 - GitHub release packaging and GitLab package generation both reuse `package-release.sh`.

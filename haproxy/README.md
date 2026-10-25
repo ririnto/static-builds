@@ -36,8 +36,7 @@ This target builds a static PIE `haproxy` binary for musl-based deployments.
 - `HAPROXY_OTEL_ADDON_VERSION` selects the addon's release tag.
 - `GRPC_PROTO_REF` selects `grpc-proto`'s maintained `master` branch because upstream provides no release tags.
 - The SDK uses the prefetched nlohmann JSON archive through CMake's `FETCHCONTENT_SOURCE_DIR_NLOHMANN_JSON` option.
-- The SDK applies the local header patch from upstream's [`<cstdint>` fix](https://github.com/open-telemetry/opentelemetry-cpp/pull/4574) for GCC 15 compilation.
-- Remove this patch when the selected SDK release includes the fix.
+- The selected SDK release includes upstream's [`<cstdint>` fix](https://github.com/open-telemetry/opentelemetry-cpp/pull/4574), so no local header patch is needed.
 - The wrapper requires GNU awk to generate its semantic convention headers.
 - HAProxy links the SDK's instrumentation scope and OTLP common libraries through `pkg-config` alongside the wrapper.
 - The OpenTelemetry static libraries use a linker group to resolve references across archives.
