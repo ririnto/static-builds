@@ -1,5 +1,5 @@
 ARG GOLANG_IMAGE_TAG
-ARG ALMALINUX10_MINIMAL_TAG
+ARG UBI10_MINIMAL_VERSION
 ARG TARGET_PREFIX=/home/nobody
 
 
@@ -22,7 +22,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
         BUILDOPTS="-v -trimpath"
 
 
-FROM almalinux:${ALMALINUX10_MINIMAL_TAG} AS verify
+FROM registry.access.redhat.com/ubi10/ubi-minimal:${UBI10_MINIMAL_VERSION} AS verify
 ARG COREDNS_VERSION
 ARG TARGET_PREFIX
 

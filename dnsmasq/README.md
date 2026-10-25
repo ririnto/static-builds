@@ -26,6 +26,7 @@ This target builds a static PIE `dnsmasq` binary from source.
 ## How to Verify
 
 > [!NOTE]
+>
 > Outputs are under `.out/dnsmasq/`.
 > Override with `BUILD_OUTPUT_DEST`.
 

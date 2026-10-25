@@ -26,6 +26,7 @@ This target builds a static CoreDNS binary from source using Go.
 ## How to Verify
 
 > [!NOTE]
+>
 > Outputs are under `.out/coredns/`.
 > Override with `BUILD_OUTPUT_DEST`.
 

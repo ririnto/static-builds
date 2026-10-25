@@ -1,5 +1,5 @@
 ARG ALPINE_VERSION
-ARG ALMALINUX10_MINIMAL_TAG
+ARG UBI10_MINIMAL_VERSION
 ARG TARGET_PREFIX=/home/nobody
 ARG HARDENING_CFLAGS="-O2 -pipe -fPIC -fstack-protector-strong -fstack-clash-protection -ffunction-sections -fdata-sections -ftrivial-auto-var-init=zero"
 
@@ -365,7 +365,7 @@ RUN make install \
     ;
 
 
-FROM almalinux:${ALMALINUX10_MINIMAL_TAG} AS verify
+FROM registry.access.redhat.com/ubi10/ubi-minimal:${UBI10_MINIMAL_VERSION} AS verify
 ARG TARGET_PREFIX
 
 RUN --mount=type=cache,target=/var/cache/dnf \

@@ -19,22 +19,12 @@ if [ ! -f "${ROOT_DIR}/${TARGET}/Dockerfile" ]; then
   exit 1
 fi
 if [ "$(id -u)" -eq 0 ]; then
-  exec su-exec 1000:1000 env \
-    HOME=/home/user \
-    USER=user \
-    PATH=/usr/local/bin:/usr/bin:/bin \
-    XDG_RUNTIME_DIR=/run/user/1000 \
-    TMPDIR=/home/user/.local/tmp \
-    BUILDKIT_HOST=unix:///run/user/1000/buildkit/buildkitd.sock \
-    BUILDKIT_PLATFORM="${BUILDKIT_PLATFORM:-linux/amd64}" \
-    BUILDKIT_CACHE_BACKEND="${BUILDKIT_CACHE_BACKEND:-local}" \
-    BUILDKIT_NETWORK="${BUILDKIT_NETWORK:-default}" \
-    BUILD_OUTPUT_DEST="${BUILD_OUTPUT_DEST:-${ROOT_DIR}/.out/${TARGET}}" \
-    sh "$0" "${TARGET}"
+  echo 'Error: Rootless BuildKit must run as a non-root user' >&2
+  exit 1
 fi
 METADATA_ENV=$(sh "${METADATA_SCRIPT}" get-env "${TARGET}")
-if ! command -v buildctl-daemonless.sh >/dev/null 2>&1; then
-  printf 'Error: buildctl-daemonless.sh not found in PATH\n' >&2
+if ! command -v buildctl-daemonless.sh; then
+  echo 'Error: buildctl-daemonless.sh not found in PATH' >&2
   exit 1
 fi
 BUILDKIT_PLATFORM="${BUILDKIT_PLATFORM:-linux/amd64}"
@@ -50,14 +40,14 @@ case "${BUILDKIT_CACHE_BACKEND}" in
     ;;
   *)
     printf 'Error: Invalid BUILDKIT_CACHE_BACKEND %s\n' "${BUILDKIT_CACHE_BACKEND}" >&2
-    printf '%s\n' 'Allowed values: local' >&2
+    echo 'Allowed values: local' >&2
     exit 1
     ;;
 esac
 case "${BUILDKIT_NETWORK}" in
   host | default) ;;
   *)
-    printf '%s\n' 'Error: Rootless BuildKit only supports host/default network semantics in this repository' >&2
+    echo 'Error: Rootless BuildKit only supports host/default network semantics in this repository' >&2
     exit 1
     ;;
 esac

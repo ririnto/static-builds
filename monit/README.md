@@ -138,6 +138,7 @@ See the [Runtime Introspection Output](#runtime-introspection-output) section ab
 ## How to Verify
 
 > [!NOTE]
+>
 > Outputs are under `.out/monit/`.
 > Override with `BUILD_OUTPUT_DEST`.
 

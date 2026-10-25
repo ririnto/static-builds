@@ -27,6 +27,7 @@ Vector 0.60.0 removes `datadog_metrics.series_api_version: v1` and requires an e
 ## How to Verify
 
 > [!NOTE]
+>
 > Outputs are under `.out/vector/`.
 > Override with `BUILD_OUTPUT_DEST`.
 

@@ -6,7 +6,7 @@ Build statically-linked binaries using Docker multi-stage builds for portable, m
 
 - Static Linking - Produce fully statically-linked binaries using musl libc.
 - Multi-stage Builds - Use Docker BuildKit for efficient, cacheable builds.
-- Minimal Outputs - Use an AlmaLinux 10 minimal verify stage for runtime checks and package final artifacts from a `scratch` stage.
+- Minimal Outputs - Use a Red Hat UBI 10 minimal verify stage for runtime checks and package final artifacts from a `scratch` stage.
 - Extensible - Add new build targets by following a simple directory structure.
 - Reproducible - Version-controlled configurations via `metadata.json`.
 
@@ -21,7 +21,7 @@ The `wget` fallback also requires GNU Coreutils or BusyBox `timeout`, or GNU Cor
 Both downloaders honor `DOWNLOAD_MAX_TIME`, which defaults to 300 seconds per attempt.
 Target download URLs and build arguments come from [metadata.json](metadata.json).
 A clean build also requires builder network access to image registries and each target's package or language dependency repositories.
-For example, the [nginx Dockerfile](nginx/Dockerfile) installs Alpine build packages and AlmaLinux verification packages.
+For example, the [nginx Dockerfile](nginx/Dockerfile) installs Alpine build packages and Red Hat UBI verification packages.
 The [CoreDNS Dockerfile](coredns/Dockerfile) also compiles Go code, which can require access to Go module sources.
 
 Docker CLI access to a running daemon and the Docker Buildx plugin are required.
@@ -72,7 +72,6 @@ docker run --rm \
 |       +-- template-release.yaml
 +-- .gitlab/
 |   +-- ci/
-|   |   +-- install-buildkit.sh
 |   |   +-- package-pipeline.jsonnet # GitLab child pipeline generator
 |   |   +-- setup-curl.sh
 |   +-- build-rootless.sh   # Rootless BuildKit build entry
@@ -119,7 +118,7 @@ The following policies guide version selection.
 | nginx | Select the [stable release series](https://nginx.org/en/download.html). |
 | Go | Select a stable release covered by the [Go support policy](https://go.dev/doc/devel/release#policy). |
 | Alpine | Select a stable branch covered by the [repository support policy](https://alpinelinux.org/releases/). |
-| AlmaLinux | Select a major release covered by the [AlmaLinux release support dates](https://wiki.almalinux.org/release-notes/). |
+| Red Hat UBI | Select a supported version of the UBI minimal image. |
 | Other dependencies | Select stable releases when upstream provides no LTS series. |
 
 GitHub release jobs use the `ubuntu-26.04` LTS runner label.
@@ -159,7 +158,7 @@ Each target must follow this structure:
        "env": {
          "ALPINE_VERSION": "3",
          "YOUR_TARGET_VERSION": "1.0.0",
-         "ALMALINUX10_MINIMAL_TAG": "10-minimal"
+         "UBI10_MINIMAL_VERSION": "10.2"
        }
      }
    }
@@ -169,7 +168,7 @@ Each target must follow this structure:
 
    ```dockerfile
    ARG ALPINE_VERSION
-   ARG ALMALINUX10_MINIMAL_TAG
+   ARG UBI10_MINIMAL_VERSION
 
    # Build stage
    FROM alpine:${ALPINE_VERSION} AS build
@@ -178,7 +177,7 @@ Each target must follow this structure:
    # ... build steps ...
 
    # Verify stage (required)
-   FROM almalinux:${ALMALINUX10_MINIMAL_TAG} AS verify
+   FROM registry.access.redhat.com/ubi10/ubi-minimal:${UBI10_MINIMAL_VERSION} AS verify
    ARG YOUR_TARGET_VERSION
    COPY --from=build /your-target /target/your-target
    # ... verification steps (ELF check, static linking, strace) ...
@@ -356,7 +355,7 @@ Invalid examples:
 1. `download.sh` resolves each target's download resources from `metadata.json`, then the build script runs Docker Buildx.
 2. Docker BuildKit executes the multi-stage Dockerfile via `docker buildx build`.
 3. Built artifacts go to `.out/<target>/` for both local builds and CI.
-4. Verify stages use the AlmaLinux 10 minimal tag from `metadata.json`, and the final exported artifact comes from the target's `scratch` stage.
+4. Verify stages use the UBI 10 minimal version from `metadata.json`, and the final exported artifact comes from the target's `scratch` stage.
 
 Build caching uses the root `.cache/<target>/` directories.
 
@@ -384,6 +383,7 @@ Selected release contents:
 ## Logging Strategy
 
 > [!NOTE]
+>
 > `apache-httpd` releases include both `bin/httpd` and `bin/rotatelogs` for piped logging support.
 
 ## GitLab CI
@@ -392,7 +392,8 @@ Selected release contents:
 - The GitLab check job runs the complete contributor check entrypoint before package generation and retains the manual parent trigger for publication.
 - GitLab pipelines on `main` and `feature/*` generate a child configuration with `.gitlab/ci/package-pipeline.jsonnet`.
 - One manual parent trigger starts the child pipeline, which builds and publishes its selected targets automatically.
-- The package component installs BuildKit 0.34.1 and RootlessKit 3.3.0 release binaries, then runs each build as UID and GID 1000.
+- The package component runs `buildctl-daemonless.sh` in the official `moby/buildkit:rootless` image with its entrypoint cleared and upstream UID and GID 1000.
+- When `curl` is absent, `download.sh` uses the image's BusyBox `wget` and `timeout` fallback.
 - The generated publisher jobs install the current Alpine `curl` package before uploading artifacts.
 - `feature/*` branches append `-beta` to the package version.
 - GitLab uploads to Package Registry only.

@@ -1,5 +1,5 @@
 ARG ALPINE_VERSION
-ARG ALMALINUX10_MINIMAL_TAG
+ARG UBI10_MINIMAL_VERSION
 ARG TARGET_PREFIX=/home/nobody
 
 
@@ -45,7 +45,7 @@ COPY nginx-upstream-healthcheck/README.md ${TARGET_PREFIX}/README.md
 
 
 
-FROM almalinux:${ALMALINUX10_MINIMAL_TAG} AS verify
+FROM registry.access.redhat.com/ubi10/ubi-minimal:${UBI10_MINIMAL_VERSION} AS verify
 ARG NJS_VERSION
 ARG TARGET_PREFIX
 

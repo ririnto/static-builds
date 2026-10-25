@@ -13,14 +13,14 @@ spec:
   stage: $[[ inputs.stage ]]
   rules:
     - when: $[[ inputs.run_policy ]]
-  image: alpine:3
+  image:
+    name: moby/buildkit:rootless
+    entrypoint: [""]
   variables:
     BUILDKIT_CACHE_BACKEND: local
     BUILD_OUTPUT_DEST: "$CI_PROJECT_DIR/.out/$[[ inputs.target ]]"
   script:
-    - sh .gitlab/ci/setup-curl.sh
     - sh download.sh "$[[ inputs.target ]]"
-    - sh .gitlab/ci/install-buildkit.sh "$[[ inputs.target ]]"
     - sh .gitlab/build-rootless.sh "$[[ inputs.target ]]"
     - sh package-release.sh "$[[ inputs.target ]]" "$[[ inputs.package_name ]]"
   artifacts:

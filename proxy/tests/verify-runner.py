@@ -96,9 +96,9 @@ def _main():
     runner = Path(__file__).resolve().with_name("run-docker.sh")
     repository = runner.parents[2]
     expected_functional_base_image = (
-        "almalinux:"
+        "registry.access.redhat.com/ubi10/ubi-minimal:"
         + json.loads((repository / "metadata.json").read_text())["nginx-upstream-healthcheck"]["env"][
-            "ALMALINUX10_MINIMAL_TAG"
+            "UBI10_MINIMAL_VERSION"
         ]
     )
     binary = shutil.which("true")
@@ -137,6 +137,8 @@ def _main():
             )
             if result.returncode != expected_status:
                 raise AssertionError(f"{scenario}: exit {result.returncode}, expected {expected_status}\n{result.stderr}")
+            if not result.stdout.startswith(f"{docker}\nmock buildx\n"):
+                raise AssertionError(f"{scenario}: Docker command-check output is not visible")
             state = json.loads(state_path.read_text())
             if state["functional_base_image"] != expected_functional_base_image:
                 raise AssertionError(
