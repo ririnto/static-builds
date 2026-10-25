@@ -1,6 +1,8 @@
 DOWNLOAD_SCRIPT := $(CURDIR)/download.sh
 BUILD_SCRIPT := $(CURDIR)/.github/build.sh
-SHELL_PATHS := build-env.sh download.sh metadata.sh package-release.sh nginx .github .gitlab proxy/tests
+SHELL_PATHS := build-env.sh download.sh metadata.sh package-release.sh \
+    apache-exporter apache-httpd coredns dnsmasq haproxy monit nginx \
+    nginx-upstream-healthcheck vector .github .gitlab proxy/tests
 
 ARGS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
 $(eval $(ARGS):;@:)
