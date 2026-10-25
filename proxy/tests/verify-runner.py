@@ -154,6 +154,96 @@ def _main():
                 elif remaining is not None:
                     raise AssertionError(f"{scenario}: task-owned {resource} leaked")
             print(f"PASS {scenario}")
+    with tempfile.TemporaryDirectory(prefix="rootless-build-output-") as temporary:
+        directory = Path(temporary)
+        rootless_repository = directory / "repo"
+        rootless_repository.mkdir()
+        (rootless_repository / ".gitlab").mkdir()
+        shutil.copy2(repository / ".gitlab/build-rootless.sh", rootless_repository / ".gitlab/build-rootless.sh")
+        for filename in ("build-env.sh", "metadata.sh", "metadata.awk", "metadata.json"):
+            shutil.copy2(repository / filename, rootless_repository / filename)
+        (rootless_repository / "nginx").mkdir()
+        (rootless_repository / "nginx/Dockerfile").write_text("FROM scratch\n")
+        mock_bin = directory / "bin"
+        mock_bin.mkdir()
+        id = mock_bin / "id"
+        id.write_text(
+            "#!/bin/sh\n"
+            "if [ \"$#\" -eq 1 ] && [ \"$1\" = \"-u\" ]; then\n"
+            "  echo 1000\n"
+            "else\n"
+            "  exit 1\n"
+            "fi\n"
+        )
+        id.chmod(0o755)
+        buildctl = mock_bin / "buildctl-daemonless.sh"
+        buildctl.write_text("#!/bin/sh\nprintf '%s\\n' \"$@\" >\"$BUILDCTL_MOCK_ARGS\"\n")
+        buildctl.chmod(0o755)
+        exporter_args = directory / "buildctl-arguments.txt"
+        for scenario, destination, expected_status in (
+            ("external_absolute", str(directory / "outside_absolute"), 1),
+            ("parent_traversal", ".out/nginx/../../escaped-output", 1),
+            ("nested_traversal", ".out/nginx/nested/../outside_nested", 1),
+            ("default_absolute", None, 0),
+            ("relative_target", ".out/nginx", 0),
+            ("relative_nested", ".out/nginx/nested", 0),
+            ("dot_prefix_nested", "./.out/nginx/nested", 0),
+            ("absolute_inside_nested", str(rootless_repository / ".out/nginx/absolute"), 0),
+        ):
+            environment = {
+                **os.environ,
+                "PATH": str(mock_bin) + os.pathsep + os.environ.get("PATH", ""),
+                "BUILDCTL_MOCK_ARGS": str(exporter_args),
+                "BUILDKIT_CACHE_BACKEND": "local",
+                "BUILDKIT_NETWORK": "default",
+                "BUILDKIT_PLATFORM": "linux/amd64",
+            }
+            environment.pop("BUILD_OUTPUT_DEST", None)
+            environment.pop("METADATA_PATH_OVERRIDE", None)
+            if destination is None:
+                expected_destination = rootless_repository / ".out/nginx"
+                expected_destination_argument = str(expected_destination)
+            else:
+                environment["BUILD_OUTPUT_DEST"] = destination
+                expected_destination = Path(destination)
+                if not expected_destination.is_absolute():
+                    expected_destination = rootless_repository / expected_destination
+                expected_destination_argument = destination
+            result = subprocess.run(
+                ["sh", str(rootless_repository / ".gitlab/build-rootless.sh"), "nginx"],
+                cwd=rootless_repository,
+                env=environment,
+                capture_output=True,
+                text=True,
+                timeout=15,
+                check=False,
+            )
+            if result.returncode != expected_status:
+                raise AssertionError(f"rootless {scenario}: exit {result.returncode}, expected {expected_status}\n{result.stderr}")
+            if result.stdout != f"{buildctl}\n":
+                raise AssertionError(f"rootless {scenario}: command-check output is not visible")
+            if expected_status == 1:
+                if result.stderr != "Error: Build output must be under .out/nginx\n":
+                    raise AssertionError(f"rootless {scenario}: missing containment diagnostic\n{result.stderr}")
+                if expected_destination.exists():
+                    raise AssertionError(f"rootless {scenario}: invalid destination was created")
+                if (rootless_repository / ".cache/nginx").exists():
+                    raise AssertionError(f"rootless {scenario}: cache directory was created")
+                if exporter_args.exists():
+                    raise AssertionError(f"rootless {scenario}: exporter was invoked")
+            else:
+                if not exporter_args.is_file():
+                    raise AssertionError(f"rootless {scenario}: exporter was not invoked")
+                exporter_arguments = exporter_args.read_text().splitlines()
+                output_argument = exporter_arguments[exporter_arguments.index("--output") + 1]
+                if output_argument != f"type=local,dest={expected_destination_argument}":
+                    raise AssertionError(f"rootless {scenario}: output destination {output_argument!r} is incorrect")
+                if not expected_destination.is_dir():
+                    raise AssertionError(f"rootless {scenario}: valid destination was not created")
+                if not (rootless_repository / ".cache/nginx").is_dir():
+                    raise AssertionError(f"rootless {scenario}: cache directory was not created")
+                exporter_args.unlink()
+            print(f"PASS rootless {scenario}")
 
 
 if __name__ == "__main__":
