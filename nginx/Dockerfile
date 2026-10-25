@@ -1,5 +1,5 @@
 ARG ALPINE_VERSION
-ARG UBI10_MINIMAL_VERSION
+ARG ALMALINUX10_MINIMAL_TAG
 ARG TARGET_PREFIX=/home/nobody
 
 
@@ -41,7 +41,7 @@ COPY nginx/scripting.conf nginx/scripting.js ${TARGET_PREFIX}/conf/
 
 
 
-FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
+FROM almalinux:${ALMALINUX10_MINIMAL_TAG} AS verify
 ARG NJS_VERSION
 ARG TARGET_PREFIX
 

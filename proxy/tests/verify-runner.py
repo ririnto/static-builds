@@ -1,5 +1,5 @@
 """
-Verify Docker runner cleanup with a local CLI fixture and no Docker daemon.
+Verify Docker runner image selection and cleanup with a local CLI fixture and no Docker daemon.
 """
 
 import json
@@ -39,6 +39,7 @@ def _docker():
     if arguments[:2] == ["buildx", "version"]:
         output = "mock buildx"
     elif arguments[:2] == ["buildx", "build"]:
+        state["functional_base_image"] = _option(arguments, "--build-arg").split("=", 1)[1]
         owner = _option(arguments, "--label").split("=", 1)[1]
         state["image"] = {
             "tag": _option(arguments, "--tag"),
@@ -93,6 +94,13 @@ def _docker():
 
 def _main():
     runner = Path(__file__).resolve().with_name("run-docker.sh")
+    repository = runner.parents[2]
+    expected_functional_base_image = (
+        "almalinux:"
+        + json.loads((repository / "metadata.json").read_text())["nginx-upstream-healthcheck"]["env"][
+            "ALMALINUX10_MINIMAL_TAG"
+        ]
+    )
     binary = shutil.which("true")
     if binary is None:
         raise RuntimeError("The true command is required as the executable input fixture.")
@@ -103,11 +111,21 @@ def _main():
         docker.chmod(0o755)
         state_path = directory / "state.json"
         for scenario, expected_status in _SCENARIOS:
-            state_path.write_text(json.dumps({"scenario": scenario, "image": None, "container": None}))
+            state_path.write_text(
+                json.dumps(
+                    {
+                        "scenario": scenario,
+                        "image": None,
+                        "container": None,
+                        "functional_base_image": None,
+                    }
+                )
+            )
             environment = {
                 **os.environ,
                 "PATH": str(directory) + os.pathsep + os.environ.get("PATH", ""),
                 "HEALTHCHECK_MOCK_STATE": str(state_path),
+                "METADATA_PATH_OVERRIDE": str(repository / "metadata.json"),
             }
             result = subprocess.run(
                 ["bash", str(runner), binary],
@@ -120,6 +138,11 @@ def _main():
             if result.returncode != expected_status:
                 raise AssertionError(f"{scenario}: exit {result.returncode}, expected {expected_status}\n{result.stderr}")
             state = json.loads(state_path.read_text())
+            if state["functional_base_image"] != expected_functional_base_image:
+                raise AssertionError(
+                    f"{scenario}: base image {state['functional_base_image']!r}, "
+                    f"expected {expected_functional_base_image!r}"
+                )
             for resource in ("image", "container"):
                 remaining = state[resource]
                 foreign_expected = scenario == f"foreign_{resource}"

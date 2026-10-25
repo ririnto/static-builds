@@ -29,14 +29,14 @@ BIN_DIR=$(cd "$(dirname "$NGINX_BIN")" && pwd -P)
 NGINX_BIN="$BIN_DIR/$(basename "$NGINX_BIN")"
 REPOSITORY_ROOT=$(cd "$(dirname "$0")/../.." && pwd -P)
 METADATA_ENV=$(sh "$REPOSITORY_ROOT/metadata.sh" get-env nginx-upstream-healthcheck)
-UBI_VERSION=
+ALMALINUX_TAG=
 while IFS='=' read -r name value; do
-  if [ "$name" = UBI10_MINIMAL_VERSION ]; then
-    UBI_VERSION=$value
+  if [ "$name" = ALMALINUX10_MINIMAL_TAG ]; then
+    ALMALINUX_TAG=$value
   fi
 done <<<"$METADATA_ENV"
-if [ -z "$UBI_VERSION" ]; then
-  printf 'Target metadata does not define UBI10_MINIMAL_VERSION.\n' >&2
+if [ -z "$ALMALINUX_TAG" ]; then
+  printf 'Target metadata does not define ALMALINUX10_MINIMAL_TAG.\n' >&2
   exit 2
 fi
 
@@ -124,7 +124,7 @@ trap 'exit 143' TERM
 IMAGE_ATTEMPTED=1
 docker buildx build --load \
   --platform "$PLATFORM" \
-  --build-arg "FUNCTIONAL_BASE_IMAGE=redhat/ubi10-minimal:$UBI_VERSION" \
+  --build-arg "FUNCTIONAL_BASE_IMAGE=almalinux:$ALMALINUX_TAG" \
   --tag "$IMAGE_NAME" \
   --label "$OWNER_LABEL" \
   --file "$REPOSITORY_ROOT/proxy/tests/Dockerfile" \

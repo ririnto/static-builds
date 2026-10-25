@@ -1,5 +1,5 @@
 ARG GO_VERSION
-ARG UBI10_MINIMAL_VERSION
+ARG ALMALINUX10_MINIMAL_TAG
 ARG TARGET_PREFIX=/out
 
 
@@ -23,7 +23,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
         -o ${TARGET_PREFIX}/bin/apache-exporter .
 
 
-FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
+FROM almalinux:${ALMALINUX10_MINIMAL_TAG} AS verify
 ARG TARGET_PREFIX
 
 RUN --mount=type=cache,target=/var/cache/dnf \
