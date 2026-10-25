@@ -12,12 +12,12 @@ else
   exit 2
 fi
 
-if ! command -v docker >/dev/null 2>&1; then
-  printf 'Required command is missing: docker\n' >&2
+if ! command -v docker; then
+  echo 'Required command is missing: docker' >&2
   exit 2
 fi
-if ! docker buildx version >/dev/null 2>&1; then
-  printf 'Required Docker Buildx plugin is missing.\n' >&2
+if ! docker buildx version; then
+  echo 'Required Docker Buildx plugin is missing.' >&2
   exit 2
 fi
 
@@ -29,14 +29,14 @@ BIN_DIR=$(cd "$(dirname "$NGINX_BIN")" && pwd -P)
 NGINX_BIN="$BIN_DIR/$(basename "$NGINX_BIN")"
 REPOSITORY_ROOT=$(cd "$(dirname "$0")/../.." && pwd -P)
 METADATA_ENV=$(sh "$REPOSITORY_ROOT/metadata.sh" get-env nginx-upstream-healthcheck)
-ALMALINUX_TAG=
+UBI10_MINIMAL_VERSION=
 while IFS='=' read -r name value; do
-  if [ "$name" = ALMALINUX10_MINIMAL_TAG ]; then
-    ALMALINUX_TAG=$value
+  if [ "$name" = UBI10_MINIMAL_VERSION ]; then
+    UBI10_MINIMAL_VERSION=$value
   fi
 done <<<"$METADATA_ENV"
-if [ -z "$ALMALINUX_TAG" ]; then
-  printf 'Target metadata does not define ALMALINUX10_MINIMAL_TAG.\n' >&2
+if [ -z "$UBI10_MINIMAL_VERSION" ]; then
+  echo 'Target metadata does not define UBI10_MINIMAL_VERSION.' >&2
   exit 2
 fi
 
@@ -124,7 +124,7 @@ trap 'exit 143' TERM
 IMAGE_ATTEMPTED=1
 docker buildx build --load \
   --platform "$PLATFORM" \
-  --build-arg "FUNCTIONAL_BASE_IMAGE=almalinux:$ALMALINUX_TAG" \
+  --build-arg "FUNCTIONAL_BASE_IMAGE=registry.access.redhat.com/ubi10/ubi-minimal:${UBI10_MINIMAL_VERSION}" \
   --tag "$IMAGE_NAME" \
   --label "$OWNER_LABEL" \
   --file "$REPOSITORY_ROOT/proxy/tests/Dockerfile" \

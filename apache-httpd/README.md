@@ -26,6 +26,7 @@ This target builds Apache HTTPd as static PIE with selected modules compiled in.
 ## How to Verify
 
 > [!NOTE]
+>
 > Outputs are under `.out/apache-httpd/`.
 > Override with `BUILD_OUTPUT_DEST`.
 
@@ -156,5 +157,6 @@ AH00558: httpd: Could not reliably determine the server's fully qualified
 ```
 
 > [!NOTE]
+>
 > The `httpd -M` output in this environment is only an FQDN warning and does not list modules.
 > Treat `httpd -l` as the authoritative compiled-in module list for this static build.

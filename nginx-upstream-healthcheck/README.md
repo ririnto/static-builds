@@ -238,7 +238,7 @@ It validates literal HTTP and stream proxy destinations that create implicit ups
 On macOS or another host without the required Linux runtime tools, use `proxy/tests/run-docker.sh`.
 Run `proxy/tests/run-docker.sh .out/nginx-upstream-healthcheck/sbin/nginx`.
 
-The wrapper reads `ALMALINUX10_MINIMAL_TAG` from `metadata.json` and passes the matching image reference to the test image build.
+The wrapper reads `UBI10_MINIMAL_VERSION` from `metadata.json` and passes the matching `registry.access.redhat.com/ubi10/ubi-minimal` image to the test build.
 It mounts the binary read-only and creates one uniquely named container with a four-CPU and eight-GiB cap.
 It defaults to the repository's `linux/amd64` build platform.
 Pass `--platform linux/arm64` when the binary was built for another platform.

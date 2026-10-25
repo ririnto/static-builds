@@ -12,7 +12,7 @@ case "$(uname -m)" in
     shfmt_arch=arm64
     ;;
   *)
-    printf 'Unsupported architecture: %s\n' "$(uname -m)" >&2
+    echo "Unsupported architecture: $(uname -m)" >&2
     exit 1
     ;;
 esac

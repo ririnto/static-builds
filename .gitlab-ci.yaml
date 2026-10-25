@@ -5,7 +5,7 @@ stages:
 
 validate-contributor-checks:
   stage: checks
-  image: node:24
+  image: node:24-trixie
   before_script:
     - sh .gitlab/install-validation-tools.sh
     - npm install --global pnpm@12.15.0

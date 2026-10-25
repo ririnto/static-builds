@@ -1,5 +1,5 @@
 ARG ALPINE_VERSION
-ARG ALMALINUX10_MINIMAL_TAG
+ARG UBI10_MINIMAL_VERSION
 ARG TARGET_PREFIX=/home/nobody
 
 
@@ -22,7 +22,7 @@ RUN make "-j$(nproc)" \
     install
 
 
-FROM almalinux:${ALMALINUX10_MINIMAL_TAG} AS verify
+FROM registry.access.redhat.com/ubi10/ubi-minimal:${UBI10_MINIMAL_VERSION} AS verify
 ARG TARGET_PREFIX
 ARG DNSMASQ_VERSION
 
