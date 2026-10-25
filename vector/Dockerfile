@@ -19,18 +19,8 @@ ARG TARGET_PREFIX
 RUN --mount=type=cache,target=/var/cache/dnf \
     microdnf -y install file binutils strace
 COPY --from=download ${TARGET_PREFIX} ${TARGET_PREFIX}
-RUN set -eu; \
-    readelf -h ${TARGET_PREFIX}/bin/vector | egrep 'Type:|Machine:'; \
-    readelf -l ${TARGET_PREFIX}/bin/vector | egrep 'INTERP|DYNAMIC' || true; \
-    readelf -d ${TARGET_PREFIX}/bin/vector || true; \
-    file_output="$(file ${TARGET_PREFIX}/bin/vector 2>&1 || true)"; \
-    ldd_output="$(ldd ${TARGET_PREFIX}/bin/vector 2>&1 || true)"; \
-    echo "file output: $file_output"; \
-    echo "ldd output: $ldd_output"; \
-    (echo "$file_output" | grep -Eq 'statically linked|static-pie linked') || (echo "Error: file(1) did not report a static binary (allowing musl static PIE)." && exit 1); \
-    (echo "$ldd_output" | grep -Eqi 'statically linked|static-pie linked|not a dynamic executable|not a valid dynamic program') || (echo "Error: Dynamic libraries found. This should be a static build!" && exit 1); \
-    strace ${TARGET_PREFIX}/bin/vector --version && \
-    echo "=== Available Components ===" && ${TARGET_PREFIX}/bin/vector list
+COPY vector/vector-verify.sh /usr/local/bin/
+RUN /usr/local/bin/vector-verify.sh
 
 
 FROM scratch
