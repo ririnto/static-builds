@@ -31,6 +31,20 @@ BUILDKIT_PLATFORM="${BUILDKIT_PLATFORM:-linux/amd64}"
 BUILDKIT_CACHE_BACKEND="${BUILDKIT_CACHE_BACKEND:-local}"
 BUILDKIT_NETWORK="${BUILDKIT_NETWORK:-default}"
 BUILD_OUTPUT_DEST="${BUILD_OUTPUT_DEST:-${ROOT_DIR}/.out/${TARGET}}"
+case "${BUILD_OUTPUT_DEST}" in
+  "${ROOT_DIR}/.out/${TARGET}" | "${ROOT_DIR}/.out/${TARGET}/"* | ".out/${TARGET}" | ".out/${TARGET}/"* | "./.out/${TARGET}" | "./.out/${TARGET}/"*)
+    case "/${BUILD_OUTPUT_DEST}/" in
+      */../*)
+        echo "Error: Build output must be under .out/${TARGET}" >&2
+        exit 1
+        ;;
+    esac
+    ;;
+  *)
+    echo "Error: Build output must be under .out/${TARGET}" >&2
+    exit 1
+    ;;
+esac
 mkdir -p "${BUILD_OUTPUT_DEST}"
 case "${BUILDKIT_CACHE_BACKEND}" in
   local)
