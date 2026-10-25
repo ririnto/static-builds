@@ -11,11 +11,11 @@
     "check:shellcheck": "make lint",
     "check:shfmt": "make shfmt-check",
     "check:typescript": "tsc --noEmit",
-    "check:ultracite": "ultracite check rules/no-box-drawing.test.ts oxlint.config.ts oxfmt.config.ts package.json pnpm-workspace.yaml tsconfig.json .markdownlint-cli2.jsonc .github/workflows/markdown-validation.yaml",
+    "check:ultracite": "ultracite check nginx/scripting.js rules/no-box-drawing.test.ts oxlint.config.ts oxfmt.config.ts package.json pnpm-workspace.yaml tsconfig.json .markdownlint-cli2.jsonc .github/workflows/markdown-validation.yaml",
     "fix": "run-p fix:*",
     "fix:markdownlint-cli2": "markdownlint-cli2 --fix",
     "fix:shfmt": "make shfmt-write",
-    "fix:ultracite": "ultracite fix package.json pnpm-workspace.yaml tsconfig.json .markdownlint-cli2.jsonc .github/workflows/markdown-validation.yaml",
+    "fix:ultracite": "ultracite fix nginx/scripting.js rules/no-box-drawing.test.ts oxlint.config.ts oxfmt.config.ts package.json pnpm-workspace.yaml tsconfig.json .markdownlint-cli2.jsonc .github/workflows/markdown-validation.yaml",
     "pre-commit": "run-s check",
     "pre-push": "run-s check",
     "prepare": "husky"
@@ -36,7 +36,7 @@
     "ultracite": "catalog:"
   },
   "engines": {
-    "node": "^24.22.0"
+    "node": "^24.15.0"
   },
   "packageManager": "pnpm@12.15.0"
 }

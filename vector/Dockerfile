@@ -1,5 +1,5 @@
 ARG ALPINE_VERSION
-ARG UBI10_MINIMAL_VERSION
+ARG ALMALINUX10_MINIMAL_TAG
 ARG TARGET_PREFIX=/home/nobody
 
 
@@ -13,7 +13,7 @@ RUN mkdir -p ${TARGET_PREFIX}/bin && \
     mv vector-x86_64-unknown-linux-musl/bin/vector ${TARGET_PREFIX}/bin/
 
 
-FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
+FROM almalinux:${ALMALINUX10_MINIMAL_TAG} AS verify
 ARG TARGET_PREFIX
 
 RUN --mount=type=cache,target=/var/cache/dnf \

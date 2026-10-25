@@ -18,6 +18,20 @@ if [ ! -f "${ROOT_DIR}/${TARGET}/Dockerfile" ]; then
   printf 'Error: Dockerfile not found in %s\n' "${TARGET}" >&2
   exit 1
 fi
+if [ "$(id -u)" -eq 0 ]; then
+  exec su-exec 1000:1000 env \
+    HOME=/home/user \
+    USER=user \
+    PATH=/usr/local/bin:/usr/bin:/bin \
+    XDG_RUNTIME_DIR=/run/user/1000 \
+    TMPDIR=/home/user/.local/tmp \
+    BUILDKIT_HOST=unix:///run/user/1000/buildkit/buildkitd.sock \
+    BUILDKIT_PLATFORM="${BUILDKIT_PLATFORM:-linux/amd64}" \
+    BUILDKIT_CACHE_BACKEND="${BUILDKIT_CACHE_BACKEND:-local}" \
+    BUILDKIT_NETWORK="${BUILDKIT_NETWORK:-default}" \
+    BUILD_OUTPUT_DEST="${BUILD_OUTPUT_DEST:-${ROOT_DIR}/.out/${TARGET}}" \
+    sh "$0" "${TARGET}"
+fi
 METADATA_ENV=$(sh "${METADATA_SCRIPT}" get-env "${TARGET}")
 if ! command -v buildctl-daemonless.sh >/dev/null 2>&1; then
   printf 'Error: buildctl-daemonless.sh not found in PATH\n' >&2

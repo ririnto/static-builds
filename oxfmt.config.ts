@@ -3,6 +3,6 @@ import ultracite from "ultracite/oxfmt";
 
 export default defineConfig({
   ...ultracite,
-  ignorePatterns: [...(ultracite.ignorePatterns ?? []), "**/*.md", "**/*.js", "**/*.ts"],
+  ignorePatterns: [...(ultracite.ignorePatterns ?? []), "**/*.md"],
   trailingComma: "none"
 });

@@ -12,13 +12,14 @@ Use the repository's `.markdownlint-cli2.jsonc` when running Markdown lint.
 
 ### Markdown validation
 
-The [Markdown validation workflow](workflows/markdown-validation.yaml) reports Markdown, code-fence, and relative-link checks on every pull request.
+The [GitHub validation workflow](workflows/markdown-validation.yaml) reports documentation and tooling checks on every pull request without building targets or publishing releases.
+GitLab runs the same complete repository check entrypoint before its manual package trigger.
 It also supports manual runs.
 Every pull request is checked because deleting a linked file can break documentation without changing Markdown.
 The checks use maintained markdownlint-cli2, rumdl, and Lychee releases.
 The Markdown job also runs the rule tests, TypeScript validation, and Ultracite checks.
 
-Install Node.js 24.22.0 and pnpm 12.15.0 for Node-side tooling.
+Install the latest Node.js 24 LTS release and pnpm 12.15.0 for Node-side tooling.
 Use rumdl 0.3.0 and Lychee 0.24.2, matching the workflow's tool versions.
 Install ShellCheck and shfmt for the existing Makefile shell gates.
 Run the checks from the repository root:
@@ -33,7 +34,7 @@ The root package manifest references Node-side tooling through the pnpm workspac
 `pnpm-workspace.yaml` defines the catalog-backed `katex` development override required by `micromark-extension-math`.
 The lockfile records the resolved dependency graph.
 `check` runs Markdown lint, rule tests, TypeScript validation, Ultracite, code-fence validation, relative-link validation, ShellCheck, and shell formatting checks.
-`fix` applies Markdown lint fixes, Ultracite formatting for selected configuration files, and the existing Makefile shell formatter.
+`fix` applies Markdown lint fixes, Ultracite formatting for selected configuration and JavaScript or TypeScript source files, and the existing Makefile shell formatter.
 Markdownlint loads the upstream `markdownlint-rule-search-replace` package through `customRules`.
 Its configured box-drawing check preserves the [maintained rule contract](https://github.com/ririnto/sinon/blob/main/plugins/harness/docs/tools/lint-rule-mapping.md#markdown-policies).
 It reports the first Unicode box-drawing character per line, including fenced code, without automatic replacements.
@@ -52,14 +53,14 @@ Dockerfiles copy explicit target inputs and release packaging selects only metad
 
 ### Contributor toolchain standards
 
-The TypeScript lint, formatter, and compiler configurations form one contributor-tooling group.
+The JavaScript and TypeScript lint, formatter, and compiler configurations form one contributor-tooling group.
 `oxlint.config.ts` extends `ultracite/oxlint/core` and preserves its environment, ignore patterns, rules, and test overrides.
 The preset supplies native ESLint, TypeScript, Unicorn, Oxc, import, JSDoc, Node, and Promise plugins.
 There are no project JavaScript plugins or local rule implementations.
-`check:ultracite` checks the retained rule test, both root TypeScript configurations, and its explicit configuration-file list.
+`check:ultracite` checks the njs runtime example, the retained rule test, both root TypeScript configurations, and its explicit configuration-file list.
 `check:typescript` checks those TypeScript files through `tsconfig.json` and the Node LTS compiler preset.
 Type-aware Oxlint rules are not active because this invocation does not enable type-aware analysis or install its companion engine.
-The njs runtime example in `nginx/scripting.js` is outside this contributor-tooling group and requires its own runtime-aware validation.
+Ultracite checks the njs runtime example in `nginx/scripting.js` for lint and formatting, while target builds provide its runtime-aware validation.
 
 The table maps effective enforcement to engineering qualities rather than adding another prose rule set.
 
@@ -74,14 +75,11 @@ These static checks do not establish measured performance improvements or target
 
 ### Formatter safety
 
-`oxfmt.config.ts` spreads `ultracite/oxfmt`, preserves its required ignores, and sets `trailingComma` to `none`.
-It also excludes Markdown, JavaScript, and TypeScript files from Oxfmt.
+`oxfmt.config.ts` spreads `ultracite/oxfmt`, preserves its required ignores, excludes Markdown, and sets `trailingComma` to `none`.
 The inherited formatter can sort bound imports, rewrite recognized embedded or Tailwind literals, and normalize comments or raw literal spellings.
-Executable source therefore remains lint-only under the contributor commands.
-`fix:ultracite` omits executable source because Ultracite fixes invoke both lint fixes and formatting.
-The source files remain in `check:ultracite` and TypeScript validation.
+`fix:ultracite` and `check:ultracite` include the JavaScript and TypeScript sources so formatting and linting use the same scope.
 
-The retained formatter scope is `package.json`, `pnpm-workspace.yaml`, `tsconfig.json`, `.markdownlint-cli2.jsonc`, and the Markdown validation workflow.
+The formatter scope includes `nginx/scripting.js`, the root TypeScript files, `package.json`, `pnpm-workspace.yaml`, `tsconfig.json`, `.markdownlint-cli2.jsonc`, and the Markdown validation workflow.
 Formatter acceptance for that scope requires unchanged parsed values, meaningful member order, literal contents, and comments, followed by an idempotent second pass.
 Conditional package exports and YAML command scalars require fresh safety verification when their contents change.
 Ultracite remains the only direct caller of Oxlint and Oxfmt.

@@ -1,5 +1,5 @@
 ARG ALPINE_VERSION
-ARG UBI10_MINIMAL_VERSION
+ARG ALMALINUX10_MINIMAL_TAG
 ARG TARGET_PREFIX=/home/nobody
 ARG HARDENING_CFLAGS="-O2 -pipe -fPIC -fstack-protector-strong -fstack-clash-protection -ffunction-sections -fdata-sections -ftrivial-auto-var-init=zero"
 
@@ -153,7 +153,6 @@ ARG OPENTELEMETRY_PROTO_VERSION
 ARG NLOHMANN_JSON_VERSION
 ARG HARDENING_CFLAGS
 ADD ".tmp/opentelemetry-cpp-${OPENTELEMETRY_CPP_VERSION}.tar.gz" /tmp/
-COPY haproxy/opentelemetry-cpp-cstdint.patch /tmp/
 COPY haproxy/haproxy-apply-otel-patches.sh /usr/local/bin/
 ADD ".tmp/opentelemetry-proto-${OPENTELEMETRY_PROTO_VERSION}.tar.gz" /tmp/
 ADD ".tmp/nlohmann-json-${NLOHMANN_JSON_VERSION}.tar.gz" /tmp/
@@ -366,7 +365,7 @@ RUN make install \
     ;
 
 
-FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
+FROM almalinux:${ALMALINUX10_MINIMAL_TAG} AS verify
 ARG TARGET_PREFIX
 
 RUN --mount=type=cache,target=/var/cache/dnf \

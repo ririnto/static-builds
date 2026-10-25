@@ -30,9 +30,10 @@ local includes = [
 local publishJobs = {
   ['publish-' + t]: {
     stage: 'publish',
-    image: 'curlimages/curl:8.23.0',
+    image: 'alpine:3',
     needs: [{ job: 'gitlab-static-package-' + t, artifacts: true }],
     script: [
+      'sh .gitlab/ci/setup-curl.sh',
       |||
         curl --fail-with-body --show-error --header "JOB-TOKEN: $CI_JOB_TOKEN" \
           --upload-file "%(pn)s.tar.gz" \
