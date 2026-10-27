@@ -40,6 +40,8 @@ Its configured box-drawing check preserves the [maintained rule contract](https:
 It reports the first Unicode box-drawing character per line, including fenced code, without automatic replacements.
 The existing rule tests exercise the actual configuration through Markdownlint's public API.
 Their direct `markdown-it` dependency supplies the legacy parser required by the upstream rule.
+The local `docs/table-separators` rule requires exactly three hyphens in each table delimiter cell.
+It preserves alignment colons and fixes only the delimiter hyphens.
 The CLI configuration respects Git ignore files.
 Only the supported `customRules` spelling loads packages through the installed CLI2 loader.
 The lowercase `customrules` spelling does not register rules through this entrypoint.
@@ -56,8 +58,8 @@ Dockerfiles copy explicit target inputs and release packaging selects only metad
 The JavaScript and TypeScript lint, formatter, and compiler configurations form one contributor-tooling group.
 `oxlint.config.ts` extends `ultracite/oxlint/core` and preserves its environment, ignore patterns, rules, and test overrides.
 The preset supplies native ESLint, TypeScript, Unicorn, Oxc, import, JSDoc, Node, and Promise plugins.
-There are no project JavaScript plugins or local rule implementations.
-`check:ultracite` checks the njs runtime example, the retained rule test, both root TypeScript configurations, and its explicit configuration-file list.
+There are no project JavaScript plugins for Oxlint.
+`check:ultracite` checks the njs runtime example, the Markdown rules and tests, both root TypeScript configurations, and its explicit configuration-file list.
 `check:typescript` checks those TypeScript files through `tsconfig.json` and the Node LTS compiler preset.
 Type-aware Oxlint rules are not active because this invocation does not enable type-aware analysis or install its companion engine.
 Ultracite checks the njs runtime example in `nginx/scripting.js` for lint and formatting, while target builds provide its runtime-aware validation.
@@ -66,7 +68,7 @@ The table maps effective enforcement to engineering qualities rather than adding
 
 | Pillar | Effective enforcement | Applicable scope and rationale |
 | --- | --- | --- |
-| Performance | Ultracite core `no-await-in-loop`, `unicorn/prefer-set-has`, and `unicorn/prefer-array-some`. | The linted TypeScript tooling avoids unnecessary sequential work and unsuitable collection operations. |
+| Performance | Ultracite core `no-await-in-loop`, `unicorn/prefer-set-has`, and `unicorn/prefer-array-some`, plus `oxc/no-accumulating-spread`. | The linted tooling checks sequential work, collection operations, and repeated accumulator copies. |
 | Stability | Ultracite core `no-unsafe-finally`, `no-unsafe-optional-chaining`, `no-constant-condition`, and `import/no-cycle`, plus TypeScript checking and ShellCheck. | Tooling and maintained shell scripts receive static checks for unsafe control flow, invalid accesses, types, and shell failures. |
 | Consistency | Core `prefer-named-capture-group` and `require-unicode-regexp`, Markdownlint `table-column-style`, and configured upstream `search-replace`. | Linted tooling and maintained Markdown retain readable regex captures, compact tables, and portable tree markers. |
 | Maintainability | Core `no-unused-vars` and `import/no-duplicates`, rumdl MD046, and offline Lychee checks. | Tooling and documentation avoid unused bindings, duplicate imports, unclosed fences, and broken local references. |
