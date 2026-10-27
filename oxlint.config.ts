@@ -4,5 +4,6 @@ import core from "ultracite/oxlint/core";
 export default defineConfig({
   env: core.env,
   extends: [core],
-  ignorePatterns: core.ignorePatterns
+  ignorePatterns: core.ignorePatterns,
+  rules: { "oxc/no-accumulating-spread": "deny" }
 });

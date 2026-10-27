@@ -4,6 +4,7 @@
     "code-block-style": {
       "style": "fenced"
     },
+    "docs/table-separators": true,
     "line-length": false,
     "no-duplicate-heading": {
       "siblings_only": true
@@ -28,7 +29,10 @@
       "style": "compact"
     }
   },
-  "customRules": ["markdownlint-rule-search-replace"],
+  "customRules": [
+    "markdownlint-rule-search-replace",
+    "rules/table-separators.ts"
+  ],
   "gitignore": true,
   "globs": ["**/*.md"]
 }
