@@ -5,11 +5,5 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": [
-    "rules/no-box-drawing.test.ts",
-    "rules/table-separators.ts",
-    "rules/table-separators.test.ts",
-    "oxfmt.config.ts",
-    "oxlint.config.ts"
-  ]
+  "include": ["rules/**/*.ts", "oxfmt.config.ts", "oxlint*.config.ts"]
 }

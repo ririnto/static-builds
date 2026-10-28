@@ -11,16 +11,21 @@
     "check:shellcheck": "make lint",
     "check:shfmt": "make shfmt-check",
     "check:typescript": "tsc --noEmit",
-    "check:ultracite": "ultracite check nginx/scripting.js rules/*.ts oxlint.config.ts oxfmt.config.ts package.json pnpm-workspace.yaml tsconfig.json .markdownlint-cli2.jsonc .github/workflows/markdown-validation.yaml",
+    "check:ultracite": "run-p --continue-on-error ultracite:check:**",
     "fix": "run-p fix:*",
     "fix:markdownlint-cli2": "markdownlint-cli2 --fix",
     "fix:shfmt": "make shfmt-write",
-    "fix:ultracite": "ultracite fix nginx/scripting.js rules/*.ts oxlint.config.ts oxfmt.config.ts package.json pnpm-workspace.yaml tsconfig.json .markdownlint-cli2.jsonc .github/workflows/markdown-validation.yaml",
+    "fix:ultracite": "corepack pnpm run check:ultracite",
     "pre-commit": "run-s check",
     "pre-push": "run-s check",
-    "prepare": "husky"
+    "prepare": "husky",
+    "ultracite:check:base": "ultracite check nginx/scripting.js rules/*.ts rules/plugins/*.ts oxlint*.config.ts oxfmt.config.ts package.json pnpm-workspace.yaml tsconfig.json .markdownlint-cli2.jsonc .github/workflows/markdown-validation.yaml",
+    "ultracite:check:style:no-blank-lines-in-functions": "ultracite check --config oxlint.style-no-blank-lines-in-functions.config.ts nginx/scripting.js rules/*.ts rules/plugins/*.ts oxlint*.config.ts oxfmt.config.ts package.json pnpm-workspace.yaml tsconfig.json .markdownlint-cli2.jsonc .github/workflows/markdown-validation.yaml",
+    "ultracite:check:style:sibling-test-spacing": "ultracite check --config oxlint.style-sibling-test-spacing.config.ts nginx/scripting.js rules/*.ts rules/plugins/*.ts oxlint*.config.ts oxfmt.config.ts package.json pnpm-workspace.yaml tsconfig.json .markdownlint-cli2.jsonc .github/workflows/markdown-validation.yaml",
+    "ultracite:check:types": "ultracite check --type-aware rules/table-separators.ts rules/plugins/*.ts oxlint*.config.ts oxfmt.config.ts"
   },
   "devDependencies": {
+    "@oxc-project/types": "catalog:",
     "@tsconfig/node-lts": "catalog:",
     "@types/node": "catalog:",
     "husky": "catalog:",
@@ -31,6 +36,7 @@
     "npm-run-all2": "catalog:",
     "oxfmt": "catalog:",
     "oxlint": "catalog:",
+    "oxlint-tsgolint": "catalog:",
     "pnpm": "catalog:",
     "typescript": "catalog:",
     "ultracite": "catalog:"
