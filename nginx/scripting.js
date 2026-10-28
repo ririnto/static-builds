@@ -1,6 +1,6 @@
 /**
  * Return the installed njs version and JavaScript engine over HTTP.
- * @param r The current HTTP request.
+ * @param {NginxHTTPRequest} r The current HTTP request.
  */
 const version = function version(r) {
   r.return(200, `njs ${njs.version} engine ${njs.engine}\n`);
@@ -8,8 +8,8 @@ const version = function version(r) {
 
 /**
  * Return the installed njs version and engine for a stream return directive.
- * @param _s The current stream session.
- * @returns A greeting terminated by a newline.
+ * @param {NginxStreamSession} _s The current stream session.
+ * @returns {string} A greeting terminated by a newline.
  */
 const greeting = function greeting(_s) {
   return `njs ${njs.version} engine ${njs.engine}\n`;

@@ -57,10 +57,13 @@ Dockerfiles copy explicit target inputs and release packaging selects only metad
 The JavaScript and TypeScript lint, formatter, and compiler configurations form one contributor-tooling group.
 `oxlint.config.ts` extends `ultracite/oxlint/core` and preserves its environment, ignore patterns, rules, and test overrides.
 The preset supplies native ESLint, TypeScript, Unicorn, Oxc, import, JSDoc, Node, and Promise plugins.
-There are no project JavaScript plugins for Oxlint.
-`check:ultracite` checks the njs runtime example, the Markdown rules and tests, both root TypeScript configurations, and its explicit configuration-file list.
+The local TSDoc plugin checks exported TypeScript declarations.
+Separate style configurations check function-body spacing and adjacent test registrations without replacing the base rules.
+The test spacing rule recognizes registrations imported from Vitest, Jest globals, and Bun, but does not recognize `node:test` registrations.
+`check:ultracite` checks the njs runtime example, the Markdown rules and tests, the local plugins, and its explicit configuration-file list.
 `check:typescript` checks those TypeScript files through `tsconfig.json` and the Node LTS compiler preset.
-Type-aware Oxlint rules are not active because this invocation does not enable type-aware analysis or install its companion engine.
+The type-aware pass checks the TypeScript tooling and configuration files.
+The njs example and test registrations retain syntax-only lint because their runtime and registration contracts are not represented by that type-aware pass.
 Ultracite checks the njs runtime example in `nginx/scripting.js` for lint and formatting, while target builds provide its runtime-aware validation.
 
 The table maps effective enforcement to engineering qualities rather than adding another prose rule set.
@@ -68,9 +71,9 @@ The table maps effective enforcement to engineering qualities rather than adding
 | Pillar | Effective enforcement | Applicable scope and rationale |
 | --- | --- | --- |
 | Performance | Ultracite core `no-await-in-loop`, `unicorn/prefer-set-has`, and `unicorn/prefer-array-some`, plus `oxc/no-accumulating-spread`. | The linted tooling checks sequential work, collection operations, and repeated accumulator copies. |
-| Stability | Ultracite core `no-unsafe-finally`, `no-unsafe-optional-chaining`, `no-constant-condition`, and `import/no-cycle`, plus TypeScript checking and ShellCheck. | Tooling and maintained shell scripts receive static checks for unsafe control flow, invalid accesses, types, and shell failures. |
+| Stability | Ultracite core `no-unsafe-finally`, `no-unsafe-optional-chaining`, `no-constant-condition`, and `import/no-cycle`, plus type-aware lint, TypeScript checking, and ShellCheck. | Tooling and maintained shell scripts receive static checks for unsafe control flow, invalid accesses, types, and shell failures. |
 | Consistency | Core `prefer-named-capture-group` and `require-unicode-regexp`, Markdownlint `table-column-style`, and configured upstream `search-replace`. | Linted tooling and maintained Markdown retain readable regex captures, compact tables, and portable tree markers. |
-| Maintainability | Core `no-unused-vars` and `import/no-duplicates`, rumdl MD046, and offline Lychee checks. | Tooling and documentation avoid unused bindings, duplicate imports, unclosed fences, and broken local references. |
+| Maintainability | Core `no-unused-vars` and `import/no-duplicates`, exported TSDoc and spacing rules, rumdl MD046, and offline Lychee checks. | Tooling and documentation avoid unused bindings, duplicate imports, unclosed fences, and broken local references. |
 
 These static checks do not establish measured performance improvements or target runtime acceptance.
 
