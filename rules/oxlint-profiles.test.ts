@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
+import { stripVTControlCharacters } from "node:util";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 
@@ -13,15 +14,21 @@ const check = (profile: string, source: string): string => {
   try {
     const input = path.join(directory, "fixture.ts");
     writeFileSync(input, source);
+    const env: NodeJS.ProcessEnv = {
+      ...process.env,
+      FORCE_COLOR: "0",
+      NO_COLOR: "1"
+    };
+    delete env.GITHUB_ACTIONS;
     const result = spawnSync(
       path.join(root, "node_modules/.bin/ultracite"),
       ["check", "--config", path.join(root, profile), input],
-      { cwd: root, encoding: "utf-8" }
+      { cwd: root, encoding: "utf-8", env }
     );
     assert.equal(result.error, undefined);
     assert.equal(result.signal, null);
     assert.ok(result.status === 0 || result.status === 1);
-    const output = result.stdout + result.stderr;
+    const output = stripVTControlCharacters(result.stdout + result.stderr);
     assert.match(output, /Finished in .* on 1 files/u);
     for (const line of output.split("\n").filter(Boolean)) {
       assert.ok(
