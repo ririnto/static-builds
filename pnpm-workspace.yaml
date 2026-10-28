@@ -17,7 +17,7 @@ catalog:
   typescript: ^7.0.2
   ultracite: ^8.1.0
 
-minimumReleaseAge: 0
+minimumReleaseAge: 480
 
 overrides:
   micromark-extension-math>katex: "catalog:"
