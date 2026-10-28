@@ -11,11 +11,11 @@ catalog:
   markdownlint-cli2: ^0.24.0
   markdownlint-rule-search-replace: ^1.2.0
   npm-run-all2: ^9.0.4
-  oxfmt: ^0.74.0
-  oxlint: ^1.89.0
+  oxfmt: ^0.75.0
+  oxlint: ^1.90.0
   pnpm: ^12.15.0
   typescript: ^7.0.2
-  ultracite: ^8.0.2
+  ultracite: ^8.1.0
 
 minimumReleaseAge: 0
 
