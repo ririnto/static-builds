@@ -79,7 +79,7 @@
     "env": {
       "ABSEIL_CPP_VERSION": "20260817.0",
       "ALPINE_VERSION": "3",
-      "GRPC_VERSION": "1.84.1",
+      "GRPC_VERSION": "1.85.0",
       "GRPC_PROTO_REF": "master",
       "HAPROXY_OTEL_ADDON_VERSION": "2.3.0",
       "HAPROXY_OTEL_C_WRAPPER_VERSION": "3.4.0",

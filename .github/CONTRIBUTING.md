@@ -20,7 +20,7 @@ The checks use maintained markdownlint-cli2, rumdl, and Lychee releases.
 The Markdown job also runs the rule tests, TypeScript validation, and Ultracite checks.
 
 Install the latest Node.js 24 LTS release and pnpm 12.15.0 for Node-side tooling.
-Use rumdl 0.3.0 and Lychee 0.24.2, matching the workflow's tool versions.
+Use rumdl 0.3.1 and Lychee 0.24.2, matching the workflow's tool versions.
 Install ShellCheck and shfmt for the existing Makefile shell gates.
 Run the checks from the repository root:
 

@@ -25,7 +25,7 @@ jobs:
       security-events: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v7.0.1
+        uses: actions/checkout@v7
 
       - name: Validate release tag
         env:
@@ -34,10 +34,10 @@ jobs:
         run: sh .github/release-guard.sh "$TARGET" "$TAG"
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4.4.1
+        uses: docker/setup-buildx-action@v4
 
       - name: Cache source downloads
-        uses: actions/cache@v6.1.0
+        uses: actions/cache@v6
         with:
           path: ${{ github.workspace }}/.tmp
           key: >-
@@ -71,7 +71,7 @@ jobs:
           severity: 'CRITICAL,HIGH'
 
       - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v4.39.1
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: 'trivy-results.sarif'
 
@@ -82,14 +82,14 @@ jobs:
         run: sh package-release.sh "$TARGET" "$TAG"
 
       - name: Upload release artifacts
-        uses: actions/upload-artifact@v7.0.2
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ inputs.target }}-static-build
           path: .out/${{ inputs.target }}
           include-hidden-files: true
 
       - name: Upload release package
-        uses: actions/upload-artifact@v7.0.2
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ inputs.target }}-release-package
           path: ${{ inputs.tag }}.tar.gz
@@ -103,10 +103,10 @@ jobs:
       contents: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v7.0.1
+        uses: actions/checkout@v7
 
       - name: Download release package
-        uses: actions/download-artifact@v8.0.2
+        uses: actions/download-artifact@v8
         with:
           name: ${{ inputs.target }}-release-package
 

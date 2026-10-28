@@ -21,7 +21,7 @@ trap 'rm -rf "$tools_dir"' EXIT
 apt-get update
 DEBIAN_FRONTEND=noninteractive apt-get install --yes --no-install-recommends ca-certificates curl make xz-utils
 mkdir "$tools_dir/rumdl" "$tools_dir/lychee" "$tools_dir/shellcheck"
-curl --fail --location --silent --show-error "https://github.com/rvben/rumdl/releases/download/v0.3.0/rumdl-v0.3.0-${archive_arch}-unknown-linux-gnu.tar.gz" --output "$tools_dir/rumdl.tar.gz"
+curl --fail --location --silent --show-error "https://github.com/rvben/rumdl/releases/download/v0.3.1/rumdl-v0.3.1-${archive_arch}-unknown-linux-gnu.tar.gz" --output "$tools_dir/rumdl.tar.gz"
 tar --extract --gzip --file "$tools_dir/rumdl.tar.gz" --directory "$tools_dir/rumdl"
 install --mode=0755 "$(find "$tools_dir/rumdl" -type f -name rumdl -print -quit)" /usr/local/bin/rumdl
 curl --fail --location --silent --show-error "https://github.com/lycheeverse/lychee/releases/download/lychee-v0.24.2/lychee-${archive_arch}-unknown-linux-gnu.tar.gz" --output "$tools_dir/lychee.tar.gz"
