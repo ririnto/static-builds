@@ -8,7 +8,6 @@ export default defineConfig({
   env: core.env,
   extends: [core],
   ignorePatterns: core.ignorePatterns,
-  jsPlugins: ["./rules/plugins/tsdoc-plugin.ts"],
   overrides: [
     {
       files: ["**/*.{js,jsx,mjs,cjs}"],
@@ -24,11 +23,6 @@ export default defineConfig({
   ],
   rules: {
     "oxc/no-accumulating-spread": "deny",
-    "tsdoc/require-export-tsdoc": "deny",
-    "typescript/consistent-type-imports": [
-      "error",
-      { fixStyle: "separate-type-imports", prefer: "type-imports" }
-    ],
     "typescript/no-floating-promises": ["error", { ignoreVoid: false }]
   }
 });

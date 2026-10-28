@@ -19,7 +19,24 @@ const check = (profile: string, source: string): string => {
       { cwd: root, encoding: "utf-8" }
     );
     assert.equal(result.error, undefined);
-    return result.stdout + result.stderr;
+    assert.equal(result.signal, null);
+    assert.ok(result.status === 0 || result.status === 1);
+    const output = result.stdout + result.stderr;
+    assert.match(output, /Finished in .* on 1 files/u);
+    for (const line of output.split("\n").filter(Boolean)) {
+      assert.ok(
+        line === "Checking formatting..." ||
+          line === "All matched files use the correct format." ||
+          line ===
+            "Format issues found in above 1 files. Run without `--check` to fix." ||
+          line.startsWith("Finished in ") ||
+          (line.startsWith(input) &&
+            (/ \(\d+ms\)$/u.test(line) ||
+              /:\d+:\d+: (?:error|warning) [\w/-]+\([^)]+\):/u.test(line))),
+        `Unexpected Ultracite output: ${line}`
+      );
+    }
+    return output;
   } finally {
     rmSync(directory, { recursive: true });
   }
@@ -56,14 +73,4 @@ test("sibling profile checks proven test registrations without misclassifying lo
     'const test = (value: string) => value;\ntest("one");\ntest("two");\n'
   );
   assert.doesNotMatch(local, /style\(sibling-test-spacing\)/u);
-});
-
-test("base profile requires multiline documentation for exported declarations", () => {
-  const invalid = check("oxlint.config.ts", "export const value = 1;\n");
-  assert.match(invalid, /tsdoc\(require-export-tsdoc\)/u);
-  const valid = check(
-    "oxlint.config.ts",
-    "/**\n * Provide the value.\n */\nexport const value = 1;\n"
-  );
-  assert.doesNotMatch(valid, /tsdoc\(require-export-tsdoc\)/u);
 });
