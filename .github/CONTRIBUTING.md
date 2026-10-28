@@ -36,7 +36,6 @@ The lockfile records the resolved dependency graph.
 `check` runs Markdown lint, rule tests, TypeScript validation, Ultracite, code-fence validation, relative-link validation, ShellCheck, and shell formatting checks.
 `fix` applies Markdown lint fixes, Ultracite formatting for selected configuration and JavaScript or TypeScript source files, and the existing Makefile shell formatter.
 Markdownlint loads the upstream `markdownlint-rule-search-replace` package through `customRules`.
-Its configured box-drawing check preserves the [maintained rule contract](https://github.com/ririnto/sinon/blob/main/plugins/harness/docs/tools/lint-rule-mapping.md#markdown-policies).
 It reports the first Unicode box-drawing character per line, including fenced code, without automatic replacements.
 The existing rule tests exercise the actual configuration through Markdownlint's public API.
 Their direct `markdown-it` dependency supplies the legacy parser required by the upstream rule.
