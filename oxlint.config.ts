@@ -8,6 +8,16 @@ export default defineConfig({
   env: core.env,
   extends: [core],
   ignorePatterns: core.ignorePatterns,
+  jsPlugins: [
+    {
+      name: "style-blank-lines",
+      specifier: "./rules/plugins/no-blank-lines-in-functions.ts"
+    },
+    {
+      name: "style-spacing",
+      specifier: "./rules/plugins/sibling-test-spacing.ts"
+    }
+  ],
   overrides: [
     {
       files: ["**/*.{js,jsx,mjs,cjs}"],
@@ -23,6 +33,8 @@ export default defineConfig({
   ],
   rules: {
     "oxc/no-accumulating-spread": "deny",
+    "style-blank-lines/no-blank-lines-in-functions": "deny",
+    "style-spacing/sibling-test-spacing": "deny",
     "typescript/no-floating-promises": ["error", { ignoreVoid: false }]
   }
 });
