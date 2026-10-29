@@ -97,7 +97,7 @@ Do not add audit exclusions or change lint rules to hide findings.
 
 Dependency installation runs Husky's `prepare` script in this checkout.
 Husky installs the tracked `.husky/pre-commit` and `.husky/pre-push` hooks through `.husky/_`.
-The hooks invoke `corepack pnpm run pre-commit` and `corepack pnpm run pre-push` respectively.
+The hooks invoke `pnpm run pre-commit` and `pnpm run pre-push` respectively.
 Both scripts run the complete contributor checks and block Git operations when a check fails.
 Install the documented native tools before committing or pushing.
 Preserve existing hook owners through reviewed composition when adopting these hooks in an existing checkout.

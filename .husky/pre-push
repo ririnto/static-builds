@@ -1,1 +1,1 @@
-corepack pnpm run pre-push
+pnpm run pre-push

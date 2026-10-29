@@ -15,7 +15,7 @@
     "fix": "run-p fix:*",
     "fix:markdownlint-cli2": "markdownlint-cli2 --fix",
     "fix:shfmt": "make shfmt-write",
-    "fix:ultracite": "corepack pnpm run check:ultracite",
+    "fix:ultracite": "pnpm run check:ultracite",
     "pre-commit": "run-s check",
     "pre-push": "run-s check",
     "prepare": "husky",
@@ -43,6 +43,5 @@
   },
   "engines": {
     "node": "^24.15.0"
-  },
-  "packageManager": "pnpm@12.15.0"
+  }
 }
