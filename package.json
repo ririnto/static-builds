@@ -22,7 +22,7 @@
     "ultracite:check:base": "ultracite check nginx/scripting.js rules/*.ts rules/plugins/*.ts oxlint*.config.ts oxfmt.config.ts package.json pnpm-workspace.yaml tsconfig.json .markdownlint-cli2.jsonc .github/workflows/markdown-validation.yaml",
     "ultracite:check:style:no-blank-lines-in-functions": "ultracite check --config oxlint.style-no-blank-lines-in-functions.config.ts nginx/scripting.js rules/*.ts rules/plugins/*.ts oxlint*.config.ts oxfmt.config.ts package.json pnpm-workspace.yaml tsconfig.json .markdownlint-cli2.jsonc .github/workflows/markdown-validation.yaml",
     "ultracite:check:style:sibling-test-spacing": "ultracite check --config oxlint.style-sibling-test-spacing.config.ts nginx/scripting.js rules/*.ts rules/plugins/*.ts oxlint*.config.ts oxfmt.config.ts package.json pnpm-workspace.yaml tsconfig.json .markdownlint-cli2.jsonc .github/workflows/markdown-validation.yaml",
-    "ultracite:check:types": "ultracite check --type-aware rules/table-separators.ts rules/plugins/*.ts oxlint*.config.ts oxfmt.config.ts"
+    "ultracite:check:types": "ultracite check --type-aware --ignore-pattern '**/*.test.ts' rules/*.ts rules/plugins/*.ts oxlint*.config.ts oxfmt.config.ts"
   },
   "devDependencies": {
     "@oxc-project/types": "catalog:",
