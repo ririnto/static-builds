@@ -8,11 +8,21 @@ import parseJsonc from "markdownlint-cli2/parsers/jsonc";
 import searchReplace from "markdownlint-rule-search-replace";
 import { lint } from "markdownlint/sync";
 
-const { config } = parseJsonc(
+const parsed = parseJsonc(
   readFileSync(new URL("../.markdownlint-cli2.jsonc", import.meta.url), "utf-8")
 );
+if (
+  typeof parsed !== "object" ||
+  parsed === null ||
+  !("config" in parsed) ||
+  typeof parsed.config !== "object" ||
+  parsed.config === null ||
+  Array.isArray(parsed.config)
+) {
+  throw new TypeError("Expected a Markdownlint configuration object");
+}
 const lintOptions = {
-  config,
+  config: Object.fromEntries(Object.entries(parsed.config)),
   customRules: [searchReplace],
   markdownItFactory: () => new MarkdownIt()
 };

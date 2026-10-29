@@ -1,7 +1,5 @@
 declare module "markdownlint-cli2/parsers/jsonc" {
-  import type { Configuration } from "markdownlint";
-
-  export default function parseJsonc(text: string): { config: Configuration };
+  export default function parseJsonc(text: string): unknown;
 }
 
 declare module "markdownlint-rule-search-replace" {
