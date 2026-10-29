@@ -57,7 +57,7 @@ const check = (source: string): string[] => {
   }
 };
 
-test("blank-line profile detects gaps but preserves directives and literal contents", () => {
+void test("blank-line profile detects gaps but preserves directives and literal contents", () => {
   const invalid = check("const f = () => {\n\n  return 1;\n};\nf();\n");
   assert.ok(invalid.includes("style-blank-lines(no-blank-lines-in-functions)"));
   const valid = check(
@@ -66,7 +66,7 @@ test("blank-line profile detects gaps but preserves directives and literal conte
   assert.ok(!valid.includes("style-blank-lines(no-blank-lines-in-functions)"));
 });
 
-test("sibling profile checks proven test registrations without misclassifying local functions", () => {
+void test("sibling profile checks proven test registrations without misclassifying local functions", () => {
   const invalid = check(
     'import { test } from "vitest";\ntest("one", () => {});\ntest("two", () => {});\n'
   );
