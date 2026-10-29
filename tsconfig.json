@@ -5,5 +5,5 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": ["rules/**/*.ts", "oxfmt.config.ts", "oxlint*.config.ts"]
+  "include": ["rules/**/*.ts", "oxfmt.config.ts", "oxlint.config.ts"]
 }

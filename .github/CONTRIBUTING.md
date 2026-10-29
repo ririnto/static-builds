@@ -58,7 +58,7 @@ Dockerfiles copy explicit target inputs and release packaging selects only metad
 The JavaScript and TypeScript lint, formatter, and compiler configurations form one contributor-tooling group.
 `oxlint.config.ts` extends `ultracite/oxlint/core` and preserves its environment, ignore patterns, rules, and test overrides.
 The preset supplies native ESLint, TypeScript, Unicorn, Oxc, import, JSDoc, Node, and Promise plugins.
-Separate style configurations check function-body spacing and adjacent test registrations without replacing the base rules.
+The same configuration checks function-body spacing and adjacent test registrations without replacing the base rules.
 The test spacing rule recognizes registrations imported from Vitest, Jest globals, and Bun, but does not recognize `node:test` registrations.
 `check:ultracite` checks the njs runtime example, the Markdown rules and tests, the local plugins, and its explicit configuration-file list.
 `check:typescript` checks those TypeScript files through `tsconfig.json` and the Node LTS compiler preset.

@@ -9,7 +9,7 @@ import { stripVTControlCharacters } from "node:util";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 
-const check = (profile: string, source: string): string[] => {
+const check = (source: string): string[] => {
   const directory = mkdtempSync(path.join(tmpdir(), "lint-fixture-"));
   try {
     const input = path.join(directory, "fixture.ts");
@@ -27,7 +27,7 @@ const check = (profile: string, source: string): string[] => {
         "--format",
         "json",
         "--config",
-        path.join(root, profile),
+        path.join(root, "oxlint.config.ts"),
         input
       ],
       { cwd: root, encoding: "utf-8", env }
@@ -58,34 +58,25 @@ const check = (profile: string, source: string): string[] => {
 };
 
 test("blank-line profile detects gaps but preserves directives and literal contents", () => {
-  const profile = "oxlint.style-no-blank-lines-in-functions.config.ts";
-  const invalid = check(
-    profile,
-    "const f = () => {\n\n  return 1;\n};\nf();\n"
-  );
-  assert.ok(invalid.includes("style(no-blank-lines-in-functions)"));
+  const invalid = check("const f = () => {\n\n  return 1;\n};\nf();\n");
+  assert.ok(invalid.includes("style-blank-lines(no-blank-lines-in-functions)"));
   const valid = check(
-    profile,
     "const f = () => {\n  'use strict';\n\n  const value = `first\n\nlast`;\n  /* SPDX-License-Identifier: MIT\n\n   * Modification notice. */\n  return value;\n};\nf();\n"
   );
-  assert.ok(!valid.includes("style(no-blank-lines-in-functions)"));
+  assert.ok(!valid.includes("style-blank-lines(no-blank-lines-in-functions)"));
 });
 
 test("sibling profile checks proven test registrations without misclassifying local functions", () => {
-  const profile = "oxlint.style-sibling-test-spacing.config.ts";
   const invalid = check(
-    profile,
     'import { test } from "vitest";\ntest("one", () => {});\ntest("two", () => {});\n'
   );
-  assert.ok(invalid.includes("style(sibling-test-spacing)"));
+  assert.ok(invalid.includes("style-spacing(sibling-test-spacing)"));
   const valid = check(
-    profile,
     'import { test } from "vitest";\ntest("one", () => {});\n\ntest("two", () => {});\n'
   );
-  assert.ok(!valid.includes("style(sibling-test-spacing)"));
+  assert.ok(!valid.includes("style-spacing(sibling-test-spacing)"));
   const local = check(
-    profile,
     'const test = (value: string) => value;\ntest("one");\ntest("two");\n'
   );
-  assert.ok(!local.includes("style(sibling-test-spacing)"));
+  assert.ok(!local.includes("style-spacing(sibling-test-spacing)"));
 });
