@@ -11,16 +11,14 @@
     "check:shellcheck": "make lint",
     "check:shfmt": "make shfmt-check",
     "check:typescript": "tsc --noEmit",
-    "check:ultracite": "run-p --continue-on-error ultracite:check:**",
+    "check:ultracite": "ultracite check --type-aware",
     "fix": "run-p fix:*",
     "fix:markdownlint-cli2": "markdownlint-cli2 --fix",
     "fix:shfmt": "make shfmt-write",
-    "fix:ultracite": "pnpm run check:ultracite",
+    "fix:ultracite": "ultracite fix",
     "pre-commit": "run-s check",
     "pre-push": "run-s check",
-    "prepare": "husky",
-    "ultracite:check:base": "ultracite check nginx/scripting.js rules/*.ts rules/plugins/*.ts oxlint.config.ts oxfmt.config.ts package.json pnpm-workspace.yaml tsconfig.json .markdownlint-cli2.jsonc .github/workflows/markdown-validation.yaml",
-    "ultracite:check:types": "ultracite check --type-aware --ignore-pattern '**/*.test.ts' rules/*.ts rules/plugins/*.ts oxlint.config.ts oxfmt.config.ts"
+    "prepare": "husky"
   },
   "devDependencies": {
     "@oxc-project/types": "catalog:",
@@ -31,6 +29,7 @@
     "markdownlint": "catalog:",
     "markdownlint-cli2": "catalog:",
     "markdownlint-rule-search-replace": "catalog:",
+    "njs-types": "catalog:",
     "npm-run-all2": "catalog:",
     "oxfmt": "catalog:",
     "oxlint": "catalog:",

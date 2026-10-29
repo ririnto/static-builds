@@ -11,6 +11,7 @@ catalog:
   markdownlint: ^0.42.0
   markdownlint-cli2: ^0.24.0
   markdownlint-rule-search-replace: ^1.2.0
+  njs-types: ^1.0.0
   npm-run-all2: ^9.0.4
   oxfmt: ^0.75.0
   oxlint: ^1.90.0

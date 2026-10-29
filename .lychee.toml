@@ -3,5 +3,5 @@ include_fragments = "anchor-only"
 hidden = true
 no_progress = true
 exclude_path = [
-  '(^|/)(\.out|\.tmp|\.cache|\.git|node_modules|\.venv|venv)(/|$)',
+  '(^|/)(\.out|\.tmp|\.cache|\.git|node_modules|\.venv|venv)(/|$)'
 ]

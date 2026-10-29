@@ -35,6 +35,6 @@ export default defineConfig({
     "oxc/no-accumulating-spread": "deny",
     "style-blank-lines/no-blank-lines-in-functions": "deny",
     "style-spacing/sibling-test-spacing": "deny",
-    "typescript/no-floating-promises": ["error", { ignoreVoid: false }]
+    "typescript/no-floating-promises": "error"
   }
 });

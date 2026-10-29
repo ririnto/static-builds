@@ -188,6 +188,9 @@ catalogs:
     markdownlint-rule-search-replace:
       specifier: ^1.2.0
       version: 1.2.0
+    njs-types:
+      specifier: ^1.0.0
+      version: 1.0.0
     npm-run-all2:
       specifier: ^9.0.4
       version: 9.0.4
@@ -238,6 +241,9 @@ importers:
       markdownlint-rule-search-replace:
         specifier: 'catalog:'
         version: 1.2.0
+      njs-types:
+        specifier: 'catalog:'
+        version: 1.0.0
       npm-run-all2:
         specifier: 'catalog:'
         version: 9.0.4
@@ -1087,6 +1093,9 @@ packages:
 
   ms@2.1.3:
     resolution: {integrity: sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA==}
+
+  njs-types@1.0.0:
+    resolution: {integrity: sha512-p2JzTMO/Bf3CRvXCoVMa6sU6m4OJ/GI+k7kQyYtCSHW0A3tqGIzO6UwcH9lGcDnNxTDUdemBppr7hqEZluc9hg==}
 
   npm-normalize-package-bin@6.0.0:
     resolution: {integrity: sha512-tdt4aFn9QamlhdN3HV2D2ccpBwO5/fyjjbXUxYA6uBjyekMZcZvDq0aSj9t5Jo+tih6AYFnt/cuIRn9013e0Uw==}
@@ -2072,6 +2081,8 @@ snapshots:
       ufo: 1.6.4
 
   ms@2.1.3: {}
+
+  njs-types@1.0.0: {}
 
   npm-normalize-package-bin@6.0.0: {}
 

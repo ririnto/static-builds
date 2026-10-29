@@ -3,15 +3,15 @@ name: Release From Tag
 on:
   push:
     tags:
-      - 'nginx-upstream-healthcheck-*'
-      - 'nginx-*'
-      - 'haproxy-*'
-      - 'apache-exporter-*'
-      - 'httpd-*'
-      - 'coredns-*'
-      - 'dnsmasq-*'
-      - 'vector-*'
-      - 'monit-*'
+      - "nginx-upstream-healthcheck-*"
+      - "nginx-*"
+      - "haproxy-*"
+      - "apache-exporter-*"
+      - "httpd-*"
+      - "coredns-*"
+      - "dnsmasq-*"
+      - "vector-*"
+      - "monit-*"
 
 jobs:
   resolve-target:
