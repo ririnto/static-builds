@@ -8,7 +8,7 @@ validate-contributor-checks:
   image: node:26.13.0-trixie
   before_script:
     - sh .gitlab/install-validation-tools.sh
-    - npm install --global pnpm@12.15.0
+    - npm install --global "$(node -p 'require("./package.json").packageManager')"
     - pnpm install --frozen-lockfile
   script:
     - pnpm run check
