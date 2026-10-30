@@ -16,6 +16,7 @@ catalog:
   oxfmt: ^0.75.0
   oxlint: ^1.90.0
   oxlint-tsgolint: ^7.0.2005
+  re2js: ^2.8.7
   typescript: ^7.0.2
   ultracite: ^8.1.0
 
@@ -23,3 +24,4 @@ minimumReleaseAge: 480
 
 overrides:
   micromark-extension-math>katex: "catalog:"
+  re2js: "catalog:"
