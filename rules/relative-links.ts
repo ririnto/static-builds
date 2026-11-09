@@ -8,15 +8,39 @@ import type { Rule } from "markdownlint";
 import { childTokens } from "./token-children.ts";
 
 const headingParser = new MarkdownIt({ html: true });
-const htmlAnchorPattern =
-  /<[a-z][^>]*?\s(?:id|name)\s*=\s*["']?(?<anchor>[^"'\s>]+)/giu;
 const htmlImagePattern = /^<img(?=\s|\/?>)/iu;
 const htmlAttributePattern =
   /(?<attribute>\s+[^\s=/>]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'=<>`]+))?)/gu;
+const htmlAnchorSourcePattern =
+  /^\s+(?<attribute>id|name)\s*=\s*(?:"(?<double>[^"]+)"|'(?<single>[^']+)'|(?<unquoted>[^\s"'=<>`]+))/iu;
+const htmlTagPattern = /<(?<element>[a-z][^\s=/>]*)(?<attributes>[^>]*)>/giu;
 const htmlSourcePattern =
   /^\s+src\s*=\s*(?:"(?<double>[^"]*)"|'(?<single>[^']*)'|(?<unquoted>[^\s"'=<>`]+))/iu;
 const slugExcluded =
   /[^\p{Letter}\p{Mark}\p{Number}\p{Connector_Punctuation}\- ]/gu;
+
+const htmlAnchors = (content: string): string[] => {
+  const anchors: string[] = [];
+  for (const tag of content
+    .replaceAll(/<!--[\s\S]*?(?:-->|$)/gu, "")
+    .matchAll(htmlTagPattern)) {
+    const element = tag.groups?.element?.toLowerCase() ?? "";
+    for (const attribute of tag.groups?.attributes?.matchAll(
+      htmlAttributePattern
+    ) ?? []) {
+      const source = htmlAnchorSourcePattern.exec(
+        attribute.groups?.attribute ?? ""
+      )?.groups;
+      if (
+        source &&
+        (element === "a" || source.attribute.toLowerCase() === "id")
+      ) {
+        anchors.push(source.double ?? source.single ?? source.unquoted ?? "");
+      }
+    }
+  }
+  return anchors;
+};
 
 const headingAnchors = (file: string): Set<string> => {
   const anchors = new Set(["top"]);
@@ -49,10 +73,8 @@ const headingAnchors = (file: string): Set<string> => {
     for (const html of [token, ...(token.children ?? [])].filter(
       (item) => item.type === "html_block" || item.type === "html_inline"
     )) {
-      for (const match of html.content
-        .replaceAll(/<!--[\s\S]*?(?:-->|$)/gu, "")
-        .matchAll(htmlAnchorPattern)) {
-        anchors.add(match.groups?.anchor ?? "");
+      for (const htmlAnchor of htmlAnchors(html.content)) {
+        anchors.add(htmlAnchor);
       }
     }
   }
