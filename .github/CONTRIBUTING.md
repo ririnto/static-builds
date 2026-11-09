@@ -36,12 +36,16 @@ The lockfile records the resolved dependency graph.
 `check` runs Markdown lint, rule tests, TypeScript validation, Ultracite, code-fence validation, relative-link validation, ShellCheck, and shell formatting checks.
 `fix` applies Markdown lint fixes and the existing Makefile shell formatter.
 It also applies Ultracite fixes.
-Markdownlint loads the upstream `markdownlint-rule-search-replace` package through `customRules`.
-It reports the first Unicode box-drawing character per line, including fenced code, without automatic replacements.
-The existing rule tests exercise the actual configuration through Markdownlint's public API.
-Their direct `markdown-it` dependency supplies the legacy parser required by the upstream rule.
+Markdownlint loads the local Markdownlint rules through `customRules`, applying the shared Markdownlint baseline with the repository's stricter exceptions.
+The `docs/no-box-drawing` rule reports the first Unicode box-drawing character per line, including fenced code, without automatic replacements.
+The `docs/no-em-dash` rule rejects em dashes in text tokens while skipping code spans, code blocks, HTML tokens, and image alt text.
+The `docs/relative-links` rule requires relative link and image destinations to exist and link fragments on Markdown files to match rendered heading anchors.
+Static Builds retains the default `single-title` front matter check, which is stricter than the shared baseline.
+Static Builds keeps the stricter table HTML exception by allowing only `br` inside table markup while the shared baseline also allows `code`.
 The local `docs/table-separators` rule requires exactly three hyphens in each table delimiter cell.
 It preserves alignment colons and fixes only the delimiter hyphens.
+The existing rule tests exercise the actual configuration through Markdownlint's public API.
+The direct `markdown-it` dependency supplies the parser used by the token-based rules.
 The CLI configuration respects Git ignore files.
 Only the supported `customRules` spelling loads packages through the installed CLI2 loader.
 The lowercase `customrules` spelling does not register rules through this entrypoint.
@@ -71,7 +75,7 @@ The table maps effective enforcement to engineering qualities rather than adding
 | --- | --- | --- |
 | Performance | Ultracite core `no-await-in-loop`, `unicorn/prefer-set-has`, and `unicorn/prefer-array-some`, plus `oxc/no-accumulating-spread`. | The linted tooling checks sequential work, collection operations, and repeated accumulator copies. |
 | Stability | Ultracite core `no-unsafe-finally`, `no-unsafe-optional-chaining`, `no-constant-condition`, and `import/no-cycle`, plus type-aware lint, TypeScript checking, and ShellCheck. | Tooling and maintained shell scripts receive static checks for unsafe control flow, invalid accesses, types, and shell failures. |
-| Consistency | Core `prefer-named-capture-group` and `require-unicode-regexp`, Markdownlint `table-column-style`, and configured upstream `search-replace`. | Linted tooling and maintained Markdown retain readable regex captures, compact tables, and portable tree markers. |
+| Consistency | Core `prefer-named-capture-group` and `require-unicode-regexp`, Markdownlint `table-column-style`, and the local `docs/no-box-drawing` rule. | Linted tooling and maintained Markdown retain readable regex captures, compact tables, and portable tree markers. |
 | Maintainability | Core `no-unused-vars` and `import/no-duplicates`, spacing rules, rumdl MD046, and offline Lychee checks. | Tooling and documentation avoid unused bindings, duplicate imports, unclosed fences, and broken local references. |
 
 These static checks do not establish measured performance improvements or target runtime acceptance.
