@@ -1,48 +1,64 @@
 ---
 name: branch-download
-description: Verify downloader deadline and cleanup behavior when changing download.sh or its process lifecycle.
+description: Check branch-download lock interruption and downloader deadline cleanup when changing download.sh.
 ---
 
-# Verify downloader deadlines and cleanup
+# Verify branch download cleanup
 
-Use this skill when changing `download.sh`, especially its wget deadline, temporary files, branch lock, or signal cleanup.
-The source mapping was last checked against commit `5f5c3fdb5ae8b2b50dc9d4f6f05da7b57982aafb`.
-Move that sync commit forward only after checking the mapping against the new source and rerunning the verification.
+Use this skill when changing branch lock ownership, signal handling, or wget deadlines in `download.sh`.
+The source mapping was checked against commit `5f5c3fdb5ae8b2b50dc9d4f6f05da7b57982aafb`.
+Move that sync commit forward only after checking the mapping and rerunning both checks against the new source.
 
-## Run
+## Check the lock model
 
-From the repository root, run the existing production-interface verifier:
+Install repository dependencies with `pnpm install --frozen-lockfile` and use the installed `/statechart` skill to run `model/BranchLock.tla` with `model/BranchLock.cfg` and `model/view.mjs`.
+Set `TLA2TOOLS` to the repository's `node_modules/tla-chaos-loop/tools/tla2tools.jar` so the tool does not bootstrap another checker.
+The catalog resolves `tla-chaos-loop` 1.1.0, whose bundled TLC reports build `2026.07.18.145032`.
+The recorded run used Node 26.13.0 and Java 25.0.5.
+From the repository root, set `STATECHART` to the installed `/statechart` executable and run:
+
+```sh
+TLA2TOOLS="$PWD/node_modules/tla-chaos-loop/tools/tla2tools.jar" "$STATECHART" \
+  "$PWD/.claude/skills/branch-download/model/BranchLock.tla" \
+  --config "$PWD/.claude/skills/branch-download/model/BranchLock.cfg" \
+  --view "$PWD/.claude/skills/branch-download/model/view.mjs" \
+  --out "$(mktemp -d)/out"
+```
+
+Read every result with `/statechart` and compare the generated chart and report with the retained `model/chart.mmd` and `model/report.txt`.
+Exit 1 is expected at the sync commit only when the report identifies `NoAbandonedLock` as broken.
+
+At the sync commit, `NoAbandonedLock` fails.
+If source behavior intentionally changes, update the model to match each affected command, rerun it, and record the new result instead of preserving this historical failure.
+A branch download can leave its lock after interruption, causing a later download to wait for the lock and eventually fail.
+The shortest modeled path creates the lock, receives a signal before recording ownership, exits its signal handler, and skips lock removal because no ownership was recorded.
+A controlled replay of the unchanged script reproduced this sequence on the tested macOS shell.
+Do not interpret the expected failure as a passing invariant or change signal semantics merely to silence it.
+
+The model follows one branch download with an initially absent lock.
+`Mkdir` represents the successful `mkdir` at `download.sh:49`, and `RecordLock` represents the separate assignment at `download.sh:60`.
+`Signal` represents delivery at a modeled command boundary, `SignalExit` represents the signal trap at `download.sh:44`, and `CheckLock` and `RemoveLock` represent the exit trap at `download.sh:43`.
+`CompleteWork` abstracts the intervening download and its temporary-file cleanup without claiming their correctness.
+The model assumes an empty lock directory, successful cleanup commands, and no repeated signals during the traps.
+It excludes competing downloaders, lock wait and timeout, failed `mkdir` or `rmdir`, temporary-file and child ownership, retry, publication, SIGKILL, crashes, and external filesystem changes.
+A model result establishes only the stated bounded model and requires replay against the real script.
+
+## Check real downloader behavior
+
+Run this existing production-interface verifier from the repository root:
 
 ```sh
 python3 proxy/tests/verify-download.py
 ```
 
 It needs Python 3, OpenSSL, wget, and GNU Coreutils or BusyBox `timeout`, or GNU `gtimeout`.
-It copies the current production scripts into isolated temporary fixtures and uses a local HTTPS server.
 All eight scenarios must pass.
-A failure identifies a scenario, and its process and fixture cleanup runs even after a driver timeout.
-
-The verifier checks successful branch downloads, slow and signal-resistant wget deadlines, `gtimeout`, interruption after wget starts, HTTP failure, a missing deadline command, and fixture cleanup.
+It exercises wget success, deadlines, resistant children, cancellation after wget starts, HTTP failure, missing deadline commands, and fixture cleanup using local HTTPS fixtures.
 It uses one attempt and forces the wget path.
-It does not establish curl behavior, retry and backoff, concurrent branch writers, destination preservation, archive integrity, or signals between lock acquisition and ownership recording.
+It does not cover curl, retry and backoff, concurrent branch writers, destination preservation, archive integrity, or the lock-recording interruption window.
 
-## Source mapping and limits
-
-`download.sh` creates the branch lock with `mkdir` and later records its path for the exit trap.
-The signal trap terminates and waits for the recorded child before the exit trap removes recorded temporary and lock paths.
-The wget path uses `timeout -k 1`, and a successful nonempty temporary file is moved into place.
-The verifier exercises those production interfaces but does not explore every signal delivery point.
-A signal between successful lock creation and ownership recording is an unconfirmed model hypothesis, not a demonstrated source defect.
-
-The branch-download TLA+ model is an unchecked draft, not a formal verification result.
-The available statechart frontend failed on the SANY XML emitted by `tlaplus-mcp` 1.0.0 TLC 2.0.
-Do not claim model properties or generate a substitute chart from this draft.
-When a compatible checker is available through an approved repository dependency channel, use `/statechart` to inspect every result, validate each model action against its separate source command, and replay any counterexample against the real script.
-The draft omits retries, timeouts, failures, parent signal forwarding, and external actors, and assumes shell signals can arrive between its modeled commands.
-
-## Negative control
-
-The existing verifier detected a scratch mutation that removed `-k 1` from the wget deadline command.
-The resistant-child scenario exceeded the six-second driver deadline, and the unchanged source passed again after restoration.
-This demonstrates sensitivity to that deadline regression only.
-Do not alter the production checkout to perform a negative control; use an isolated scratch copy and preserve its cleanup.
+A scratch copy with wget's `-k 1` escalation removed failed the resistant-child scenario by exceeding the six-second driver deadline.
+The restored source passed all eight scenarios.
+This negative control demonstrates sensitivity to that deadline regression only, independently of the failing lock property.
+A separate 100-trial child-signal experiment did not reproduce a child leak, but did not force the spawn-to-PID-assignment window.
+That child path remains inconclusive and is outside the lock model.
