@@ -6,7 +6,6 @@
     },
     "docs/no-box-drawing": true,
     "docs/no-em-dash": true,
-    "docs/relative-links": true,
     "docs/table-separators": true,
     "line-length": false,
     "no-duplicate-heading": {
@@ -24,7 +23,6 @@
   "customRules": [
     "rules/no-box-drawing.ts",
     "rules/no-em-dash.ts",
-    "rules/relative-links.ts",
     "rules/table-separators.ts"
   ],
   "gitignore": true,

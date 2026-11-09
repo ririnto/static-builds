@@ -39,7 +39,6 @@ It also applies Ultracite fixes.
 Markdownlint loads the local Markdownlint rules through `customRules`, applying the shared Markdownlint baseline with the repository's stricter exceptions.
 The `docs/no-box-drawing` rule reports the first Unicode box-drawing character per line, including fenced code, without automatic replacements.
 The `docs/no-em-dash` rule rejects em dashes in text tokens while skipping code spans, code blocks, HTML tokens, and image alt text.
-The `docs/relative-links` rule requires relative link and image destinations to exist and link fragments on Markdown files to match rendered heading anchors.
 Static Builds retains the default `single-title` front matter check, which is stricter than the shared baseline.
 Static Builds keeps the stricter table HTML exception by allowing only `br` inside table markup while the shared baseline also allows `code`.
 The local `docs/table-separators` rule requires exactly three hyphens in each table delimiter cell.
