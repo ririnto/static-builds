@@ -33,6 +33,7 @@
     "oxfmt": "catalog:",
     "oxlint": "catalog:",
     "oxlint-tsgolint": "catalog:",
+    "tla-chaos-loop": "catalog:",
     "typescript": "catalog:",
     "ultracite": "catalog:"
   },

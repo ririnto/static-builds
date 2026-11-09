@@ -1,0 +1,35 @@
+---
+title: "Branch download lock ownership"
+---
+stateDiagram-v2
+  state "Legend" as legend {
+    lg0: Breaks NoAbandonedLock in some cases
+    lg1: Path to the NoAbandonedLock bug
+  }
+  class lg0 mayBreak
+  class lg1 bugPath
+  s0: Waiting to create the lock
+  s1: Lock created, ownership not yet recorded
+  s2: Interruption is handled
+  s3: Download owns its lock
+  s4: Exit cleanup checks the lock
+  s5: Download has stopped
+  s6: Cleanup removes the lock
+  [*] --> s0
+  s0 --> s1: Lock is created
+  s0 --> s2: Download is interrupted
+  s1 --> s3: Cleanup ownership is recorded
+  s1 --> s2: Download is interrupted
+  s2 --> s4: Signal handler exits
+  s3 --> s4: Download finishes
+  s3 --> s2: Download is interrupted
+  s4 --> s5: Cleanup checks recorded ownership
+  s4 --> s6: Cleanup checks recorded ownership
+  s6 --> s5: Lock is removed
+  classDef mayBreak fill:#fff3e6,stroke:#e8730c,stroke-width:2.5px,color:#b85a06
+  class s0 bugPath
+  class s1 bugPath
+  class s2 bugPath
+  class s4 bugPath
+  class s5 mayBreak
+  class s5 bugPath
