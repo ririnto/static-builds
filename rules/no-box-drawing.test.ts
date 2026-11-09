@@ -2,11 +2,11 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
-import MarkdownIt from "markdown-it";
 import { applyFixes } from "markdownlint";
 import parseJsonc from "markdownlint-cli2/parsers/jsonc";
-import searchReplace from "markdownlint-rule-search-replace";
 import { lint } from "markdownlint/sync";
+
+import rule from "./no-box-drawing.ts";
 
 const parsed = parseJsonc(
   readFileSync(new URL("../.markdownlint-cli2.jsonc", import.meta.url), "utf-8")
@@ -23,13 +23,12 @@ if (
 }
 const lintOptions = {
   config: Object.fromEntries(Object.entries(parsed.config)),
-  customRules: [searchReplace],
-  markdownItFactory: () => new MarkdownIt()
+  customRules: [rule]
 };
 
 const violations = (input: string) =>
   (lint({ ...lintOptions, strings: { input } }).input ?? [])
-    .filter(({ ruleNames }) => ruleNames.includes("search-replace"))
+    .filter(({ ruleNames }) => ruleNames.includes("docs/no-box-drawing"))
     .map(({ lineNumber, errorRange }) => ({ errorRange, lineNumber }));
 
 void test("accepts ASCII tree markers and characters outside the rule range", () => {

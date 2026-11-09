@@ -1,9 +1,12 @@
 {
-  "$schema": "https://raw.githubusercontent.com/DavidAnson/markdownlint-cli2/refs/tags/v0.24.0/schema/markdownlint-cli2-config-schema.json",
+  "$schema": "https://raw.githubusercontent.com/DavidAnson/markdownlint-cli2/refs/tags/v0.22.1/schema/markdownlint-cli2-config-schema.json",
   "config": {
     "code-block-style": {
       "style": "fenced"
     },
+    "docs/no-box-drawing": true,
+    "docs/no-em-dash": true,
+    "docs/relative-links": true,
     "docs/table-separators": true,
     "line-length": false,
     "no-duplicate-heading": {
@@ -14,23 +17,14 @@
       "allowed_elements": ["details", "summary", "kbd", "img", "code"],
       "table_allowed_elements": ["br"]
     },
-    "search-replace": {
-      "rules": [
-        {
-          "message": "Use ASCII tree markers such as +-- and | instead.",
-          "name": "no-box-drawing",
-          "replace": null,
-          "searchPattern": "/(?<![\\u2500-\\u257F][^\\n]*)[\\u2500-\\u257F]/gu",
-          "searchScope": "all"
-        }
-      ]
-    },
     "table-column-style": {
       "style": "compact"
     }
   },
   "customRules": [
-    "markdownlint-rule-search-replace",
+    "rules/no-box-drawing.ts",
+    "rules/no-em-dash.ts",
+    "rules/relative-links.ts",
     "rules/table-separators.ts"
   ],
   "gitignore": true,
