@@ -46,7 +46,8 @@ Keep custom Markdownlint rules under `rules/`.
 - Keep the package manager version free of hash suffixes.
 - Keep Husky's `prepare` script and tracked pre-commit and pre-push hooks connected to real contributor checks.
 - Verify successful Git operations and failure propagation through those hooks.
-- Invoke oxlint and oxfmt only through Ultracite.
+- Use Ultracite as the only direct caller of Oxlint and Oxfmt.
+- Route scripts, hooks, workflows, documentation, and validation commands through Ultracite rather than calling Oxlint or Oxfmt directly.
 - Preserve the Markdownlint baseline with `gitignore: true`, compact tables, and recursively sorted configuration keys.
 - Do not disable lint rules, add suppressions, or weaken configuration to make changes pass.
 
