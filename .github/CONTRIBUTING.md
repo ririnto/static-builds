@@ -23,7 +23,7 @@ Install the Node.js version supported by `package.json` and the pnpm version dec
 Install the Go version declared in `go.mod` for repository tasks and Go-managed contributor tools.
 Use rumdl 0.3.1 and Lychee 0.24.2, matching the workflow's tool versions.
 Install ShellCheck for shell linting.
-Task, shfmt, Jsonnet, jsonnetfmt, buildctl, and buildkitd are managed through `go.mod`.
+Task, shfmt, Jsonnet, jsonnetfmt, buildctl, buildkitd, and GitHub CLI are managed through `go.mod`.
 Linux target builds additionally require the rootless runtime prerequisites documented in the root README.
 Native macOS target builds retain the Docker Buildx prerequisites documented there.
 Run the checks from the repository root:

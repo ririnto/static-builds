@@ -35,7 +35,7 @@ Use a native worker or separately configured emulation when the worker architect
 The Taskfile writes artifacts to `.out/<target>/` and imports and exports local cache in `.cache/<target>/` by default.
 
 Python 3 is needed for `go tool task list-targets`, not for `go tool task build TARGET=<target>`.
-Task, shfmt, Jsonnet, jsonnetfmt, buildctl, and buildkitd are managed through `go.mod`.
+Task, shfmt, Jsonnet, jsonnetfmt, buildctl, buildkitd, and GitHub CLI are managed through `go.mod`.
 The pnpm version declared in `package.json` provides equivalent package-script entrypoints.
 Target compilers and verification tools are installed or run in Dockerfile stages, so they are not host prerequisites.
 
