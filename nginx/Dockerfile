@@ -76,7 +76,7 @@ COPY nginx/scripting.conf nginx/scripting.js ${TARGET_PREFIX}/conf/
 
 
 
-FROM registry.access.redhat.com/ubi10/ubi-minimal:${UBI10_MINIMAL_VERSION} AS verify
+FROM docker.io/redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
 ARG NJS_VERSION
 ARG TARGET_PREFIX
 

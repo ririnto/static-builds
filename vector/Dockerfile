@@ -14,7 +14,7 @@ RUN mkdir -p ${TARGET_PREFIX}/bin && \
     mv vector-x86_64-unknown-linux-musl/bin/vector ${TARGET_PREFIX}/bin/
 
 
-FROM registry.access.redhat.com/ubi10/ubi-minimal:${UBI10_MINIMAL_VERSION} AS verify
+FROM docker.io/redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
 ARG TARGET_PREFIX
 
 RUN --mount=type=cache,target=/var/cache/dnf \

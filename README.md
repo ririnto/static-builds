@@ -6,7 +6,7 @@ Build statically-linked binaries using Docker multi-stage builds for portable, m
 
 - Static Linking - Produce fully statically-linked binaries using musl libc.
 - Multi-stage Builds - Use Docker BuildKit for efficient, cacheable builds.
-- Minimal Outputs - Verify artifacts inside Dockerfile stages and export from a `scratch` stage.
+- Minimal Outputs - Verify artifacts with Docker Hub `redhat/ubi10-minimal` stages and export from a `scratch` stage.
 - Extensible - Add new build targets by following a simple directory structure.
 - Reproducible - Version-controlled configurations via `metadata.json`.
 

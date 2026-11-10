@@ -139,6 +139,7 @@ Keep custom Markdownlint rules under `rules/`.
 ### Verify builds and validation workflows
 
 - Keep every final artifact dependent on its Dockerfile verify stage.
+- Use Docker Hub `redhat/ubi10-minimal` with the manifest-selected UBI tag for verify stages.
 - Verify static binaries inside Dockerfiles without per-target verify shell scripts or proxy harnesses.
 - Keep push and pull-request validation CI limited to contributor checks, without target builds or releases.
 - Run Go tests, golangci-lint, shfmt, Jsonnet evaluation and formatting, code-fence checks, and relative-link checks directly in GitLab validation jobs.
