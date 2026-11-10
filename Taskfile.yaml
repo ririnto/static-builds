@@ -73,6 +73,7 @@ tasks:
         done <<EOF
         ${METADATA_ENV}
         EOF
+        go mod download github.com/moby/buildkit
         BUILDCTL="go tool buildctl" sh "$(go list -m -f '{{"{{.Dir}}"}}' github.com/moby/buildkit)/examples/buildctl-daemonless/buildctl-daemonless.sh" build \
           --frontend dockerfile.v0 \
           --local context=. \
