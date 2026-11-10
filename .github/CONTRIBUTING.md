@@ -19,9 +19,13 @@ Every pull request is checked because deleting a linked file can break documenta
 The checks use maintained markdownlint-cli2, rumdl, and Lychee releases.
 The Markdown job also runs the rule tests, TypeScript validation, and Ultracite checks.
 
-Install the latest Node.js 24 LTS release and the pnpm version declared in `package.json` for Node-side tooling.
+Install the Node.js version supported by `package.json` and the pnpm version declared there for Node-side tooling.
+Install the Go version declared in `go.mod` for repository tasks and Go-managed contributor tools.
 Use rumdl 0.3.1 and Lychee 0.24.2, matching the workflow's tool versions.
-Install ShellCheck and shfmt for the existing Makefile shell gates.
+Install ShellCheck for shell linting.
+Task, shfmt, Jsonnet, jsonnetfmt, buildctl, and buildkitd are managed through `go.mod`.
+Linux target builds additionally require the rootless runtime prerequisites documented in the root README.
+Native macOS target builds retain the Docker Buildx prerequisites documented there.
 Run the checks from the repository root:
 
 ```sh
@@ -33,8 +37,8 @@ pnpm run fix
 The root package manifest references Node-side tooling through the pnpm workspace catalog.
 `pnpm-workspace.yaml` defines the catalog-backed `katex` development override required by `micromark-extension-math`.
 The lockfile records the resolved dependency graph.
-`check` runs Markdown lint, rule tests, TypeScript validation, Ultracite, code-fence validation, relative-link validation, ShellCheck, and shell formatting checks.
-`fix` applies Markdown lint fixes and the existing Makefile shell formatter.
+`check` runs Markdown lint, rule tests, TypeScript validation, Ultracite, code-fence validation, relative-link validation, ShellCheck, shell formatting, Jsonnet evaluation, and Jsonnet formatting checks.
+`fix` applies Markdown lint fixes and the Go-managed shell and Jsonnet formatters through Task.
 It also applies Ultracite fixes.
 Markdownlint loads the local Markdownlint rules through `customRules`, applying the shared Markdownlint baseline with the repository's stricter exceptions.
 The `docs/no-box-drawing` rule reports the first Unicode box-drawing character per line, including fenced code, without automatic replacements.
@@ -134,7 +138,7 @@ Use Docker's `--init` option when running these fixtures in a container.
 The native healthcheck module is maintained project source.
 Changes to its scheduling, probe I/O, or cleanup require a target build and the separate [functional suite](../nginx-upstream-healthcheck/README.md#build-verification).
 
-For build changes, run `make build <target>` for each affected target before creating release tags.
+For build changes, run `go tool task build TARGET=<target>` for each affected target before creating release tags.
 The release workflows run on release tags or reusable workflow calls.
 The separate Markdown validation workflow runs on pull requests or manual requests with read-only repository access.
 Do not create release tags to validate documentation changes.

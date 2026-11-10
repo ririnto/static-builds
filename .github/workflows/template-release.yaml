@@ -33,8 +33,13 @@ jobs:
           TAG: ${{ inputs.tag }}
         run: sh .github/release-guard.sh "$TARGET" "$TAG"
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      - name: Prepare rootless BuildKit prerequisites
+        run: sh .github/setup-rootless.sh
 
       - name: Cache source downloads
         uses: actions/cache@v6
@@ -45,14 +50,15 @@ jobs:
           restore-keys: >-
             tmp-${{ inputs.target }}-
 
+      - name: Expose GitHub cache runtime
+        uses: crazy-max/ghaction-github-runtime@v4
+
       - name: Build target
         env:
           BUILDKIT_CACHE_BACKEND: gha
           BUILD_OUTPUT_DEST: ${{ github.workspace }}/.out/${{ inputs.target }}
           TARGET: ${{ inputs.target }}
-        run: |-
-          sh download.sh "$TARGET"
-          sh .github/build.sh "$TARGET"
+        run: go tool task build TARGET="$TARGET"
 
       - name: Verify release files exist
         env:

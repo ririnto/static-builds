@@ -12,9 +12,9 @@ Build statically-linked binaries using Docker multi-stage builds for portable, m
 
 ## Prerequisites
 
-Local builds require GNU Make, a POSIX-compatible `sh` with its standard built-ins, AWK, and common host utilities.
+Local builds require the Go version declared in `go.mod`, a POSIX-compatible `sh` with its standard built-ins, AWK, and common host utilities.
 The build scripts use `basename`, `dirname`, `mkdir`, `mktemp`, `mv`, `printf`, `pwd`, `rm`, `rmdir`, `sleep`, and `tr`.
-See the [Makefile](Makefile), [download script](download.sh), and [metadata helper](metadata.sh).
+See the [Taskfile](Taskfile.yaml), [download script](download.sh), and [metadata helper](metadata.sh).
 
 Install `curl` or `wget` to download target sources, and allow network access to their upstream hosts.
 The `wget` fallback also requires GNU Coreutils or BusyBox `timeout`, or GNU Coreutils `gtimeout` on macOS, to enforce the per-attempt wall-clock deadline.
@@ -24,25 +24,66 @@ A clean build also requires builder network access to image registries and each 
 For example, the [nginx Dockerfile](nginx/Dockerfile) installs Alpine build packages and Red Hat UBI verification packages.
 The [CoreDNS Dockerfile](coredns/Dockerfile) also compiles Go code, which can require access to Go module sources.
 
-Docker CLI access to a running daemon and the Docker Buildx plugin are required.
-Confirm the installed plugin with `docker buildx version`.
-The active builder must use a BuildKit version and driver that support `type=local` output and cache import and export.
-The Makefile writes artifacts to `.out/<target>/` and imports and exports cache in `.cache/<target>/`.
-The builder must run containers for `BUILDKIT_PLATFORM`, which defaults to `linux/amd64` in the Makefile.
-Use a native worker or configured binfmt/QEMU emulation when the builder's architecture differs from the selected platform.
-Use `docker buildx inspect --bootstrap` to check the active builder, driver, and supported platforms.
+Native Linux builds use an ephemeral rootless BuildKit daemon with Go-managed `buildctl` and `buildkitd`.
+Install RootlessKit, an OCI runtime such as runc or crun, and the subordinate UID/GID mapping helpers.
+Configure subordinate UID/GID ranges for the non-root build user and ensure host policy permits the required user namespaces.
+Do not disable host security protections to satisfy these prerequisites.
+Native macOS builds require Docker CLI access to a running Linux daemon and the Docker Buildx plugin.
+Confirm that plugin with `docker buildx version` and inspect the active builder with `docker buildx inspect --bootstrap`.
+The selected worker must support local filesystem export, cache import/export, and execution of `BUILDKIT_PLATFORM`, which defaults to `linux/amd64`.
+Use a native worker or separately configured emulation when the worker architecture differs from the selected platform.
+The Taskfile writes artifacts to `.out/<target>/` and imports and exports local cache in `.cache/<target>/` by default.
 
-Python 3 is needed only for `make list-targets`, not for `make build`.
+Python 3 is needed for `go tool task list-targets`, not for `go tool task build TARGET=<target>`.
+Task, shfmt, Jsonnet, jsonnetfmt, buildctl, and buildkitd are managed through `go.mod`.
+The pnpm version declared in `package.json` provides equivalent package-script entrypoints.
 Target compilers and verification tools are installed or run in Dockerfile stages, so they are not host prerequisites.
 
 ## Usage
 
-```bash
-make build <target>
+```sh
+go tool task
+go tool task list-targets
+go tool task download TARGET=nginx
+go tool task build TARGET=nginx
+```
+
+Task uses named variables rather than Make's additional-goal convention.
+Use `go tool task build TARGET=<target>`, not `go tool task build <target>`.
+Run these commands from the repository root.
+The equivalent pnpm commands are:
+
+```sh
+pnpm run tasks
+pnpm run list-targets
+pnpm run download TARGET=nginx
+pnpm run build TARGET=nginx
 ```
 
 Build artifacts are written to `.out/<target>/` by default for both local and CI builds.
 You can override this with `BUILD_OUTPUT_DEST`.
+Build configuration accepts inherited environment values or Task CLI assignments.
+Task CLI assignments take precedence over inherited values.
+`BUILDKIT_PLATFORM`, `BUILDKIT_NETWORK`, and `BUILDKIT_CACHE_BACKEND` default to `linux/amd64`, `default`, and `local`.
+`BUILD_OUTPUT_DEST` and `CACHE_DIR` default to `.out/<target>/` and `.cache/<target>/` under the repository root.
+
+```sh
+BUILDKIT_PLATFORM=linux/arm64 go tool task build TARGET=nginx
+go tool task build TARGET=nginx BUILD_OUTPUT_DEST=.out/custom/nginx CACHE_DIR=.cache/custom/nginx
+```
+
+### Network and platform behavior
+
+Linux builds use an ephemeral rootless BuildKit daemon.
+Its default build network follows the rootless worker's networking environment and is not Docker bridge networking.
+Native macOS builds use the configured Docker Buildx builder.
+`BUILDKIT_NETWORK=none` disables RUN-step networking through the Dockerfile frontend.
+`BUILDKIT_NETWORK=host` requests the host-network entitlement explicitly.
+GitLab package builds retain their existing rootless network restrictions.
+The build does not automatically configure a Linux VM or cross-platform emulation.
+The Linux launcher ignores inherited `BUILDKIT_HOST`, `BUILDKITD_FLAGS`, `BUILDKITD`, `BUILDCTL`, and `ROOTLESSKIT` overrides so each invocation owns its daemon and state.
+Additional arguments to `.github/build-daemonless.sh` are buildctl build arguments.
+Use `.github/build-buildx.sh` for the existing Buildx argument interface.
 
 ### Running haproxy binary image
 
@@ -58,14 +99,19 @@ docker run --rm \
 .
 +-- metadata.json           # Canonical build/release metadata
 +-- build-env.sh            # Shared build argument normalization
-+-- Makefile                # Local development build orchestration
++-- Taskfile.yaml           # Repository task entrypoints
++-- go.mod                  # Go-managed contributor tools
++-- go.sum                  # Go module checksums
 +-- .gitlab-ci.yaml         # GitLab CI configuration
 +-- download.sh             # Source download dispatcher
 +-- metadata.sh             # Metadata query helper
 +-- metadata.awk            # Metadata JSON parser
 +-- package-release.sh      # Release package helper
 +-- .github/
-|   +-- build.sh            # Docker Buildx build entry
+|   +-- build.sh            # Platform-selecting build entrypoint
+|   +-- build-buildx.sh     # Native macOS Buildx adapter
+|   +-- build-daemonless.sh # Native Linux rootless lifecycle
+|   +-- setup-rootless.sh   # GitHub rootless prerequisite preflight
 |   +-- release-guard.sh    # Release tag validator
 |   +-- workflows/
 |       +-- release-from-tag.yaml
@@ -106,7 +152,7 @@ Do not pin dependencies with commit hashes or container image digests.
 The downloader refreshes branch archives on every call and reuses cached release archives.
 Concurrent branch downloads use a lock for each destination.
 Lock waits stop after 60 seconds.
-Run `make build <target>` for each affected target before creating release tags.
+Run `go tool task build TARGET=<target>` for each affected target before creating release tags.
 
 Upstream projects use different support policies.
 The following policies guide version selection.
@@ -219,7 +265,7 @@ Each target must follow this structure:
 
    Add this filter to the existing `on.push.tags` list rather than replacing the caller workflow.
 
-7. Validate: Run `make build your-target` to verify the download and build flow works.
+7. Validate: Run `go tool task build TARGET=your-target` to verify the download and build flow works.
 
 ### Allowed Target-Specific Variations
 
@@ -239,7 +285,8 @@ Targets share the same root contract, but some targets vary in builder image, re
 
 ### Local Acceptance Snapshot
 
-On 2026-10-12 UTC, all nine targets passed `make build <target>` on `linux/amd64`, including their Dockerfile verification stages.
+On 2026-10-12 UTC, all nine targets passed the then-current repository build entrypoint on `linux/amd64`, including their Dockerfile verification stages.
+That historical capture does not establish acceptance of the current Taskfile entrypoint.
 The build code includes the helper relocation and lifecycle fixes delivered through [PR #45](https://github.com/ririnto/static-builds/pull/45).
 The capture used Docker 29.8.2, Buildx 0.37.2, and BuildKit 0.33.1 with the `docker-container` driver on an ARM64 Docker Desktop daemon.
 Builds ran sequentially with a four-CPU and eight-GiB builder limit and BuildKit worker parallelism set to one.
@@ -302,7 +349,7 @@ Target selection, tag-prefix exceptions, release-file selection, and tag-version
 2. Test build: Verify that build works locally:
 
    ```bash
-   make build your-target
+   go tool task build TARGET=your-target
    ```
 
 3. Commit version updates with a title and an explanatory body.
@@ -352,12 +399,14 @@ Invalid examples:
 
 ## How It Works
 
-1. `download.sh` resolves each target's download resources from `metadata.json`, then the build script runs Docker Buildx.
-2. Docker BuildKit executes the multi-stage Dockerfile via `docker buildx build`.
+1. Task runs `download.sh` to resolve the target's download resources from `metadata.json` before starting the build.
+2. The platform dispatcher selects ephemeral rootless BuildKit on Linux or Docker Buildx on macOS to execute the multi-stage Dockerfile.
 3. Built artifacts go to `.out/<target>/` for both local builds and CI.
 4. Verify stages use the UBI 10 minimal version from `metadata.json`, and the final exported artifact comes from the target's `scratch` stage.
 
-Build caching uses the root `.cache/<target>/` directories.
+Local build caching uses the root `.cache/<target>/` directories by default.
+GitHub release builds use the GitHub Actions cache backend with a separate scope for each target.
+GitLab package builds retain their official rootless BuildKit image and existing local-cache behavior.
 
 ## CI Behavior
 

@@ -1,0 +1,86 @@
+version: "3"
+
+silent: true
+
+vars:
+  SHELL_PATHS: >-
+    build-env.sh download.sh metadata.sh package-release.sh apache-exporter apache-httpd coredns dnsmasq haproxy monit nginx nginx-upstream-healthcheck vector .github .gitlab proxy/tests
+
+tasks:
+  default:
+    desc: List available tasks
+    cmds:
+      - "{{.TASK_EXE | shellQuote}} --list"
+
+  build:
+    desc: Download sources and build a target (TARGET=nginx)
+    requires:
+      vars: [TARGET]
+    preconditions:
+      - sh: test -n {{.TARGET | default "" | shellQuote}}
+        msg: TARGET must be nonempty.
+    cmds:
+      - task: download
+        vars:
+          TARGET: "{{.TARGET}}"
+      - >-
+        BUILDKIT_PLATFORM={{.BUILDKIT_PLATFORM | default "linux/amd64" | shellQuote}} BUILDKIT_NETWORK={{.BUILDKIT_NETWORK | default "default" | shellQuote}} BUILDKIT_CACHE_BACKEND={{.BUILDKIT_CACHE_BACKEND | default "local" | shellQuote}} BUILD_OUTPUT_DEST={{.BUILD_OUTPUT_DEST | default (printf "%s/.out/%s" .ROOT_DIR .TARGET) | shellQuote}} CACHE_DIR={{.CACHE_DIR | default (printf "%s/.cache/%s" .ROOT_DIR .TARGET) | shellQuote}} sh .github/build.sh {{.TARGET | shellQuote}}
+
+  download:
+    desc: Download a target's sources (TARGET=nginx)
+    requires:
+      vars: [TARGET]
+    preconditions:
+      - sh: test -n {{.TARGET | default "" | shellQuote}}
+        msg: TARGET must be nonempty.
+    cmds:
+      - sh download.sh {{.TARGET | shellQuote}}
+
+  list-targets:
+    desc: List targets from metadata.json
+    cmds:
+      - python3 -c "import json;[print(k) for k in json.load(open('metadata.json'))]"
+
+  lint:
+    desc: Run ShellCheck on maintained shell scripts
+    cmds:
+      - find {{.SHELL_PATHS}} -type f -name '*.sh' -print0 | xargs -0 shellcheck
+
+  shfmt-check:
+    desc: Check shell formatting
+    cmds:
+      - find {{.SHELL_PATHS}} -type f -name '*.sh' -print0 | xargs -0 go tool shfmt -d -i 2 -ci
+
+  shfmt-write:
+    desc: Fix shell formatting
+    cmds:
+      - find {{.SHELL_PATHS}} -type f -name '*.sh' -print0 | xargs -0 go tool shfmt -w -i 2 -ci
+
+  jsonnet-check:
+    desc: Evaluate the main and feature-branch package pipelines
+    cmds:
+      - >-
+        go tool jsonnet -S --ext-str branch=main --ext-str target= --ext-str component_ref=example.invalid/group/static-builds/static-release@main .gitlab/ci/package-pipeline.jsonnet > /dev/null
+      - >-
+        go tool jsonnet -S --ext-str branch=feature/tooling-check --ext-str target= --ext-str component_ref=example.invalid/group/static-builds/static-release@feature/tooling-check .gitlab/ci/package-pipeline.jsonnet > /dev/null
+
+  jsonnetfmt-check:
+    desc: Check package pipeline Jsonnet formatting
+    cmds:
+      - go tool jsonnetfmt --test .gitlab/ci/package-pipeline.jsonnet
+
+  jsonnetfmt-write:
+    desc: Fix package pipeline Jsonnet formatting
+    cmds:
+      - go tool jsonnetfmt --in-place .gitlab/ci/package-pipeline.jsonnet
+
+  package-pipeline:
+    desc: Render a GitLab child pipeline (BRANCH=main COMPONENT_REF=...)
+    requires:
+      vars: [BRANCH, COMPONENT_REF]
+    preconditions:
+      - sh: test -n {{.COMPONENT_REF | default "" | shellQuote}}
+        msg: COMPONENT_REF must be nonempty.
+    cmds:
+      - >-
+        go tool jsonnet -S --ext-str {{printf "branch=%s" .BRANCH | shellQuote}} --ext-str {{printf "target=%s" (.TARGET | default "") | shellQuote}} --ext-str {{printf "component_ref=%s" .COMPONENT_REF | shellQuote}} .gitlab/ci/package-pipeline.jsonnet

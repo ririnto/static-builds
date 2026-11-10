@@ -52,8 +52,3 @@ ij_yaml_spaces_within_brackets = true
 
 [*.md]
 max_line_length = off
-
-[Makefile]
-indent_style = tab
-indent_size = 4
-tab_width = 4

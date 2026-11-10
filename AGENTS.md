@@ -39,6 +39,9 @@ Keep custom Markdownlint rules under `rules/`.
 
 ### Configure dependencies and contributor checks
 
+- Define repository task entrypoints in `Taskfile.yaml` and delegate package scripts to `go tool task`.
+- Manage Task, shfmt, Jsonnet, jsonnetfmt, buildctl, and buildkitd through the root Go module.
+- Use ephemeral rootless BuildKit for native Linux builds, Docker Buildx for native macOS builds, and the official rootless BuildKit image for GitLab package builds.
 - Follow EditorConfig with four-space indentation, except two spaces for shell and YAML files.
 - Use pnpm catalogs with `^x.y.z` caret ranges for Node dependencies and required overrides.
 - Reference catalog entries from `package.json` and overrides instead of duplicating versions.
@@ -166,7 +169,7 @@ Refactor explanations into documented functions instead of adding other comments
 ### Keep platform-specific filenames
 
 - Use `.yaml` for GitHub workflows and Dependabot configuration.
-- Keep `.gitlab-ci.yml` unless the project's configured CI/CD path changes.
+- Keep `.gitlab-ci.yaml` as the parent pipeline filename and preserve the project's custom CI/CD configuration path.
 - Keep `templates/static-release.yml` for the `static-release` component consumed by the parent pipeline and child-pipeline generator.
 
 ## Verification and delivery

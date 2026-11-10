@@ -51,13 +51,13 @@ The source-backed commands below capture the same introspection surfaces, but do
 
 ### Regenerate the snapshot
 
-From the repository root, use the [Makefile](../Makefile) to build the target selected by the current metadata, then run the capture commands on a compatible Linux host.
+From the repository root, use the [Taskfile](../Taskfile.yaml) to build the target selected by the current metadata, then run the capture commands on a compatible Linux host.
 The default build platform is `linux/amd64`.
-The build downloads its inputs and runs Docker Buildx, including the Dockerfile's verification stage.
+Task downloads the inputs before invoking the platform-selected BuildKit adapter, including the Dockerfile's verification stage.
 These commands assume the default output directory and must be adjusted if `BUILD_OUTPUT_DEST` is overridden.
 
 ```bash
-make build vector
+go tool task build TARGET=vector
 ./.out/vector/bin/vector --version
 ./.out/vector/bin/vector list
 ```

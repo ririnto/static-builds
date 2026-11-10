@@ -4,7 +4,7 @@ This target builds the upstream Apache Exporter source into a statically linked 
 
 ## Build Options (Explicit)
 
-- Build command: `make build apache-exporter`.
+- Build command: `go tool task build TARGET=apache-exporter`.
 - The Dockerfile uses a Go builder image based on Alpine and compiles with `CGO_ENABLED=0`, `GOOS=linux`, and the BuildKit `TARGETARCH`.
 - The build writes `${TARGET_PREFIX}/bin/apache-exporter`, with `TARGET_PREFIX` defaulting to `/out`.
 - The build injects `APACHE_EXPORTER_VERSION` into the upstream version variable with Go linker flags.
@@ -24,6 +24,6 @@ This target builds the upstream Apache Exporter source into a statically linked 
 > Override with `BUILD_OUTPUT_DEST`.
 
 ```bash
-make build apache-exporter
+go tool task build TARGET=apache-exporter
 ./.out/apache-exporter/bin/apache-exporter --version 2>&1 | grep -F '1.1.3'
 ```

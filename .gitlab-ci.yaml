@@ -8,6 +8,7 @@ validate-contributor-checks:
   image: node:26.13.0-trixie
   before_script:
     - sh .gitlab/install-validation-tools.sh
+    - export PATH="/usr/local/go/bin:$PATH"
     - npm install --global "$(node -p 'require("./package.json").packageManager')"
     - pnpm install --frozen-lockfile
   script:
@@ -20,17 +21,10 @@ validate-contributor-checks:
 
 generate-package-pipeline:
   stage: prepare
-  image: golang:1
+  image: golang:1.27.3
   script:
-    - export PATH="/usr/local/go/bin:${GOPATH:-/go}/bin:$PATH"
-    - go install github.com/google/go-jsonnet/cmd/jsonnet@v0.22.0
-    - |-
-      jsonnet -S \
-        --ext-str "branch=${CI_COMMIT_BRANCH:-}" \
-        --ext-str "target=" \
-        --ext-str "component_ref=${CI_SERVER_FQDN}/${CI_PROJECT_PATH}/static-release@${CI_COMMIT_REF_NAME}" \
-        .gitlab/ci/package-pipeline.jsonnet \
-        > package-pipeline.yaml
+    - >-
+      go tool task package-pipeline "BRANCH=${CI_COMMIT_BRANCH:-}" "COMPONENT_REF=${CI_SERVER_FQDN}/${CI_PROJECT_PATH}/static-release@${CI_COMMIT_REF_NAME}" > package-pipeline.yaml
   artifacts:
     paths:
       - package-pipeline.yaml
