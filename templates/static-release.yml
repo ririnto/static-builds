@@ -14,20 +14,18 @@ spec:
   rules:
     - when: $[[ inputs.run_policy ]]
   image: golang:alpine
-  services:
-    - name: docker:dind
   variables:
-    DOCKER_HOST: tcp://docker:2376
-    DOCKER_TLS_CERTDIR: /certs
-    DOCKER_TLS_VERIFY: "1"
-    DOCKER_CERT_PATH: /certs/client
-    BUILDKIT_CACHE_BACKEND: local
+    BUILDKITD_FLAGS: --oci-worker-no-process-sandbox
     BUILD_OUTPUT_DEST: "$CI_PROJECT_DIR/.out/$[[ inputs.target ]]"
   before_script:
-    - apk add --no-cache ca-certificates git docker-cli docker-cli-buildx
-    - docker buildx create --use --driver docker-container
+    - apk add --no-cache ca-certificates git buildkit rootlesskit shadow-uidmap su-exec
+    - adduser -D -u 1000 user
+    - echo user:100000:65536 > /etc/subuid
+    - echo user:100000:65536 > /etc/subgid
+    - mkdir -p /run/user/1000 /home/user/.local/tmp /home/user/.local/share/buildkit
+    - chown -R user:user /run/user/1000 /home/user "$CI_PROJECT_DIR"
   script:
-    - go tool task build -- "$[[ inputs.target ]]"
+    - su-exec user env HOME=/home/user USER=user GOPATH=/home/user/go XDG_RUNTIME_DIR=/run/user/1000 TMPDIR=/home/user/.local/tmp go tool task build-rootless -- "$[[ inputs.target ]]"
     - |-
       files=$(mktemp)
       trap 'rm -f "$files"' EXIT

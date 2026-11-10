@@ -85,7 +85,8 @@ Build invocation examples:
 
 ### Network and platform behavior
 
-All hosts use the configured Docker Buildx builder directly.
+Local and GitHub builds use the configured Docker Buildx builder directly.
+GitLab uses `go tool task build-rootless` with an ephemeral rootless BuildKit daemon.
 `BUILDKIT_NETWORK=none` disables RUN-step networking.
 `BUILDKIT_NETWORK=host` requests host networking from the selected builder.
 The build does not automatically configure a Linux VM or cross-platform emulation.
@@ -376,7 +377,7 @@ Invalid examples:
 
 Local build caching uses the root `.cache/<target>/` directories by default.
 GitHub release builds use the GitHub Actions cache backend with a separate scope for each target.
-GitLab package builds use the same direct Buildx command and retain local-cache behavior.
+GitLab package builds use daemonless rootless BuildKit and retain local-cache behavior.
 
 ## CI Behavior
 
@@ -418,7 +419,10 @@ Selected release contents:
 - GitLab package builds retain artifacts without custom publisher jobs.
 - GitLab contributor validation invokes Go tests, golangci-lint, shell formatting, and Jsonnet checks through `go tool task`.
 - The Node, pnpm, and Java contributor checks run in local hooks only.
-- The package component installs Docker CLI and Buildx from Alpine packages.
+- The package component installs BuildKit, RootlessKit, and UID mapping helpers from Alpine packages.
+- It creates user 1000 and maps `user:100000:65536` in both `/etc/subuid` and `/etc/subgid`.
+- It invokes the upstream daemonless script as that user without Docker services.
+- The runner must permit unprivileged user namespaces and rootless mounts.
 - The runner must provide the Docker service and its shared TLS certificate directory without disabling TLS or build sandbox protections.
 - `feature/*` branches append `-beta` to the package version.
 - Release packaging and publication use GoReleaser in the GitHub release workflow.

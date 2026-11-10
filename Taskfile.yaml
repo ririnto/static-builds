@@ -57,6 +57,33 @@ tasks:
           "--file=${ROOT_DIR}/${TARGET}/Dockerfile" \
           "${ROOT_DIR}"
 
+  build-rootless:
+    desc: Build a target with daemonless rootless BuildKit (-- <target> [buildctl args...])
+    cmds:
+      - |-
+        set -e
+        set -- {{.CLI_ARGS}}
+        go tool task download -- "${1:-}"
+        TARGET="$1"
+        shift
+        METADATA_ENV=$(go tool task manifest -- get-env "$TARGET")
+        mkdir -p ".cache/$TARGET" "${BUILD_OUTPUT_DEST:-.out/$TARGET}"
+        while IFS='=' read -r key value; do
+          set -- --opt "build-arg:$key=$value" "$@"
+        done <<EOF
+        ${METADATA_ENV}
+        EOF
+        BUILDCTL="go tool buildctl" sh "$(go list -m -f '{{"{{.Dir}}"}}' github.com/moby/buildkit)/examples/buildctl-daemonless/buildctl-daemonless.sh" build \
+          --frontend dockerfile.v0 \
+          --local context=. \
+          --local dockerfile=. \
+          --opt "filename=$TARGET/Dockerfile" \
+          --opt "platform=${BUILDKIT_PLATFORM:-linux/amd64}" \
+          --output "type=local,dest=${BUILD_OUTPUT_DEST:-.out/$TARGET}" \
+          --import-cache "type=local,src=.cache/$TARGET" \
+          --export-cache "type=local,dest=.cache/$TARGET,mode=max" \
+          "$@"
+
   buildctl:
     desc: Run the BuildKit client
     cmds:
