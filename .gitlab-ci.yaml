@@ -9,7 +9,7 @@ validate-contributor-checks:
   before_script:
     - apk add --no-cache ca-certificates git
   script:
-    - go tool task go -- test ./...
+    - go tool task test
     - go tool task golangci-lint -- run ./...
     - go tool task shfmt -- -d -i 2 -ci
     - go tool task jsonnet -- -S --ext-str branch=main --ext-str target= --ext-str component_ref=example.invalid/group/static-builds/static-release@main

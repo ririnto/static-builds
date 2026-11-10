@@ -13,7 +13,8 @@ Build statically-linked binaries using Docker multi-stage builds for portable, m
 ## Prerequisites
 
 Local builds require the Go version declared in `go.mod` and Docker CLI access to a running Linux daemon and the Docker Buildx plugin.
-Release packaging uses the host `tar` with metadata-selected paths.
+GitHub release packaging uses GoReleaser with metadata-selected paths.
+GitLab package jobs use `tar`.
 See the [state machine inventory](.github/state-machines.md), [Taskfile](Taskfile.yaml), [download command](cmd/download/main.go), and [metadata command](cmd/metadata/main.go).
 
 Install `curl` or `wget` to download target sources, and allow network access to their upstream hosts.
@@ -37,6 +38,7 @@ The following tools are managed through `go.mod`:
 - jsonnetfmt
 - golangci-lint
 - gorelease
+- GoReleaser
 - buildctl
 
 The pnpm version declared in `package.json` provides equivalent package-script entrypoints.
@@ -94,7 +96,8 @@ The nginx commands in this document are examples, not defaults.
 For example, run `go tool task build -- haproxy` or `go tool task build -- apache-exporter --builder my-builder`.
 Tool tasks also pass arguments through: `go tool task jsonnetfmt -- -i` formats the built-in pipeline file.
 `go tool task buildctl -- --help` exposes the Go-managed BuildKit client while builds continue to use Docker Buildx.
-`go tool task release` runs gorelease for Go module compatibility checks, not binary asset publication.
+`go tool task gorelease` checks Go module compatibility.
+`go tool task goreleaser -- <arguments>` packages and publishes release artifacts through [.goreleaser.yaml](.goreleaser.yaml).
 
 ### Running haproxy binary image
 
@@ -283,7 +286,7 @@ Targets share the same root contract, but some targets vary in builder image, re
 
 ### Contributor checks
 
-Run `go tool task go -- test ./...` and `pnpm check` for the surviving Go commands and contributor tools.
+Run `go tool task test` and `pnpm check` for the surviving Go commands and contributor tools.
 Go lint uses `go tool task golangci-lint -- run ./...` checks, and shell formatting uses `go tool task shfmt -- -d -i 2 -ci` through Task.
 Builds verify artifacts in Dockerfile stages without per-target verify scripts or separate runtime harnesses.
 Contributor checks do not establish runtime acceptance of the custom healthcheck module.
@@ -420,10 +423,13 @@ Selected release contents:
 - The package component installs Docker CLI and Buildx from Alpine packages.
 - The runner must provide the Docker service and its shared TLS certificate directory without disabling TLS or build sandbox protections.
 - `feature/*` branches append `-beta` to the package version.
-- Release publication uses the GitHub CLI in the GitHub release workflow.
+- Release packaging and publication use GoReleaser in the GitHub release workflow.
 - The generated child pipeline includes the local component at `templates/static-release.yml`.
 - GitLab component discovery requires the conventional `templates/*.yml` filename, so `templates/static-release.yml` remains the supported exception to the `.yaml` filename rule.
 - The parent configuration uses the supported custom configuration path documented by [GitLab](https://docs.gitlab.com/ci/pipelines/settings/#specify-a-custom-cicd-configuration-file), while the local component follows [GitLab's component discovery convention](https://docs.gitlab.com/ci/components/).
-- GitHub release packaging and GitLab package generation query `go tool task manifest -- get-release-files <target>` and archive those paths with `tar`.
-GitHub publishing uses `gh` with `GH_TOKEN` and `GH_REPO`.
-A missing release is created only after HTTP 404, and an existing archive asset is replaced with `gh release upload --clobber`.
+- GitHub release packaging and GitLab package generation query `go tool task manifest -- get-release-files <target>` for selected paths.
+- GitHub uses GoReleaser to archive staged files, while GitLab uses `tar`.
+
+GitHub publishing uses GoReleaser with `GITHUB_TOKEN`.
+GoReleaser creates the release or replaces its existing archive asset.
+The workflow validates the repository tag format before using GoReleaser with `--skip=validate` for target-prefixed tags.

@@ -24,8 +24,9 @@ The model does not prove download integrity, retry liveness, or concurrent publi
 | Build task | Download, metadata arguments, cache selection, Buildx, export. | `Taskfile.yaml` propagates failed commands before the next build phase. |
 | Docker artifact | Source, configure, compile, install, static verification, final copy. | Each target's final stage depends on its verify stage. |
 | GitHub release | Resolve tag, validate version, build, scan, package, upload, publish. | `.github/workflows/template-release.yaml` publishes only after the release job succeeds. |
-| Release retry | Existing release or missing release, asset replacement or release creation. | Only an HTTP 404 permits the create path after a failed release lookup. |
-| GitLab package | Eligible branch, generated configuration, manual trigger, child build, artifacts. | `.gitlab-ci.yaml` permits package generation on `main` and `feature/*`; feature package versions end in `-beta`. |
+| Release retry | Existing release or missing release, asset replacement or release creation. | GoReleaser owns release creation and asset replacement through `.goreleaser.yaml`. |
+| GitLab package | Eligible branch, generated configuration, manual trigger, child build, artifacts. | `.gitlab-ci.yaml` permits package generation on `main` and `feature/*`. |
+| | | Feature package versions end in `-beta`. |
 | Contributor hooks | Git operation, checks, success or blocked operation. | Both tracked hooks invoke the complete contributor checks. |
 
 Static verification checks metadata-selected release executables, including Apache HTTPd's `rotatelogs`.
@@ -40,7 +41,8 @@ The [module source](../nginx-upstream-healthcheck/ngx_http_upstream_healthcheck_
 | Machine | Transitions | Contract |
 | --- | --- | --- |
 | Checker ownership | Worker initialization, worker-zero scheduling, shutdown. | Shutdown stops timers and drains active probes. |
-| Peer health | Initially down, consecutive successes, ready, consecutive failures, down. | `rise` and `fall` thresholds control availability; administratively down peers stay unavailable. |
+| Peer health | Initially down, consecutive successes, ready, consecutive failures, down. | `rise` and `fall` thresholds control availability. |
+| | | Administratively down peers stay unavailable. |
 | Probe | Scheduled, connecting, optional TLS handshake, sending, receiving, completion or deadline. | Completion closes the connection, removes the timer, updates peer state, and releases the probe pool. |
 | Peer membership | Discovered, referenced by probes, removed from upstream, reclaimed. | In-flight probes retain the peer state until completion. |
 | Status response | Shared state snapshot, status serialization, HTTP response. | Status reports expose health and checker activity without changing the health decision. |

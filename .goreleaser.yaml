@@ -1,0 +1,24 @@
+version: 2
+
+dist: .out/goreleaser
+
+builds:
+  - skip: true
+
+archives:
+  - meta: true
+    name_template: "{{ .Env.TAG }}"
+    files:
+      - src: "{{ .Env.RELEASE_FILES }}"
+        dst: .
+
+checksum:
+  disable: true
+
+changelog:
+  disable: true
+
+release:
+  extra_files:
+    - glob: ".out/release-package/{{ .Env.TAG }}.tar.gz"
+  replace_existing_artifacts: true

@@ -46,7 +46,7 @@ jobs:
         run: pnpm run check:ultracite
 
       - name: Check Go commands
-        run: go tool task go -- test ./...
+        run: go tool task test
 
       - name: Lint Go source
         run: go tool task golangci-lint -- run ./...

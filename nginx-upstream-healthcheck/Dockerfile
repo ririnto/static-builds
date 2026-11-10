@@ -75,12 +75,11 @@ COPY nginx-upstream-healthcheck/README.md ${TARGET_PREFIX}/README.md
 
 FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
 ARG TARGET_PREFIX
-
 RUN --mount=type=cache,target=/var/cache/dnf \
-    microdnf -y install curl-minimal file openssl
+    microdnf -y install binutils curl-minimal file openssl
 COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
+RUN readelf -h "${TARGET_PREFIX}/sbin/nginx" | grep -E 'Type:|Machine:'
 RUN file "${TARGET_PREFIX}/sbin/nginx" | grep -E 'statically linked|static-pie linked'
-
 RUN test -x "${TARGET_PREFIX}/sbin/nginx"
 RUN test -r "${TARGET_PREFIX}/conf/scripting.conf"
 RUN test -r "${TARGET_PREFIX}/conf/scripting.js"
@@ -99,17 +98,31 @@ ENTRYPOINT ["/sbin/nginx", "-p", "/", "-g", "daemon off;"]
 
 FROM verify AS verify-runtime
 COPY --from=runtime / /runtime/
-RUN set -e; \
-    trap 'rm -f /tmp/healthcheck-build-ca.key /runtime/conf/backend-ca.pem /runtime/etc/hosts' EXIT; \
-    openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj /CN=healthcheck-build-ca \
-    -keyout /tmp/healthcheck-build-ca.key -out /runtime/conf/backend-ca.pem && \
-    echo "127.0.0.1 maintenance.internal" >/runtime/etc/hosts && \
-    chroot /runtime /sbin/nginx -p / -t -c conf/upstream-healthcheck.conf
+RUN <<'EOF'
+set -e
+trap 'rm -f /tmp/healthcheck-build-ca.key /runtime/conf/backend-ca.pem /runtime/etc/hosts' EXIT
+openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj /CN=healthcheck-build-ca \
+    -keyout /tmp/healthcheck-build-ca.key -out /runtime/conf/backend-ca.pem
+echo "127.0.0.1 maintenance.internal" >/runtime/etc/hosts
+chroot /runtime /sbin/nginx -p / -t -c conf/upstream-healthcheck.conf
+EOF
 RUN <<'EOF'
 set -eu
 test_dir=$(mktemp -d /runtime/conf/healthcheck-verify.XXXXXX)
 pid=
-trap 'status=$?; trap - EXIT; if [ -n "$pid" ]; then if kill "$pid"; then wait "$pid" || status=1; else status=1; fi; fi; rm -rf "$test_dir" || status=1; exit "$status"' EXIT
+trap '
+    status=$?
+    trap - EXIT
+    if [ -n "$pid" ]; then
+        if kill "$pid"; then
+            wait "$pid" || status=1
+        else
+            status=1
+        fi
+    fi
+    rm -rf "$test_dir" || status=1
+    exit "$status"
+' EXIT
 chmod 755 "$test_dir"
 cat >"$test_dir/nginx.conf" <<CONFIG
 worker_processes 1;

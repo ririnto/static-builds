@@ -19,17 +19,14 @@ tasks:
         TARGET="$1"
         shift
         METADATA_ENV=$(go tool task manifest -- get-env "${TARGET}")
-        BUILDKIT_CACHE_BACKEND="${BUILDKIT_CACHE_BACKEND:-local}"
-        case "${BUILDKIT_CACHE_BACKEND}" in
+        case "${BUILDKIT_CACHE_BACKEND:-local}" in
           local)
             CACHE_DIR="${CACHE_DIR:-${ROOT_DIR}/.cache/${TARGET}}"
             mkdir -p "${CACHE_DIR}"
-            CACHE_FROM="type=local,src=${CACHE_DIR}"
-            CACHE_TO="type=local,dest=${CACHE_DIR},mode=max"
+            set -- "--cache-from=type=local,src=${CACHE_DIR}" "--cache-to=type=local,dest=${CACHE_DIR},mode=max" "$@"
             ;;
           gha)
-            CACHE_FROM="type=gha,scope=${TARGET}"
-            CACHE_TO="type=gha,mode=max,scope=${TARGET}"
+            set -- "--cache-from=type=gha,scope=${TARGET}" "--cache-to=type=gha,mode=max,scope=${TARGET}" "$@"
             ;;
           *)
             echo "Error: Invalid BUILDKIT_CACHE_BACKEND '${BUILDKIT_CACHE_BACKEND}' (allowed: local, gha)" >&2
@@ -56,8 +53,6 @@ tasks:
           "--platform=${BUILDKIT_PLATFORM:-linux/amd64}" \
           "--network=${BUILDKIT_NETWORK:-default}" \
           "--output=type=local,dest=${BUILD_OUTPUT_DEST}" \
-          "--cache-from=${CACHE_FROM}" \
-          "--cache-to=${CACHE_TO}" \
           "$@" \
           "--file=${ROOT_DIR}/${TARGET}/Dockerfile" \
           "${ROOT_DIR}"
@@ -77,10 +72,15 @@ tasks:
     cmds:
       - go run ./cmd/metadata {{.CLI_ARGS}}
 
-  release:
+  gorelease:
     desc: Check Go module release compatibility
     cmds:
       - go tool gorelease {{.CLI_ARGS}}
+
+  goreleaser:
+    desc: Package and publish release artifacts
+    cmds:
+      - go tool goreleaser {{.CLI_ARGS}}
 
   jsonnet:
     desc: Render the GitLab package pipeline
@@ -92,10 +92,20 @@ tasks:
     cmds:
       - go tool jsonnetfmt {{.CLI_ARGS}} .gitlab/ci/package-pipeline.gitlab-ci.jsonnet
 
-  go:
-    desc: Run Go commands
+  test:
+    desc: Test Go commands
     cmds:
-      - go {{.CLI_ARGS}}
+      - go test ./... {{.CLI_ARGS}}
+
+  fmt:
+    desc: Format Go source
+    cmds:
+      - go fmt ./... {{.CLI_ARGS}}
+
+  tidy:
+    desc: Tidy Go module dependencies
+    cmds:
+      - go mod tidy {{.CLI_ARGS}}
 
   shfmt:
     desc: Format maintained shell scripts

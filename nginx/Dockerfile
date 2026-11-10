@@ -71,12 +71,11 @@ COPY nginx/scripting.conf nginx/scripting.js ${TARGET_PREFIX}/conf/
 
 FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
 ARG TARGET_PREFIX
-
 RUN --mount=type=cache,target=/var/cache/dnf \
-    microdnf -y install file
+    microdnf -y install file binutils
 COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
+RUN readelf -h "${TARGET_PREFIX}/sbin/nginx" | grep -E 'Type:|Machine:'
 RUN file "${TARGET_PREFIX}/sbin/nginx" | grep -E 'statically linked|static-pie linked'
-
 RUN test -x "${TARGET_PREFIX}/sbin/nginx"
 RUN test -r "${TARGET_PREFIX}/conf/scripting.conf"
 RUN test -r "${TARGET_PREFIX}/conf/scripting.js"

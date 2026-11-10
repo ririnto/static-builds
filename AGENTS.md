@@ -40,8 +40,8 @@ Keep custom Markdownlint rules under `rules/`.
 ### Configure dependencies and contributor checks
 
 - Define tool-named Taskfile tasks with argument pass-through after `--`.
-- Manage Task, shfmt, Jsonnet, jsonnetfmt, golangci-lint, gorelease, and buildctl through the root Go module.
-- Invoke Go tests, formatting, and module maintenance through `go tool task go --`.
+- Manage Task, shfmt, Jsonnet, jsonnetfmt, golangci-lint, gorelease, GoReleaser, and buildctl through the root Go module.
+- Invoke Go tests, formatting, and module maintenance through `go tool task test`, `go tool task fmt`, and `go tool task tidy`.
 - Invoke Docker Buildx directly from the Taskfile build task on every host.
 - Require an explicit build target and never select a default target.
 - Use `golang:alpine` for GitLab Go jobs and invoke named Taskfile tasks with Go's default toolchain selection.
@@ -157,7 +157,7 @@ Keep custom Markdownlint rules under `rules/`.
 - For GitLab package pipelines on `main` and `feature/*`, prefer one manual parent job generating a child pipeline.
 - Generate that pipeline through `.gitlab/ci/package-pipeline.gitlab-ci.jsonnet` and reuse `templates/static-release.yml`.
 - Keep GitLab package builds as artifact-only jobs without custom publisher jobs.
-- Use the GitHub CLI for GitHub release publication and gorelease for Go module compatibility checks.
+- Use GoReleaser for release packaging and GitHub publication and gorelease for Go module compatibility checks.
 - Append `-beta` to package versions on `feature/*` branches.
 
 ## YAML filenames

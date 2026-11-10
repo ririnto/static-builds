@@ -156,9 +156,13 @@ COPY --from=otel-rapidyaml /opt /opt
 COPY --from=otel-grpc /opt /opt
 RUN apk add c-ares-dev curl-dev curl-static brotli-static libidn2-static libpsl-static libunistring-static nghttp2-static zstd-static
 RUN mv "/build/opentelemetry-c-wrapper-${HAPROXY_OTEL_C_WRAPPER_VERSION}" /build/opentelemetry-c-wrapper
-RUN set -e; \
-    cd "/tmp/opentelemetry-cpp-${OPENTELEMETRY_CPP_VERSION}"; \
-    for patch_file in /build/opentelemetry-c-wrapper/scripts/build/000*-opentelemetry-cpp-*.patch; do patch -p1 <"$patch_file"; done
+RUN <<'EOF'
+set -e
+cd "/tmp/opentelemetry-cpp-${OPENTELEMETRY_CPP_VERSION}"
+for patch_file in /build/opentelemetry-c-wrapper/scripts/build/000*-opentelemetry-cpp-*.patch; do
+    patch -p1 <"$patch_file"
+done
+EOF
 RUN PKG_CONFIG_PATH=/opt/lib/pkgconfig cmake -S "/tmp/opentelemetry-cpp-${OPENTELEMETRY_CPP_VERSION}" -B /tmp/opentelemetry-cpp-${OPENTELEMETRY_CPP_VERSION}/build \
         -DCMAKE_INSTALL_PREFIX=/opt \
         -DCMAKE_C_FLAGS="${HARDENING_CFLAGS}" \
@@ -293,12 +297,11 @@ RUN make install \
 
 FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
 ARG TARGET_PREFIX
-
 RUN --mount=type=cache,target=/var/cache/dnf \
-    microdnf -y install file
+    microdnf -y install file binutils
 COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
+RUN readelf -h "${TARGET_PREFIX}/sbin/haproxy" | grep -E 'Type:|Machine:'
 RUN file "${TARGET_PREFIX}/sbin/haproxy" | grep -E 'statically linked|static-pie linked'
-
 RUN test -x "${TARGET_PREFIX}/sbin/haproxy"
 
 FROM scratch

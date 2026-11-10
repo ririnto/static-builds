@@ -45,7 +45,7 @@ A model result establishes only the stated bounded model and requires correspond
 Run the surviving command tests from the repository root:
 
 ```sh
-go tool task go -- test ./...
+go tool task test
 ```
 
 These tests cover the retained source-download and manifest interfaces without a separate process-lifecycle harness.

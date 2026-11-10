@@ -23,7 +23,7 @@ The Markdown job also runs rule tests, TypeScript validation, Ultracite, Go test
 
 Install the Node.js version supported by `package.json` and the pnpm version declared there for Node-side tooling.
 Install the Go version declared in `go.mod` for repository tasks and Go-managed contributor tools.
-Use `go tool task go -- test ./...`, `go tool task go -- fmt ./...`, and `go tool task go -- mod tidy`.
+Use `go tool task test`, `go tool task fmt`, and `go tool task tidy`.
 Invoke managed tools through tool-named Task tasks with arguments after `--`.
 On macOS, Go-managed tools may compile dependencies that require system SDK headers through CGO.
 Export `SDKROOT=$(xcrun --show-sdk-path)` when the compiler or linker cannot locate the system SDK.
@@ -35,11 +35,12 @@ The following tools are managed through `go.mod`:
 - jsonnetfmt
 - golangci-lint
 - gorelease
+- GoReleaser
 - buildctl
 
 The Taskfile selects tracked shell scripts and contributor hooks with Git and invokes shfmt through Task iteration.
 Use `go tool task jsonnetfmt -- -i` to format the package pipeline and `go tool task jsonnetfmt -- --test` to check it.
-Use `go tool task release -- <gorelease flags>` for Go module compatibility checks.
+Use `go tool task gorelease -- <gorelease flags>` for Go module compatibility checks.
 `go tool task buildctl -- --help` exposes the BuildKit client without changing the Docker Buildx build driver.
 Target builds require Docker Buildx and a running Linux Docker daemon.
 See the root README for [build configuration and invocation examples](../README.md#build-configuration).
@@ -147,7 +148,7 @@ Publish through the feature branch and pull request rather than pushing changes 
 
 Explain in the issue when existing guards remain because inversion requires artificial flags or deeper nesting.
 
-Run `go tool task go -- test ./...` for the retained command tests.
+Run `go tool task test` for the retained command tests.
 The contributor check entrypoint includes these tests, `go tool task golangci-lint -- run ./...` checks, and `go tool task shfmt -- -d -i 2 -ci` formatting through Task.
 Target builds run their Dockerfile verify stages without per-target verify scripts or external runtime harnesses.
 The custom healthcheck module remains maintained production source.
