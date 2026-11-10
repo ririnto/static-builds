@@ -18,7 +18,7 @@ func ValidateTag(target *metadata.Target, tag string) (string, error) {
 		return "", err
 	}
 	if !strings.HasPrefix(tag, prefix+"-") {
-		return "", fmt.Errorf("Invalid tag format '%s'\nExpected format: %s-<version>.<revision>", tag, prefix)
+		return "", fmt.Errorf("invalid tag format '%s'\nExpected format: %s-<version>.<revision>", tag, prefix)
 	}
 	versionRevision := strings.TrimPrefix(tag, prefix+"-")
 	version, revision := versionRevision, versionRevision
@@ -26,7 +26,7 @@ func ValidateTag(target *metadata.Target, tag string) (string, error) {
 		version, revision = versionRevision[:index], versionRevision[index+1:]
 	}
 	if revision == "" || strings.IndexFunc(revision, func(c rune) bool { return c < '0' || c > '9' }) >= 0 {
-		return "", fmt.Errorf("Revision '%s' must contain only decimal digits", revision)
+		return "", fmt.Errorf("revision '%s' must contain only decimal digits", revision)
 	}
 	official, err := target.OfficialVersion()
 	if err != nil {
@@ -36,10 +36,10 @@ func ValidateTag(target *metadata.Target, tag string) (string, error) {
 		if strings.HasPrefix(version, official+"-") {
 			prerelease := strings.TrimPrefix(version, official+"-")
 			if !regexp.MustCompile(`^[A-Za-z0-9]+(?:[.-][A-Za-z0-9]+)*$`).MatchString(prerelease) {
-				return "", fmt.Errorf("Invalid prerelease suffix '%s'", prerelease)
+				return "", fmt.Errorf("invalid prerelease suffix '%s'", prerelease)
 			}
 		} else {
-			return "", fmt.Errorf("Version mismatch\n  Tag version:      %s (from tag '%s')\n  Official version: %s (from metadata.json)", version, tag, official)
+			return "", fmt.Errorf("version mismatch\n  Tag version:      %s (from tag '%s')\n  Official version: %s (from metadata.json)", version, tag, official)
 		}
 	}
 	return version, nil
@@ -58,8 +58,8 @@ func Verify(directory string, files []string) error {
 		}
 		path := filepath.Join(directory, file)
 		info, err := os.Stat(path)
-		if err != nil || !(info.Mode().IsRegular() || info.IsDir()) {
-			return fmt.Errorf("Release path not found at %s", path)
+		if err != nil || !info.Mode().IsRegular() && !info.IsDir() {
+			return fmt.Errorf("release path not found at %s", path)
 		}
 	}
 	return nil

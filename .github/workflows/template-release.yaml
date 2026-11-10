@@ -36,10 +36,10 @@ jobs:
         env:
           TARGET: ${{ inputs.target }}
           TAG: ${{ inputs.tag }}
-        run: go run ./cmd/release-guard "$TARGET" "$TAG"
+        run: go tool task release-guard TARGET="$TARGET" TAG="$TAG"
 
-      - name: Prepare rootless BuildKit prerequisites
-        run: go run ./cmd/setup-rootless
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
 
       - name: Cache source downloads
         uses: actions/cache@v6
@@ -60,11 +60,6 @@ jobs:
           TARGET: ${{ inputs.target }}
         run: go tool task build TARGET="$TARGET"
 
-      - name: Verify release files exist
-        env:
-          TARGET: ${{ inputs.target }}
-        run: go run ./cmd/release-verify "$TARGET"
-
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@v0.36.0
         with:
@@ -83,7 +78,7 @@ jobs:
         env:
           TARGET: ${{ inputs.target }}
           TAG: ${{ inputs.tag }}
-        run: go run ./cmd/package-release "$TARGET" "$TAG"
+        run: go tool task package-release TARGET="$TARGET" PACKAGE="$TAG"
 
       - name: Upload release artifacts
         uses: actions/upload-artifact@v7
@@ -124,4 +119,4 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           TAG: ${{ inputs.tag }}
-        run: go run ./cmd/release-publish "$TAG"
+        run: go tool task release-publish TAG="$TAG"

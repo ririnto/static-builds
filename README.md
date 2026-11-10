@@ -6,13 +6,13 @@ Build statically-linked binaries using Docker multi-stage builds for portable, m
 
 - Static Linking - Produce fully statically-linked binaries using musl libc.
 - Multi-stage Builds - Use Docker BuildKit for efficient, cacheable builds.
-- Minimal Outputs - Use a Red Hat UBI 10 minimal verify stage for runtime checks and package final artifacts from a `scratch` stage.
+- Minimal Outputs - Verify artifacts inside Dockerfile stages and export from a `scratch` stage.
 - Extensible - Add new build targets by following a simple directory structure.
 - Reproducible - Version-controlled configurations via `metadata.json`.
 
 ## Prerequisites
 
-Local builds require the Go version declared in `go.mod` and the host tools used by the selected adapter.
+Local builds require the Go version declared in `go.mod` and Docker CLI access to a running Linux daemon and the Docker Buildx plugin.
 Release packaging uses the host `tar` to preserve archive ordering and metadata.
 See the [Taskfile](Taskfile.yaml), [download command](cmd/download/main.go), and [metadata command](cmd/metadata/main.go).
 
@@ -21,23 +21,18 @@ The `wget` fallback also requires GNU Coreutils or BusyBox `timeout`, or GNU Cor
 Both downloaders honor `DOWNLOAD_MAX_TIME`, which defaults to 300 seconds per attempt.
 Target download URLs and build arguments come from [metadata.json](metadata.json).
 A clean build also requires builder network access to image registries and each target's package or language dependency repositories.
-For example, the [nginx Dockerfile](nginx/Dockerfile) installs Alpine build packages and Red Hat UBI verification packages.
+For example, the [nginx Dockerfile](nginx/Dockerfile) installs Alpine build packages.
 The [CoreDNS Dockerfile](coredns/Dockerfile) also compiles Go code, which can require access to Go module sources.
 
-Native Linux builds use an ephemeral rootless BuildKit daemon with Go-managed `buildctl` and `buildkitd`.
-Install RootlessKit, an OCI runtime such as runc or crun, and the subordinate UID/GID mapping helpers.
-Configure subordinate UID/GID ranges for the non-root build user and ensure host policy permits the required user namespaces.
-Do not disable host security protections to satisfy these prerequisites.
-Native macOS builds require Docker CLI access to a running Linux daemon and the Docker Buildx plugin.
 Confirm that plugin with `docker buildx version` and inspect the active builder with `docker buildx inspect --bootstrap`.
 The selected worker must support local filesystem export, cache import/export, and execution of `BUILDKIT_PLATFORM`, which defaults to `linux/amd64`.
 Use a native worker or separately configured emulation when the worker architecture differs from the selected platform.
 The Taskfile writes artifacts to `.out/<target>/` and imports and exports local cache in `.cache/<target>/` by default.
 
 Python 3 is needed for `go tool task list-targets`, not for `go tool task build TARGET=<target>`.
-Task, shfmt, Jsonnet, jsonnetfmt, buildctl, and buildkitd are managed through `go.mod`.
+Task, shfmt, Jsonnet, jsonnetfmt, and golangci-lint are managed through `go.mod`.
 The pnpm version declared in `package.json` provides equivalent package-script entrypoints.
-Target compilers and verification tools are installed or run in Dockerfile stages, so they are not host prerequisites.
+Target compilers are installed in Dockerfile stages, so they are not host prerequisites.
 
 ## Usage
 
@@ -74,15 +69,13 @@ go tool task build TARGET=nginx BUILD_OUTPUT_DEST=.out/custom/nginx CACHE_DIR=.c
 
 ### Network and platform behavior
 
-Linux builds use an ephemeral rootless BuildKit daemon.
-Its default build network follows the rootless worker's networking environment and is not Docker bridge networking.
-Native macOS builds use the configured Docker Buildx builder.
-`BUILDKIT_NETWORK=none` disables RUN-step networking through the Dockerfile frontend.
-`BUILDKIT_NETWORK=host` requests the host-network entitlement explicitly.
-GitLab package builds retain their existing rootless network restrictions.
+All hosts use the configured Docker Buildx builder directly.
+`BUILDKIT_NETWORK=none` disables RUN-step networking.
+`BUILDKIT_NETWORK=host` requests host networking from the selected builder.
 The build does not automatically configure a Linux VM or cross-platform emulation.
-The Linux launcher ignores inherited `BUILDKIT_HOST`, `BUILDKITD_FLAGS`, `BUILDKITD`, `BUILDCTL`, and `ROOTLESSKIT` overrides so each invocation owns its daemon and state.
-Additional arguments to `go run ./cmd/build` pass unchanged to buildctl build on Linux and Docker Buildx on macOS.
+Pass additional Buildx arguments with `go tool task build TARGET=<target> -- <buildx arguments>`.
+A build always requires an explicit `TARGET` and fails without one.
+The nginx commands in this document are examples, not defaults.
 
 ### Running haproxy binary image
 
@@ -98,21 +91,17 @@ docker run --rm \
 .
 +-- metadata.json           # Canonical build/release metadata
 +-- Taskfile.yaml           # Repository task entrypoints
-+-- go.mod                  # Go commands, client library, and toolchain tools
++-- go.mod                  # Go commands and toolchain tools
 +-- go.sum                  # Go module checksums
 +-- .gitlab-ci.yaml         # GitLab CI configuration
-+-- cmd/                    # Individual Go command entrypoints
-|   +-- build/              # Platform-selecting build dispatcher
++-- cmd/                    # Source download and manifest query commands
 |   +-- download/           # Source download command
-|   +-- metadata/           # Metadata query command
-|   +-- package-release/    # Release archive command
+|   +-- metadata/           # Manifest/version metadata query command
+|   +-- package-release/    # Metadata-selected release packaging
 |   +-- release-guard/      # Release tag validation
 |   +-- release-resolve/    # Tag-to-target resolution
-|   +-- release-verify/     # Artifact verification
-|   +-- release-publish/    # GitHub API publishing
-|   +-- setup-rootless/     # GitHub prerequisite preflight
-|   +-- install-validation-tools/
-+-- internal/               # Shared metadata, buildconfig, and release packages
+|   +-- release-publish/    # go-github release publication
++-- internal/               # Shared manifest parser
 +-- .github/workflows/      # Release and contributor workflows
 +-- .gitlab/ci/             # GitLab child pipeline generator
 +-- templates/              # GitLab CI components
@@ -121,7 +110,7 @@ docker run --rm \
 +-- .cache/                 # Build cache (gitignored)
 +-- .out/                   # Build outputs (gitignored)
 |   +-- <target>/           # Local artifacts (for example `sbin/`, `bin/`)
-+-- nginx/                  # Shared nginx build and verification helpers
++-- nginx/                  # nginx Dockerfile and scripting examples
 +-- <target>/               # Build target directory
     +-- Dockerfile          # Multi-stage build definition
     +-- ...
@@ -196,8 +185,7 @@ Each target must follow this structure:
        ],
        "env": {
          "ALPINE_VERSION": "3",
-         "YOUR_TARGET_VERSION": "1.0.0",
-         "UBI10_MINIMAL_VERSION": "10.2"
+         "YOUR_TARGET_VERSION": "1.0.0"
        }
      }
    }
@@ -207,7 +195,6 @@ Each target must follow this structure:
 
    ```dockerfile
    ARG ALPINE_VERSION
-   ARG UBI10_MINIMAL_VERSION
 
    # Build stage
    FROM alpine:${ALPINE_VERSION} AS build
@@ -215,15 +202,13 @@ Each target must follow this structure:
    ADD ".tmp/your-target-${YOUR_TARGET_VERSION}.tar.gz" /build/
    # ... build steps ...
 
-   # Verify stage (required)
-   FROM registry.access.redhat.com/ubi10/ubi-minimal:${UBI10_MINIMAL_VERSION} AS verify
-   ARG YOUR_TARGET_VERSION
-   COPY --from=build /your-target /target/your-target
-   # ... verification steps (ELF check, static linking, strace) ...
+   # Verify built artifacts in a Dockerfile stage before export.
+   FROM build AS verify
+   RUN /your-target --version
 
    # Final stage
    FROM scratch
-   COPY --from=verify /target /target
+   COPY --from=verify /your-target /target/your-target
    ENTRYPOINT ["/target/your-target"]
    ```
 
@@ -245,7 +230,7 @@ Each target must follow this structure:
 5. Verify: Targets are loaded from `metadata.json`.
 
 6. Extend the tag trigger filter in [.github/workflows/release-from-tag.yaml](.github/workflows/release-from-tag.yaml) with the target's `tag_prefix` followed by `-*`.
-   The existing `resolve-target` job derives target selection from `metadata.json` through `go run ./cmd/metadata get-target-from-tag` and validates the tag with `go run ./cmd/release-guard`.
+   The existing `resolve-target` job derives target selection from `metadata.json` through `go tool task manifest QUERY=get-target-from-tag VALUE=<tag>` and validates the tag with `go tool task release-guard TARGET=<target> TAG=<tag>`.
    Keep that resolution job and its reusable release call unchanged.
    Release file selection and official versions also come from `metadata.json`.
 
@@ -271,47 +256,17 @@ Targets share the same root contract, but some targets vary in builder image, re
 ### Best Practices
 
 - Security hardening: Use static PIE builds (`-fPIE -pie`).
-- Verification: Always include a verify stage with ELF checks, static linking verification, and strace validation.
+- Outputs: Verify built artifacts in Dockerfile stages before exporting them without separate verification scripts.
 - Caching: Use `--mount=type=cache` for Alpine/DNF caches.
 - Documentation: Document approved target-specific variations in each target `README.md`.
 - Version variables: Follow naming convention `{TARGET}_VERSION` for consistency inside `metadata.json`.
 
-### Local Acceptance Snapshot
+### Contributor checks
 
-On 2026-10-12 UTC, all nine targets passed the then-current repository build entrypoint on `linux/amd64`, including their Dockerfile verification stages.
-That historical capture does not establish acceptance of the current Taskfile entrypoint.
-The build code includes the helper relocation and lifecycle fixes delivered through [PR #45](https://github.com/ririnto/static-builds/pull/45).
-The capture used Docker 29.8.2, Buildx 0.37.2, and BuildKit 0.33.1 with the `docker-container` driver on an ARM64 Docker Desktop daemon.
-Builds ran sequentially with a four-CPU and eight-GiB builder limit and BuildKit worker parallelism set to one.
-The build selected Alpine 3.24.2 and Go 1.27.2 for the Go targets.
-The previous verify image was Red Hat 10 minimal tag `10.2-1790753097`.
-The following versions are the metadata selections for this dated capture.
-
-| Target | Version | Build and verification | Release package members |
-| --- | --- | --- | --- |
-| nginx | 1.30.5 | ACTUAL PASS | ACTUAL PASS |
-| nginx-upstream-healthcheck | 1.30.5 | ACTUAL PASS | ACTUAL PASS |
-| haproxy | 3.4.6 | ACTUAL PASS | ACTUAL PASS |
-| apache-exporter | 1.1.1 | ACTUAL PASS | ACTUAL PASS |
-| apache-httpd | 2.4.69 | ACTUAL PASS | ACTUAL PASS |
-| coredns | 1.14.7 | ACTUAL PASS | ACTUAL PASS |
-| dnsmasq | 2.93 | ACTUAL PASS | ACTUAL PASS |
-| vector | 0.58.0 | ACTUAL PASS | ACTUAL PASS |
-| monit | 6.0.0 | ACTUAL PASS | ACTUAL PASS |
-
-For each target, the release packager at that historical revision packaged the exported artifacts into a temporary archive whose members exactly matched `release_files` in [metadata.json](metadata.json).
-Both nginx profiles passed their njs 1.0.1 HTTP and stream checks with QuickJS 0.17.0.
-The newly exported healthcheck binary also passed the Docker-backed functional suite, now invoked with `go tool task test-healthcheck-docker`.
-That standalone suite covers the L4/L6/L7 classifications, verified TLS-only and HTTPS checks, stream payload expectations, configuration rejection, DNS replacement, recovery, IPv6, multiple workers, and VTS described in the [healthcheck profile](nginx-upstream-healthcheck/README.md#build-verification).
-The historical verifier, downloader, and Docker-runner lifecycle regressions passed all 24 standalone fixture cases.
-The maintained shell and Python harnesses live under `proxy/tests/`.
-Shell lint and formatting also passed.
-
-REUSED: available release-source archives and shared layers within the task builder followed the normal cache behavior.
-Maintained branch archives were refreshed by the downloader.
-NOT RUN: release workflows, registry uploads, SARIF publication, other build platforms, and long-duration RSS or file-descriptor soak measurements.
-All task-created Docker resources and build caches were removed after validation, and the pre-existing resource inventory matched its baseline.
-Changes to build code or metadata require validation of the affected targets before creating release tags.
+Run `go tool task test-go` and `pnpm check` for the surviving Go commands and contributor tools.
+Go lint uses standard `go tool task lint-go` checks, and shell formatting uses `go tool task shfmt-check` through Task.
+Builds verify artifacts in Dockerfile stages without per-target verify scripts or separate runtime harnesses.
+Contributor checks do not establish runtime acceptance of the custom healthcheck module.
 
 ## Release Process
 
@@ -393,14 +348,14 @@ Invalid examples:
 
 ## How It Works
 
-1. Task runs `go run ./cmd/download` to resolve the target's download resources from `metadata.json` before starting the build.
-2. The platform dispatcher selects ephemeral rootless BuildKit on Linux or Docker Buildx on macOS to execute the multi-stage Dockerfile.
+1. Task runs `go tool task download TARGET=<target>` to resolve the target's download resources from `metadata.json` before starting the build.
+2. The shell build entrypoint invokes Docker Buildx directly to execute the multi-stage Dockerfile.
 3. Built artifacts go to `.out/<target>/` for both local builds and CI.
-4. Verify stages use the UBI 10 minimal version from `metadata.json`, and the final exported artifact comes from the target's `scratch` stage.
+4. Each target verifies built artifacts in its Dockerfile before exporting its `scratch` stage.
 
 Local build caching uses the root `.cache/<target>/` directories by default.
 GitHub release builds use the GitHub Actions cache backend with a separate scope for each target.
-GitLab package builds use the same ephemeral daemonless rootless command and retain local-cache behavior.
+GitLab package builds use the same direct Buildx command and retain local-cache behavior.
 
 ## CI Behavior
 
@@ -435,23 +390,20 @@ Selected release contents:
 - The GitLab check job runs the complete contributor check entrypoint before package generation and retains the manual parent trigger for publication.
 - GitLab pipelines on `main` and `feature/*` generate a child configuration with `.gitlab/ci/package-pipeline.jsonnet`.
 - One manual parent trigger starts the child pipeline, which builds and publishes its selected targets automatically.
-- The package component uses `golang:alpine` and runs `go run ./cmd/build` as a non-root build user through the same ephemeral rootless daemon as native Linux.
-- When `curl` is absent, `go run ./cmd/download` uses the image's BusyBox `wget` and `timeout` fallback.
+- The package component uses `golang:alpine` and invokes the Buildx shell entrypoint through Task with a TLS-enabled Docker service.
+- When `curl` is absent, `go tool task download TARGET=<target>` uses the image's BusyBox `wget` and `timeout` fallback.
 - Contributor validation and pipeline generation use `golang:alpine` with Go's default `GOTOOLCHAIN=auto` behavior honoring the `go.mod` directive.
-- The prepare job exports the rendered child pipeline, and package jobs invoke repository Go commands directly without a separate toolchain download.
-- Generated publisher jobs use plain Alpine with CA certificates and curl, preserving the Package Registry upload interface.
-- GitLab contributor validation runs Go tests, ShellCheck, shell formatting, Jsonnet, code-fence, and relative-link checks directly without installing Node or pnpm.
+- The prepare job exports the rendered child pipeline, and package jobs invoke named Taskfile tasks without a separate toolchain download.
+- GitLab package builds retain artifacts without custom publisher jobs.
+- GitLab contributor validation runs Go tests, golangci-lint, shell formatting, Jsonnet, code-fence, and relative-link checks directly without installing Node or pnpm.
 - The Node and pnpm contributor suite remains in the existing GitHub workflow and local hooks.
-- The generated publisher jobs install the current Alpine `curl` package before uploading artifacts.
-- The package component installs unpinned rootless runtime packages, provisions subordinate ID ranges for its non-root build user, and confines ownership changes to its job workspace.
-- User namespaces and the normal sandbox remain required, and the component does not weaken host security policy.
+- The package component installs Docker CLI and Buildx from Alpine packages.
+- The runner must provide the Docker service and its shared TLS certificate directory without disabling TLS or build sandbox protections.
 - `feature/*` branches append `-beta` to the package version.
-- GitLab uploads to Package Registry only.
-  GitHub uploads to Release only.
-- Rejected registry uploads fail their publishing jobs.
+- Release publication remains in the existing Go release tool on GitHub.
 - The generated child pipeline includes the local component at `templates/static-release.yml`.
 - GitLab component discovery requires the conventional `templates/*.yml` filename, so `templates/static-release.yml` remains the supported exception to the `.yaml` filename rule.
 - The parent configuration uses the supported custom configuration path documented by [GitLab](https://docs.gitlab.com/ci/pipelines/settings/#specify-a-custom-cicd-configuration-file), while the local component follows [GitLab's component discovery convention](https://docs.gitlab.com/ci/components/).
-- GitHub release packaging and GitLab package generation both reuse `go run ./cmd/package-release`.
+- GitHub release packaging and GitLab package generation both reuse `go tool task package-release TARGET=<target> PACKAGE=<name>`.
 GitHub publishing uses go-github with `GH_TOKEN` and `GH_REPO`, falling back to `GITHUB_REPOSITORY` for the repository binding.
 A missing release is created only after HTTP 404, and an existing archive asset is replaced before upload.

@@ -14,7 +14,7 @@ This target builds the upstream Apache Exporter source into a statically linked 
 - This target uses a Go/Alpine builder and a pure-Go build path instead of the Alpine C toolchain pattern used by other targets.
 - The packaged artifact is emitted as `bin/apache-exporter`.
 - The container exposes port `9117` and starts `./bin/apache-exporter`.
-- The `--version` output is the approved verification surface for this target.
+- The `--version` output can be inspected manually after a build.
 
 ## How to Verify
 

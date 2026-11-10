@@ -14,18 +14,24 @@ import (
 	"github.com/google/go-github/v84/github"
 )
 
-func publish(ctx context.Context, client *github.Client, owner, repository, tag, path string) error {
+func publish(ctx context.Context, client *github.Client, owner, repository, tag, path string) (err error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return fmt.Errorf("%s not found: %w", path, err)
 	}
-	defer file.Close()
+	defer func() {
+		if closeErr := file.Close(); err == nil && !errors.Is(closeErr, os.ErrClosed) {
+			err = closeErr
+		}
+	}()
 	release, response, err := client.Repositories.GetReleaseByTag(ctx, owner, repository, tag)
 	if err != nil {
 		if response == nil || response.StatusCode != http.StatusNotFound {
 			return fmt.Errorf("look up release: %w", err)
 		}
-		fmt.Fprintln(os.Stdout, "Creating release", tag)
+		if _, err := fmt.Fprintln(os.Stdout, "Creating release", tag); err != nil {
+			return err
+		}
 		release, _, err = client.Repositories.CreateRelease(ctx, owner, repository, &github.RepositoryRelease{
 			TagName: github.Ptr(tag),
 			Name:    github.Ptr(tag),
@@ -44,7 +50,9 @@ func publish(ctx context.Context, client *github.Client, owner, repository, tag,
 		}
 		for _, asset := range assets {
 			if asset.GetName() == name {
-				fmt.Fprintln(os.Stdout, "Replacing asset", name)
+				if _, err := fmt.Fprintln(os.Stdout, "Replacing asset", name); err != nil {
+					return err
+				}
 				if _, err := client.Repositories.DeleteReleaseAsset(ctx, owner, repository, asset.GetID()); err != nil {
 					return fmt.Errorf("delete release asset: %w", err)
 				}
@@ -55,7 +63,9 @@ func publish(ctx context.Context, client *github.Client, owner, repository, tag,
 		}
 		options.Page = response.NextPage
 	}
-	fmt.Fprintln(os.Stdout, "Uploading asset", name)
+	if _, err := fmt.Fprintln(os.Stdout, "Uploading asset", name); err != nil {
+		return err
+	}
 	if _, _, err := client.Repositories.UploadReleaseAsset(ctx, owner, repository, release.GetID(), &github.UploadOptions{Name: name}, file); err != nil {
 		return fmt.Errorf("upload release asset: %w", err)
 	}

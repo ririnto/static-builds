@@ -53,7 +53,9 @@ func TestPublish(t *testing.T) {
 				case r.Method == "GET" && r.URL.Path == "/repos/fixture/repository/releases/tags/"+tag:
 					calls = append(calls, "lookup")
 					w.WriteHeader(test.lookup)
-					fmt.Fprint(w, `{"id":7}`)
+					if _, err := fmt.Fprint(w, `{"id":7}`); err != nil {
+						t.Error(err)
+					}
 				case r.Method == "POST" && r.URL.Path == "/repos/fixture/repository/releases":
 					calls = append(calls, "create")
 					var release github.RepositoryRelease
@@ -64,11 +66,15 @@ func TestPublish(t *testing.T) {
 						t.Errorf("incorrect release: %+v", release)
 					}
 					w.WriteHeader(test.create)
-					fmt.Fprint(w, `{"id":7}`)
+					if _, err := fmt.Fprint(w, `{"id":7}`); err != nil {
+						t.Error(err)
+					}
 				case r.Method == "GET" && r.URL.Path == "/repos/fixture/repository/releases/7/assets":
 					calls = append(calls, "list")
 					w.WriteHeader(test.list)
-					fmt.Fprintf(w, `[{"id":8,"name":%q},{"id":9,"name":"unrelated"}]`, filepath.Base(path))
+					if _, err := fmt.Fprintf(w, `[{"id":8,"name":%q},{"id":9,"name":"unrelated"}]`, filepath.Base(path)); err != nil {
+						t.Error(err)
+					}
 				case r.Method == "DELETE" && r.URL.Path == "/repos/fixture/repository/releases/assets/8":
 					calls = append(calls, "delete")
 					w.WriteHeader(test.delete)
@@ -79,7 +85,9 @@ func TestPublish(t *testing.T) {
 						t.Errorf("incorrect upload: %q, %s, %v", body, r.URL, err)
 					}
 					w.WriteHeader(test.upload)
-					fmt.Fprint(w, `{"id":10}`)
+					if _, err := fmt.Fprint(w, `{"id":10}`); err != nil {
+						t.Error(err)
+					}
 				default:
 					t.Errorf("unexpected request %s %s", r.Method, r.URL)
 					http.Error(w, "unexpected", 500)

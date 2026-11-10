@@ -39,16 +39,8 @@ curl http://127.0.0.1:18081/njs
 ./.out/nginx/sbin/nginx -p "$PWD/.out/nginx/" -c conf/scripting.conf -s quit
 ```
 
-Both NGINX Docker verification stages invoke the same shell script for static linking, configuration parsing, and HTTP/stream execution.
-The [verification script](nginx-verify.sh) uses [the stream probe](nginx-stream-read.sh) for the TCP response check.
-The scripting checks require the reported `QuickJS` engine and selected njs version.
-Each HTTP probe has a 15-second GNU `timeout` deadline, with curl request limits of two seconds for the retrying probe and five seconds for the second probe.
-On success, failure, `INT`, or `TERM`, it cancels active probes and forwards `QUIT` to the supervised nginx process group.
-GNU `timeout` escalates resistant probes to `KILL` after one second and resistant nginx processes after two seconds.
-The verifier reaps both supervisors and removes its temporary response file.
-The nginx supervisor also imposes a 40-second server lifetime bound.
-Run `go tool task lint` and `go tool task shfmt-check` from the repository root to check the maintained verification scripts.
-A full nginx build executes these checks against the actual binary in its verification stage.
+The Dockerfile verifies static linking and njs HTTP and stream execution before exporting the binary and scripting examples.
+Run `go tool task shfmt-check` from the repository root to check maintained shell formatting.
 
 ## How to Verify
 
@@ -67,7 +59,7 @@ A full nginx build executes these checks against the actual binary in its verifi
 
 The output below is a historical snapshot, not verification of the version currently selected in [metadata.json](../metadata.json).
 The recorded output identifies nginx 1.30.0 with nginx-module-vts 0.2.5 and the displayed static PIE configure flags.
-The [Dockerfile](Dockerfile) builds from source and invokes `nginx -V` in its verification stage.
+The [Dockerfile](Dockerfile) builds from source and checks the built artifact in its Dockerfile verify stage before export.
 
 The historical capture date, repository revision, release tag, exact invocation, and host or container environment are unknown.
 The source-backed commands below capture the same introspection surfaces, but do not establish how the historical output was collected.
@@ -76,7 +68,7 @@ The source-backed commands below capture the same introspection surfaces, but do
 
 From the repository root, use the [Taskfile](../Taskfile.yaml) to build the target selected by the current metadata, then run the capture commands on a compatible Linux host.
 The default build platform is `linux/amd64`.
-Task downloads the inputs before invoking the platform-selected BuildKit adapter, including the Dockerfile's verification stage.
+Task downloads the inputs before invoking Docker Buildx directly.
 These commands assume the default output directory and must be adjusted if `BUILD_OUTPUT_DEST` is overridden.
 
 ```bash
@@ -85,7 +77,7 @@ go tool task build TARGET=nginx
 ```
 
 Record the capture date, repository revision, selected metadata versions, build platform, build environment, exact commands, and results with any replacement output.
-Preserve errors and distinguish build-stage verification from the host captures above.
+Preserve errors and distinguish build results from the host captures above.
 A current-metadata build produces a new snapshot and does not reconstruct the unknown historical environment.
 The historical output below has been preserved without running these commands for this documentation change.
 

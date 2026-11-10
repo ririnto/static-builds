@@ -33,7 +33,7 @@ jobs:
         id: resolve
         env:
           TAG: ${{ github.ref_name }}
-        run: go run ./cmd/release-resolve "$TAG"
+        run: go tool task release-resolve TAG="$TAG"
 
   release:
     needs: resolve-target

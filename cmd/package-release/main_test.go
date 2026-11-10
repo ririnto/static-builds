@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"testing"
 	"time"
@@ -22,17 +21,12 @@ func TestDeterministicPackaging(t *testing.T) {
 	if err := os.WriteFile(metadata, []byte(`{"fixture":{"release_files":["binary"]}}`), 0600); err != nil {
 		t.Fatal(err)
 	}
-	binary := filepath.Join(t.TempDir(), "package-release")
-	if output, err := exec.Command("go", "build", "-o", binary, ".").CombinedOutput(); err != nil {
-		t.Fatalf("%v\n%s", err, output)
-	}
+	t.Chdir(directory)
+	t.Setenv("METADATA_PATH_OVERRIDE", metadata)
 	var first []byte
 	for range 2 {
-		command := exec.Command(binary, "fixture", "release")
-		command.Dir = directory
-		command.Env = append(os.Environ(), "METADATA_PATH_OVERRIDE="+metadata)
-		if output, err := command.CombinedOutput(); err != nil {
-			t.Fatalf("%v\n%s", err, output)
+		if err := run([]string{"fixture", "release"}); err != nil {
+			t.Fatal(err)
 		}
 		data, err := os.ReadFile(filepath.Join(directory, "release.tar.gz"))
 		if err != nil {
@@ -45,7 +39,9 @@ func TestDeterministicPackaging(t *testing.T) {
 		if !compressed.ModTime.IsZero() {
 			t.Fatal("gzip timestamp is not zero")
 		}
-		compressed.Close()
+		if err := compressed.Close(); err != nil {
+			t.Fatal(err)
+		}
 		if first != nil && !bytes.Equal(first, data) {
 			t.Fatal("packaging unchanged output is nondeterministic")
 		}

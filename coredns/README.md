@@ -21,7 +21,7 @@ This target builds a static CoreDNS binary from source using Go.
 
 - This target uses a Go builder image and a pure-Go build path instead of the Alpine C toolchain pattern used by many other targets.
 - The packaged artifact is emitted as `coredns` instead of a `bin/` or `sbin/` path.
-- Plugin inventory and version reporting are the approved verification surface for this target.
+- Plugin inventory and version reporting can be inspected manually after a build.
 
 ## How to Verify
 
@@ -40,7 +40,7 @@ This target builds a static CoreDNS binary from source using Go.
 
 The output below is a historical snapshot, not verification of the version currently selected in [metadata.json](../metadata.json).
 The recorded version output identifies CoreDNS 1.14.1 on `linux/amd64` with Go 1.26.0.
-The [Dockerfile](Dockerfile) builds with `CGO_ENABLED=0` and `BUILDOPTS="-v -trimpath"`, then invokes `-version` and `-plugins` in its verification stage.
+The [Dockerfile](Dockerfile) builds with `CGO_ENABLED=0` and `BUILDOPTS="-v -trimpath"` and checks the built artifact in its Dockerfile verify stage before export.
 
 The historical capture date, repository revision, release tag, exact invocation, and host or container environment are unknown.
 The source-backed commands below capture the same introspection surfaces, but do not establish how the historical output was collected.
@@ -49,7 +49,7 @@ The source-backed commands below capture the same introspection surfaces, but do
 
 From the repository root, use the [Taskfile](../Taskfile.yaml) to build the target selected by the current metadata, then run the capture commands on a compatible Linux host.
 The default build platform is `linux/amd64`.
-Task downloads the inputs before invoking the platform-selected BuildKit adapter, including the Dockerfile's verification stage.
+Task downloads the inputs before invoking the Docker Buildx entrypoint, including the Dockerfile verify stage.
 These commands assume the default output directory and must be adjusted if `BUILD_OUTPUT_DEST` is overridden.
 
 ```bash
@@ -59,7 +59,7 @@ go tool task build TARGET=coredns
 ```
 
 Record the capture date, repository revision, selected metadata versions, build platform, build environment, exact commands, and results with any replacement output.
-Preserve errors and distinguish build-stage verification from the host captures above.
+Preserve errors and distinguish build results from the host captures above.
 A current-metadata build produces a new snapshot and does not reconstruct the unknown historical environment.
 The historical output below has been preserved without running these commands for this documentation change.
 

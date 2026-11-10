@@ -42,7 +42,7 @@ This target builds Apache HTTPd as static PIE with selected modules compiled in.
 The output below is a historical snapshot, not verification of the version currently selected in [metadata.json](../metadata.json).
 The recorded output identifies Apache HTTPd 2.4.66 with APR 1.7.6, APR-UTIL 1.6.3, PCRE 10.47, and the event MPM.
 The displayed `Server built` value is a binary build timestamp, not a capture date.
-The [Dockerfile](Dockerfile) builds static PIE and invokes `httpd -V`, `httpd -l`, and `httpd -M` in its verification stage.
+The [Dockerfile](Dockerfile) builds static PIE and checks the built artifact in its Dockerfile verify stage before export.
 
 The historical capture date, repository revision, release tag, exact invocation, and host or container environment are unknown.
 The source-backed commands below capture the same introspection surfaces, but do not establish how the historical output was collected.
@@ -51,7 +51,7 @@ The source-backed commands below capture the same introspection surfaces, but do
 
 From the repository root, use the [Taskfile](../Taskfile.yaml) to build the target selected by the current metadata, then run the capture commands on a compatible Linux host.
 The default build platform is `linux/amd64`.
-Task downloads the inputs before invoking the platform-selected BuildKit adapter, including the Dockerfile's verification stage.
+Task downloads the inputs before invoking the Docker Buildx entrypoint, including the Dockerfile verify stage.
 These commands assume the default output directory and must be adjusted if `BUILD_OUTPUT_DEST` is overridden.
 
 ```bash
@@ -65,7 +65,7 @@ The host `-M` command selects the exported server root because the compiled defa
 Its output depends on the selected configuration and host environment.
 
 Record the capture date, repository revision, selected metadata versions, build platform, build environment, exact commands, and results with any replacement output.
-Preserve errors and distinguish build-stage verification from the host captures above.
+Preserve errors and distinguish build results from the host captures above.
 A current-metadata build produces a new snapshot and does not reconstruct the unknown historical environment.
 The historical output below has been preserved without running these commands for this documentation change.
 

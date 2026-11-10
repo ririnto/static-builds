@@ -21,7 +21,7 @@ This target builds a static PIE `dnsmasq` binary from source.
 - This target follows upstream `dnsmasq` defaults for much of its compile-time feature surface instead of passing many repository-specific feature toggles.
 - The approved release artifact for this target is the static `sbin/dnsmasq` binary.
 - Treat `dnsmasq -v` and `dnsmasq --help` as the authoritative runtime contract for this target's allowed feature set.
-- The verify stage requires `dnsmasq -v` to report the version selected in `metadata.json`.
+- The Dockerfile verify stage checks the binary version selected in `metadata.json`.
 
 ## How to Verify
 
