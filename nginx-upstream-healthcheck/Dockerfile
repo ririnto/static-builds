@@ -116,7 +116,7 @@ RUN nginx_pid=; \
     grep -Fx "njs ${NJS_VERSION} engine QuickJS" "$response_file" && \
     timeout --signal=TERM --kill-after=1s 15s curl --max-time 5 -fsS -o "$response_file" http://127.0.0.1:18081/njs && \
     grep -Fx "njs ${NJS_VERSION} engine QuickJS" "$response_file" && \
-    timeout 3 bash -c 'exec 3<>/dev/tcp/127.0.0.1/18082; IFS= read -r response <&3; printf "%s\n" "$response"' | grep -Fx "njs ${NJS_VERSION} engine QuickJS";
+    timeout 3 bash -c 'exec 3<>/dev/tcp/127.0.0.1/18082; IFS= read -r response <&3; echo "$response"' | grep -Fx "njs ${NJS_VERSION} engine QuickJS";
 
 
 

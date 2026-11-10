@@ -45,7 +45,7 @@ tasks:
             '' | \#* | *[!A-Z0-9_]*) ;;
             *)
               if [ -n "$value" ]; then
-                value=$(printf '%s' "$value" | tr -d '\r')
+                value=$(echo "$value" | tr -d '\r')
                 set -- "--build-arg=${key}=${value}" "$@"
               fi
               ;;
