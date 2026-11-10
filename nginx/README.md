@@ -43,11 +43,9 @@ The Dockerfile performs these checks before exporting the binary and scripting e
 
 - Static linking assertions
 - Executable and scripting-file presence checks
-- Version inspection under strace
-- Scripting configuration validation
 
 Upstream njs runtime behavior is not re-tested by this target.
-The custom [healthcheck target](../nginx-upstream-healthcheck/README.md) retains runtime probes.
+The custom [healthcheck target](../nginx-upstream-healthcheck/README.md) validates its healthcheck configuration.
 Run `go tool task shfmt -- -d -i 2 -ci` from the repository root to check maintained shell formatting.
 
 ## How to Verify

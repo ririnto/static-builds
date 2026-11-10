@@ -36,7 +36,6 @@ jobs:
         env:
           TARGET: ${{ inputs.target }}
           TAG: ${{ inputs.tag }}
-        shell: bash
         run: |-
           prefix=$(go tool task manifest -- get-tag-prefix "$TARGET")
           official=$(go tool task manifest -- get-official-version "$TARGET")
@@ -57,10 +56,8 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ${{ github.workspace }}/.tmp
-          key: >-
-            tmp-${{ inputs.target }}-${{ hashFiles('metadata.json', 'cmd/**/*.go', 'internal/**/*.go', 'go.mod', 'go.sum') }}
-          restore-keys: >-
-            tmp-${{ inputs.target }}-
+          key: tmp-${{ inputs.target }}-${{ hashFiles('metadata.json', 'cmd/**/*.go', 'internal/**/*.go', 'go.mod', 'go.sum') }}
+          restore-keys: tmp-${{ inputs.target }}-
 
       - name: Expose GitHub cache runtime
         uses: crazy-max/ghaction-github-runtime@v4
@@ -90,7 +87,6 @@ jobs:
         env:
           TARGET: ${{ inputs.target }}
           TAG: ${{ inputs.tag }}
-        shell: bash
         run: |-
           files=$(mktemp)
           trap 'rm -f "$files"' EXIT
@@ -131,7 +127,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           TAG: ${{ inputs.tag }}
-        shell: bash
         run: |-
           if response=$(gh api --include "repos/$GH_REPO/releases/tags/$TAG" 2>&1); then
             echo "$response"

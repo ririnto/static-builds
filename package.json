@@ -5,9 +5,9 @@
   "scripts": {
     "build": "go tool task build",
     "check": "run-p check:*",
-    "check:go": "go test ./...",
+    "check:go": "go tool task go -- test ./...",
     "check:golangci-lint": "go tool task golangci-lint -- run ./...",
-    "check:jsonnet": "go tool jsonnet -S --ext-str branch=main --ext-str target= --ext-str component_ref=example.invalid/group/static-builds/static-release@main .gitlab/ci/package-pipeline.gitlab-ci.jsonnet && go tool jsonnet -S --ext-str branch=feature/tooling-check --ext-str target= --ext-str component_ref=example.invalid/group/static-builds/static-release@feature/tooling-check .gitlab/ci/package-pipeline.gitlab-ci.jsonnet",
+    "check:jsonnet": "go tool task jsonnet -- -S --ext-str branch=main --ext-str target= --ext-str component_ref=example.invalid/group/static-builds/static-release@main && go tool task jsonnet -- -S --ext-str branch=feature/tooling-check --ext-str target= --ext-str component_ref=example.invalid/group/static-builds/static-release@feature/tooling-check",
     "check:jsonnetfmt": "go tool task jsonnetfmt -- --test",
     "check:lint-rules": "node --test rules/*.test.ts",
     "check:markdownlint-cli2": "markdownlint-cli2",

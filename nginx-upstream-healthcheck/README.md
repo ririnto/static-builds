@@ -35,6 +35,7 @@ It uses `conf/backend-ca.pem` as an example trust bundle, which you must provide
 Replace its resolver and backend names for your environment before using it.
 Canonical `metadata.json` selects the configuration and this README for release packaging.
 The healthcheck profile needs no additional runtime library.
+The build verifies that HTTP health checks admit, remove, and readmit a local backend through the proxy.
 
 ## Start the image or release archive
 
@@ -247,7 +248,7 @@ The NGINX results classify the point where each probe succeeded or failed while 
 ## Build and contributor checks
 
 Build this target with `go tool task build -- nginx-upstream-healthcheck`.
-The Dockerfile verifies static linking, njs HTTP and stream execution, and scratch-root startup before exporting the binary, configurations, and runtime identity files.
+The Dockerfile checks static linking, executable permissions, and the healthcheck configuration before exporting the binary, configurations, and runtime identity files.
 Verification lives in Dockerfile stages without per-target startup scripts or separate functional harnesses.
 Run `go test ./...` and `pnpm check` from the repository root for Go command tests and contributor tooling checks.
 These checks do not establish runtime healthcheck acceptance.

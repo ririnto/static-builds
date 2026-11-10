@@ -14,14 +14,12 @@ tasks:
       - |-
         set -e
         set -- {{.CLI_ARGS}}
-        go run ./cmd/download "${1:-}"
+        go tool task download -- "${1:-}"
         ROOT_DIR=$(pwd)
         TARGET="$1"
         shift
         METADATA_ENV=$(go tool task manifest -- get-env "${TARGET}")
-        BUILDKIT_PLATFORM="${BUILDKIT_PLATFORM:-linux/amd64}"
         BUILDKIT_CACHE_BACKEND="${BUILDKIT_CACHE_BACKEND:-local}"
-        BUILDKIT_NETWORK="${BUILDKIT_NETWORK:-default}"
         case "${BUILDKIT_CACHE_BACKEND}" in
           local)
             CACHE_DIR="${CACHE_DIR:-${ROOT_DIR}/.cache/${TARGET}}"
@@ -45,7 +43,7 @@ tasks:
             '' | \#* | *[!A-Z0-9_]*) ;;
             *)
               if [ -n "$value" ]; then
-                value=$(echo "$value" | tr -d '\r')
+                value=$(printf '%s' "$value" | tr -d '\r')
                 set -- "--build-arg=${key}=${value}" "$@"
               fi
               ;;
@@ -55,8 +53,8 @@ tasks:
         EOF
         cd "${ROOT_DIR}"
         docker buildx build \
-          "--platform=${BUILDKIT_PLATFORM}" \
-          "--network=${BUILDKIT_NETWORK}" \
+          "--platform=${BUILDKIT_PLATFORM:-linux/amd64}" \
+          "--network=${BUILDKIT_NETWORK:-default}" \
           "--output=type=local,dest=${BUILD_OUTPUT_DEST}" \
           "--cache-from=${CACHE_FROM}" \
           "--cache-to=${CACHE_TO}" \
@@ -94,10 +92,21 @@ tasks:
     cmds:
       - go tool jsonnetfmt {{.CLI_ARGS}} .gitlab/ci/package-pipeline.gitlab-ci.jsonnet
 
+  go:
+    desc: Run Go commands
+    cmds:
+      - go {{.CLI_ARGS}}
+
   shfmt:
     desc: Format maintained shell scripts
+    vars:
+      SHELL_FILES:
+        sh: git ls-files '*.sh' '.husky/pre-*'
     cmds:
-      - go tool shfmt {{.CLI_ARGS}} **/*.sh
+      - for:
+          var: SHELL_FILES
+          split: "\n"
+        cmd: go tool shfmt {{.CLI_ARGS}} {{.ITEM | shellQuote}}
 
   golangci-lint:
     desc: Lint Go source

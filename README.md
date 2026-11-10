@@ -14,7 +14,7 @@ Build statically-linked binaries using Docker multi-stage builds for portable, m
 
 Local builds require the Go version declared in `go.mod` and Docker CLI access to a running Linux daemon and the Docker Buildx plugin.
 Release packaging uses the host `tar` with metadata-selected paths.
-See the [Taskfile](Taskfile.yaml), [download command](cmd/download/main.go), and [metadata command](cmd/metadata/main.go).
+See the [state machine inventory](.github/state-machines.md), [Taskfile](Taskfile.yaml), [download command](cmd/download/main.go), and [metadata command](cmd/metadata/main.go).
 
 Install `curl` or `wget` to download target sources, and allow network access to their upstream hosts.
 The `wget` fallback also requires GNU Coreutils or BusyBox `timeout`, or GNU Coreutils `gtimeout` on macOS, to enforce the per-attempt wall-clock deadline.
@@ -283,7 +283,7 @@ Targets share the same root contract, but some targets vary in builder image, re
 
 ### Contributor checks
 
-Run `go test ./...` and `pnpm check` for the surviving Go commands and contributor tools.
+Run `go tool task go -- test ./...` and `pnpm check` for the surviving Go commands and contributor tools.
 Go lint uses `go tool task golangci-lint -- run ./...` checks, and shell formatting uses `go tool task shfmt -- -d -i 2 -ci` through Task.
 Builds verify artifacts in Dockerfile stages without per-target verify scripts or separate runtime harnesses.
 Contributor checks do not establish runtime acceptance of the custom healthcheck module.
@@ -369,7 +369,7 @@ Invalid examples:
 ## How It Works
 
 1. Task runs `go tool task download -- <target>` to resolve the target's download resources from `metadata.json` before starting the build.
-2. The shell build entrypoint invokes Docker Buildx directly to execute the multi-stage Dockerfile.
+2. The Taskfile build task invokes Docker Buildx directly to execute the multi-stage Dockerfile.
 3. Built artifacts go to `.out/<target>/` for both local builds and CI.
 4. Each target verifies built artifacts in its Dockerfile before exporting its `scratch` stage.
 
@@ -410,12 +410,12 @@ Selected release contents:
 - The GitLab check job runs Go-managed contributor checks before package generation and retains the manual parent trigger.
 - GitLab pipelines on `main` and `feature/*` generate a child configuration with `.gitlab/ci/package-pipeline.gitlab-ci.jsonnet`.
 - One manual parent trigger starts the child pipeline, which builds and publishes its selected targets automatically.
-- The package component uses `golang:alpine` and invokes the Buildx shell entrypoint through Task with a TLS-enabled Docker service.
+- The package component uses `golang:alpine` and invokes the Taskfile build task with a TLS-enabled Docker service.
 - When `curl` is absent, `go tool task download -- <target>` uses the image's BusyBox `wget` and `timeout` fallback.
 - Contributor validation and pipeline generation use `golang:alpine` with Go's default `GOTOOLCHAIN=auto` behavior honoring the `go.mod` directive.
 - The prepare job exports the rendered child pipeline, and package jobs invoke named Taskfile tasks without a separate toolchain download.
 - GitLab package builds retain artifacts without custom publisher jobs.
-- GitLab contributor validation runs Go tests, golangci-lint, shell formatting, and Jsonnet checks directly without installing Node or pnpm.
+- GitLab contributor validation invokes Go tests, golangci-lint, shell formatting, and Jsonnet checks through `go tool task`.
 - The Node and pnpm contributor suite remains in the existing GitHub workflow and local hooks.
 - The package component installs Docker CLI and Buildx from Alpine packages.
 - The runner must provide the Docker service and its shared TLS certificate directory without disabling TLS or build sandbox protections.

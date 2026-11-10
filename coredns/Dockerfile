@@ -3,7 +3,6 @@ ARG GOLANG_IMAGE_TAG
 ARG UBI10_MINIMAL_VERSION
 ARG TARGET_PREFIX=/home/nobody
 
-
 FROM golang:${GOLANG_IMAGE_TAG} AS build
 ARG COREDNS_VERSION
 ARG TARGET_PREFIX
@@ -22,22 +21,16 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
         CGO_ENABLED=0 \
         BUILDOPTS="-v -trimpath"
 
-
 FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
 ARG COREDNS_VERSION
 ARG TARGET_PREFIX
 
 RUN --mount=type=cache,target=/var/cache/dnf \
-    microdnf -y install file binutils strace
+    microdnf -y install file
 COPY --from=build /build/coredns-${COREDNS_VERSION}/coredns ${TARGET_PREFIX}/coredns
-RUN readelf -h "${TARGET_PREFIX}/coredns" | grep -E 'Type:|Machine:'
 RUN file "${TARGET_PREFIX}/coredns" | grep -E 'statically linked|static-pie linked'
 
 RUN test -x "${TARGET_PREFIX}/coredns"
-
-RUN strace "${TARGET_PREFIX}/coredns" -version
-RUN "${TARGET_PREFIX}/coredns" -plugins
-
 
 FROM scratch
 

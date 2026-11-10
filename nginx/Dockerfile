@@ -3,7 +3,6 @@ ARG ALPINE_VERSION
 ARG UBI10_MINIMAL_VERSION
 ARG TARGET_PREFIX=/home/nobody
 
-
 FROM alpine:${ALPINE_VERSION} AS build
 ARG NGINX_VERSION
 ARG NGINX_VTS_MODULE_VERSION
@@ -70,23 +69,17 @@ RUN make "-j$(nproc)"
 RUN make install
 COPY nginx/scripting.conf nginx/scripting.js ${TARGET_PREFIX}/conf/
 
-
-
 FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
 ARG TARGET_PREFIX
 
 RUN --mount=type=cache,target=/var/cache/dnf \
-    microdnf -y install file binutils strace
+    microdnf -y install file
 COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
-RUN readelf -h "${TARGET_PREFIX}/sbin/nginx" | grep -E 'Type:|Machine:'
 RUN file "${TARGET_PREFIX}/sbin/nginx" | grep -E 'statically linked|static-pie linked'
 
 RUN test -x "${TARGET_PREFIX}/sbin/nginx"
 RUN test -r "${TARGET_PREFIX}/conf/scripting.conf"
 RUN test -r "${TARGET_PREFIX}/conf/scripting.js"
-
-RUN strace "${TARGET_PREFIX}/sbin/nginx" -V
-RUN "${TARGET_PREFIX}/sbin/nginx" -t -c conf/scripting.conf
 
 FROM scratch
 

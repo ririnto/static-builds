@@ -41,7 +41,7 @@ Keep custom Markdownlint rules under `rules/`.
 
 - Define tool-named Taskfile tasks with argument pass-through after `--`.
 - Manage Task, shfmt, Jsonnet, jsonnetfmt, golangci-lint, gorelease, and buildctl through the root Go module.
-- Run Go tests, gofmt, and go mod tidy directly.
+- Invoke Go tests, formatting, and module maintenance through `go tool task go --`.
 - Invoke Docker Buildx directly from the Taskfile build task on every host.
 - Require an explicit build target and never select a default target.
 - Use `golang:alpine` for GitLab Go jobs and invoke named Taskfile tasks with Go's default toolchain selection.
@@ -91,6 +91,7 @@ Keep custom Markdownlint rules under `rules/`.
 
 - Keep target build and configure commands inside each target Dockerfile.
 - Keep built-artifact verification inside Dockerfile verify stages rather than external scripts or harnesses.
+- Verify static linking for every metadata-selected release binary and reserve functional verification for `nginx-upstream-healthcheck`.
 
 ## Documentation
 
@@ -142,7 +143,7 @@ Keep custom Markdownlint rules under `rules/`.
 - Use Docker Hub `redhat/ubi10-minimal` with the manifest-selected UBI tag for verify stages.
 - Verify static binaries inside Dockerfiles without per-target verify shell scripts or proxy harnesses.
 - Keep push and pull-request validation CI limited to contributor checks, without target builds or releases.
-- Run Go tests, golangci-lint, shfmt, and Jsonnet evaluation and formatting directly in GitLab validation jobs.
+- Invoke Go tests, golangci-lint, shfmt, and Jsonnet tools through named `go tool task` tasks in GitLab validation jobs.
 - Keep Node and pnpm validation in the GitHub workflow and local contributor hooks.
 - Use existing verification entrypoints rather than introducing a test framework.
 

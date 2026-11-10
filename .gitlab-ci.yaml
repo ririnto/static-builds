@@ -9,10 +9,10 @@ validate-contributor-checks:
   before_script:
     - apk add --no-cache ca-certificates git
   script:
-    - go test ./...
+    - go tool task go -- test ./...
     - go tool task golangci-lint -- run ./...
     - go tool task shfmt -- -d -i 2 -ci
-    - go tool jsonnet -S --ext-str branch=main --ext-str target= --ext-str component_ref=example.invalid/group/static-builds/static-release@main .gitlab/ci/package-pipeline.gitlab-ci.jsonnet
+    - go tool task jsonnet -- -S --ext-str branch=main --ext-str target= --ext-str component_ref=example.invalid/group/static-builds/static-release@main
     - go tool task jsonnetfmt -- --test
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
@@ -26,8 +26,7 @@ generate-package-pipeline:
   before_script:
     - apk add --no-cache ca-certificates git
   script:
-    - >-
-      go tool task jsonnet -- -S --ext-str "branch=${CI_COMMIT_BRANCH:-}" --ext-str target= --ext-str "component_ref=${CI_SERVER_FQDN}/${CI_PROJECT_PATH}/static-release@${CI_COMMIT_REF_NAME}" > package-pipeline.gitlab-ci.yaml
+    - go tool task jsonnet -- -S --ext-str "branch=${CI_COMMIT_BRANCH:-}" --ext-str target= --ext-str "component_ref=${CI_SERVER_FQDN}/${CI_PROJECT_PATH}/static-release@${CI_COMMIT_REF_NAME}" > package-pipeline.gitlab-ci.yaml
   artifacts:
     paths:
       - package-pipeline.gitlab-ci.yaml

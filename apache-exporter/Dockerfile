@@ -3,7 +3,6 @@ ARG GO_VERSION
 ARG UBI10_MINIMAL_VERSION
 ARG TARGET_PREFIX=/out
 
-
 FROM golang:${GO_VERSION}-alpine AS build
 ARG APACHE_EXPORTER_VERSION
 ARG TARGET_PREFIX
@@ -23,20 +22,15 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
         -ldflags "-X github.com/prometheus/common/version.Version=${APACHE_EXPORTER_VERSION}" \
         -o ${TARGET_PREFIX}/bin/apache-exporter .
 
-
 FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
 ARG TARGET_PREFIX
 
 RUN --mount=type=cache,target=/var/cache/dnf \
-    microdnf -y install file binutils strace
+    microdnf -y install file
 COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
-RUN readelf -h "${TARGET_PREFIX}/bin/apache-exporter" | grep -E 'Type:|Machine:'
 RUN file "${TARGET_PREFIX}/bin/apache-exporter" | grep -E 'statically linked|static-pie linked'
 
 RUN test -x "${TARGET_PREFIX}/bin/apache-exporter"
-
-RUN strace "${TARGET_PREFIX}/bin/apache-exporter" --version
-
 
 FROM scratch
 

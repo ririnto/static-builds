@@ -13,7 +13,7 @@ Use the repository's `.markdownlint-cli2.jsonc` when running Markdown lint.
 ### Markdown validation
 
 The [GitHub validation workflow](workflows/markdown-validation.yaml) reports documentation and tooling checks on every pull request without building targets or publishing releases.
-GitLab runs Go tests, golangci-lint, shell formatting, and Jsonnet checks directly before its manual package trigger.
+GitLab invokes Go tests, golangci-lint, shell formatting, and Jsonnet checks through `go tool task` before its manual package trigger.
 Its Go jobs use `golang:alpine` with Go's default `GOTOOLCHAIN=auto` behavior honoring the `go.mod` directive.
 The package component invokes the same direct Docker Buildx Taskfile entrypoint as local builds.
 Node and pnpm validation remains in the GitHub workflow and local contributor hooks.
@@ -23,7 +23,7 @@ The Markdown job also runs rule tests, TypeScript validation, Ultracite, Go test
 
 Install the Node.js version supported by `package.json` and the pnpm version declared there for Node-side tooling.
 Install the Go version declared in `go.mod` for repository tasks and Go-managed contributor tools.
-Run Go tests, `gofmt -w cmd internal`, and `go mod tidy` directly.
+Use `go tool task go -- test ./...`, `go tool task go -- fmt ./...`, and `go tool task go -- mod tidy`.
 Invoke managed tools through tool-named Task tasks with arguments after `--`.
 On macOS, Go-managed tools may compile dependencies that require system SDK headers through CGO.
 Export `SDKROOT=$(xcrun --show-sdk-path)` when the compiler or linker cannot locate the system SDK.
@@ -37,7 +37,7 @@ The following tools are managed through `go.mod`:
 - gorelease
 - buildctl
 
-The Taskfile passes the shell glob `**/*.sh` directly to shfmt.
+The Taskfile selects tracked shell scripts and contributor hooks with Git and invokes shfmt through Task iteration.
 Use `go tool task jsonnetfmt -- -i` to format the package pipeline and `go tool task jsonnetfmt -- --test` to check it.
 Use `go tool task release -- <gorelease flags>` for Go module compatibility checks.
 `go tool task buildctl -- --help` exposes the BuildKit client without changing the Docker Buildx build driver.
@@ -90,7 +90,8 @@ The test spacing rule recognizes registrations imported from Vitest, Jest global
 `check:ultracite` runs Ultracite with type-aware lint across its discovered files.
 `check:typescript` checks those TypeScript files through `tsconfig.json` and the Node LTS compiler preset.
 Ultracite checks the njs runtime example in `nginx/scripting.js` for lint and formatting.
-Both nginx targets validate the scripting configuration, while only the custom healthcheck target runs runtime probes.
+Both nginx targets check that the scripting files are readable.
+The custom healthcheck target checks its health transitions through a local proxy.
 The njs example uses upstream `njs-types` declarations through its own TypeScript configuration.
 
 The table maps effective enforcement to engineering qualities rather than adding another prose rule set.
@@ -146,7 +147,7 @@ Publish through the feature branch and pull request rather than pushing changes 
 
 Explain in the issue when existing guards remain because inversion requires artificial flags or deeper nesting.
 
-Run `go test ./...` for the retained command tests.
+Run `go tool task go -- test ./...` for the retained command tests.
 The contributor check entrypoint includes these tests, `go tool task golangci-lint -- run ./...` checks, and `go tool task shfmt -- -d -i 2 -ci` formatting through Task.
 Target builds run their Dockerfile verify stages without per-target verify scripts or external runtime harnesses.
 The custom healthcheck module remains maintained production source.
