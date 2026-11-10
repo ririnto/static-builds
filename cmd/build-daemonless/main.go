@@ -98,6 +98,17 @@ func run(ctx context.Context, args []string) (err error) {
 	if err != nil {
 		return err
 	}
+	if os.Getenv("GITLAB_CI") == "true" {
+		contained := false
+		for _, prefix := range []string{config.Root + "/.out/" + target, ".out/" + target, "./.out/" + target} {
+			if config.Output == prefix || strings.HasPrefix(config.Output, prefix+"/") {
+				contained = true
+			}
+		}
+		if !contained || strings.Contains("/"+config.Output+"/", "/../") {
+			return fmt.Errorf("Build output must be under .out/%s", target)
+		}
+	}
 	if info, err := os.Stat(filepath.Join(config.Root, target, "Dockerfile")); err != nil || !info.Mode().IsRegular() {
 		return fmt.Errorf("Target Dockerfile not found: %s", target)
 	}

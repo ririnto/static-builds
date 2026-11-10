@@ -3,6 +3,14 @@ ARG UBI10_MINIMAL_VERSION
 ARG TARGET_PREFIX=/home/nobody
 
 
+FROM --platform=$BUILDPLATFORM golang:1.27.3-alpine AS script-tools
+ARG TARGETOS TARGETARCH
+WORKDIR /src
+COPY go.mod go.sum ./
+COPY cmd/verify-vector/ ./cmd/verify-vector/
+RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -trimpath -ldflags='-s -w' -o /script-tools/verify-vector ./cmd/verify-vector
+
+
 FROM alpine:${ALPINE_VERSION} AS download
 ARG VECTOR_VERSION
 ARG TARGET_PREFIX
@@ -19,8 +27,8 @@ ARG TARGET_PREFIX
 RUN --mount=type=cache,target=/var/cache/dnf \
     microdnf -y install file binutils strace
 COPY --from=download ${TARGET_PREFIX} ${TARGET_PREFIX}
-COPY vector/vector-verify.sh /usr/local/bin/
-RUN /usr/local/bin/vector-verify.sh
+COPY --from=script-tools /script-tools/verify-vector /usr/local/bin/
+RUN /usr/local/bin/verify-vector
 
 
 FROM scratch

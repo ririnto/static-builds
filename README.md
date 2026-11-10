@@ -35,7 +35,7 @@ Use a native worker or separately configured emulation when the worker architect
 The Taskfile writes artifacts to `.out/<target>/` and imports and exports local cache in `.cache/<target>/` by default.
 
 Python 3 is needed for `go tool task list-targets`, not for `go tool task build TARGET=<target>`.
-Task, shfmt, Jsonnet, jsonnetfmt, buildctl, and buildkitd are managed through `go.mod`.
+Task, Jsonnet, jsonnetfmt, buildctl, and buildkitd are managed through `go.mod`.
 The pnpm version declared in `package.json` provides equivalent package-script entrypoints.
 Target compilers and verification tools are installed or run in Dockerfile stages, so they are not host prerequisites.
 
@@ -106,7 +106,6 @@ docker run --rm \
 |   +-- build/              # Platform-selecting build dispatcher
 |   +-- build-buildx/       # Native macOS Buildx adapter
 |   +-- build-daemonless/   # Native Linux rootless lifecycle
-|   +-- build-rootless/     # GitLab rootless build adapter
 |   +-- download/           # Source download command
 |   +-- metadata/           # Metadata query command
 |   +-- package-release/    # Release archive command
@@ -115,7 +114,6 @@ docker run --rm \
 |   +-- release-verify/     # Artifact verification
 |   +-- release-publish/    # GitHub API publishing
 |   +-- setup-rootless/     # GitHub prerequisite preflight
-|   +-- setup-curl/         # GitLab curl installation
 |   +-- install-validation-tools/
 +-- internal/               # Shared metadata, buildconfig, and release packages
 +-- .github/workflows/      # Release and contributor workflows
@@ -306,9 +304,10 @@ The following versions are the metadata selections for this dated capture.
 
 For each target, the release packager at that historical revision packaged the exported artifacts into a temporary archive whose members exactly matched `release_files` in [metadata.json](metadata.json).
 Both nginx profiles passed their njs 1.0.1 HTTP and stream checks with QuickJS 0.17.0.
-The newly exported healthcheck binary also passed `proxy/tests/run-docker.sh .out/nginx-upstream-healthcheck/sbin/nginx`.
+The newly exported healthcheck binary also passed the Docker-backed functional suite, now invoked with `go tool task test-healthcheck-docker`.
 That standalone suite covers the L4/L6/L7 classifications, verified TLS-only and HTTPS checks, stream payload expectations, configuration rejection, DNS replacement, recovery, IPv6, multiple workers, and VTS described in the [healthcheck profile](nginx-upstream-healthcheck/README.md#build-verification).
-The verifier, downloader, and Docker-runner lifecycle regressions passed all 24 standalone fixture cases under `proxy/tests/`.
+The historical verifier, downloader, and Docker-runner lifecycle regressions passed all 24 standalone fixture cases.
+Their maintained Go replacements run through `go tool task test-go`.
 Shell lint and formatting also passed.
 
 REUSED: available release-source archives and shared layers within the task builder followed the normal cache behavior.
@@ -404,7 +403,7 @@ Invalid examples:
 
 Local build caching uses the root `.cache/<target>/` directories by default.
 GitHub release builds use the GitHub Actions cache backend with a separate scope for each target.
-GitLab package builds retain their official rootless BuildKit image and existing local-cache behavior.
+GitLab package builds use the same ephemeral daemonless rootless command and retain local-cache behavior.
 
 ## CI Behavior
 
@@ -439,13 +438,16 @@ Selected release contents:
 - The GitLab check job runs the complete contributor check entrypoint before package generation and retains the manual parent trigger for publication.
 - GitLab pipelines on `main` and `feature/*` generate a child configuration with `.gitlab/ci/package-pipeline.jsonnet`.
 - One manual parent trigger starts the child pipeline, which builds and publishes its selected targets automatically.
-- The package component runs `buildctl-daemonless.sh` in the official `moby/buildkit:rootless` image with its entrypoint cleared and upstream UID and GID 1000.
+- The package component uses `golang:alpine` and runs `go run ./cmd/build` as a non-root build user through the same ephemeral rootless daemon as native Linux.
 - When `curl` is absent, `go run ./cmd/download` uses the image's BusyBox `wget` and `timeout` fallback.
-- Contributor validation, pipeline generation, and generated publisher jobs use `golang:1.27.3-alpine` with CA certificates and Git available before Go downloads.
-- GitLab contributor validation runs Go tests, ShellCheck, shell formatting, Jsonnet, code-fence, and relative-link checks directly without installing Node or pnpm.
+- Contributor validation and pipeline generation use `golang:alpine` with Go's default `GOTOOLCHAIN=auto` behavior honoring the `go.mod` directive.
+- The prepare job exports the rendered child pipeline, and package jobs invoke repository Go commands directly without a separate toolchain download.
+- Generated publisher jobs use plain Alpine with CA certificates and curl, preserving the Package Registry upload interface.
+- GitLab contributor validation runs Go tests, Jsonnet, code-fence, and relative-link checks directly without installing Node or pnpm.
 - The Node and pnpm contributor suite remains in the existing GitHub workflow and local hooks.
 - The generated publisher jobs install the current Alpine `curl` package before uploading artifacts.
-- The rootless package component installs Go 1.27.3 in its writable cache directory without changing the image user or rootless prerequisites.
+- The package component installs unpinned rootless runtime packages, provisions subordinate ID ranges for its non-root build user, and confines ownership changes to its job workspace.
+- User namespaces and the normal sandbox remain required, and the component does not weaken host security policy.
 - `feature/*` branches append `-beta` to the package version.
 - GitLab uploads to Package Registry only.
   GitHub uploads to Release only.
