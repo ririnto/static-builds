@@ -27,7 +27,7 @@ java -XX:+UseParallelGC -cp node_modules/tla-chaos-loop/tools/tla2tools.jar tlc2
 Check the command's exit status and invariant report.
 The retained `references/model/chart.mmd` shows the model's phase transitions in Mermaid.
 The chart omits cancellation steps that leave the displayed phase unchanged.
-Update the chart and `references/model/report.txt` when the model changes.
+Update the chart and `references/model/report.md` when the model changes.
 The recorded check passes `NoAbandonedLock` and deadlock checking over 10 states.
 
 The model follows one branch download with an initially absent lock.
