@@ -12,7 +12,7 @@ tasks:
     desc: Download sources and build a target (-- <target> [buildx args...])
     cmds:
       - |-
-        set -eu
+        set -e
         set -- {{.CLI_ARGS}}
         go run ./cmd/download "${1:-}"
         ROOT_DIR=$(pwd)
