@@ -40,14 +40,20 @@ Keep custom Markdownlint rules under `rules/`.
 ### Configure dependencies and contributor checks
 
 - Define repository task entrypoints in `Taskfile.yaml` and delegate package scripts to `go tool task`.
-- Manage Task, shfmt, Jsonnet, jsonnetfmt, buildctl, and buildkitd through the root Go module.
-- Use ephemeral rootless BuildKit for native Linux builds, Docker Buildx for native macOS builds, and the official rootless BuildKit image for GitLab package builds.
-- Follow EditorConfig with four-space indentation, except two spaces for shell and YAML files.
+- Manage Task, Jsonnet, jsonnetfmt, buildctl, and buildkitd through the root Go module.
+- Use the repository's ephemeral daemonless rootless path with `go tool buildkitd` and `go tool buildctl` for native Linux and GitLab package builds.
+- Run rootless builds as a non-root user with subordinate ID ranges and the normal sandbox protections.
+- Use Docker Buildx for native macOS builds.
+- Use `golang:alpine` for GitLab Go jobs and invoke repository commands directly with Go's default toolchain selection.
+- Follow EditorConfig with four-space indentation, except two spaces for YAML files.
+- Keep target build and verification compositions and proxy test orchestration in Go rather than maintained shell or Python files.
 - Use pnpm catalogs with `^x.y.z` caret ranges for Node dependencies and required overrides.
 - Reference catalog entries from `package.json` and overrides instead of duplicating versions.
 - Remove overrides when upstream dependencies select supported patched versions themselves.
 - Keep the package manager version free of hash suffixes.
-- Keep Husky's `prepare` script and tracked pre-commit and pre-push hooks connected to real contributor checks.
+- Keep Husky's `prepare` script and tracked pre-commit and pre-push hooks connected to the full `pnpm check` entrypoint.
+- Include Go command and process tests, Markdown lint, rule tests, TypeScript, Ultracite, code-fence checks, relative-link checks, and Jsonnet evaluation and formatting in contributor checks.
+- Keep the Linux and Docker-backed healthcheck functional tasks separate from offline contributor checks because they require a built target and runtime dependencies.
 - Verify successful Git operations and failure propagation through those hooks.
 - Use Ultracite as the only direct caller of Oxlint and Oxfmt.
 - Route scripts, hooks, workflows, documentation, and validation commands through Ultracite rather than calling Oxlint or Oxfmt directly.
@@ -83,18 +89,6 @@ Keep custom Markdownlint rules under `rules/`.
 
 - Keep scripts and executable source in separate files, referenced from Dockerfiles, configurations, and documentation.
 - Do not embed script bodies in those files.
-
-## Shell comments
-
-Limit comments in shell scripts and files with a `sh` or `bash` shebang to these forms.
-
-- Keep the shebang on the first line.
-- Place contiguous function documentation lines starting with a single `#` immediately above the function definition.
-- Document purpose, expected inputs, outputs, and return codes.
-- Include `@param`, `@return`, and `@return-type` tags where applicable.
-
-Do not add inline comments, section comments, or file header comments.
-Refactor explanations into documented functions instead of adding other comments.
 
 ## Documentation
 
@@ -144,7 +138,9 @@ Refactor explanations into documented functions instead of adding other comments
 
 - Update every affected Dockerfile verify block together when changing duplicated static verification.
 - Update documentation describing the changed shared verification contract.
-- Keep push and pull-request validation CI limited to documentation checks, without target builds or releases.
+- Keep push and pull-request validation CI limited to contributor checks, without target builds or releases.
+- Run Go tests, Jsonnet evaluation and formatting, code-fence checks, and relative-link checks directly in GitLab validation jobs.
+- Keep Node and pnpm validation in the GitHub workflow and local contributor hooks.
 - Use existing verification entrypoints rather than introducing a test framework.
 
 ### Name release tags
@@ -157,6 +153,7 @@ Refactor explanations into documented functions instead of adding other comments
 - For GitLab package pipelines on `main` and `feature/*`, prefer one manual parent job generating a child pipeline.
 - Generate that pipeline through `.gitlab/ci/package-pipeline.jsonnet` and reuse `templates/static-release.yml`.
 - Upload GitLab packages only to Package Registry.
+- Use plain Alpine publisher jobs with CA certificates and curl, preserving the JOB-TOKEN upload interface.
 - Append `-beta` to package versions on `feature/*` branches.
 
 ## YAML filenames
