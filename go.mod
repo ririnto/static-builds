@@ -9,7 +9,6 @@ tool (
 	github.com/google/go-jsonnet/cmd/jsonnetfmt
 	github.com/goreleaser/goreleaser/v2
 	github.com/moby/buildkit/cmd/buildctl
-	golang.org/x/exp/cmd/gorelease
 	mvdan.cc/sh/v3/cmd/shfmt
 )
 

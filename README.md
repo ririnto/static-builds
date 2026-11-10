@@ -37,7 +37,6 @@ The following tools are managed through `go.mod`:
 - Jsonnet
 - jsonnetfmt
 - golangci-lint
-- gorelease
 - GoReleaser
 - buildctl
 
@@ -96,7 +95,6 @@ The nginx commands in this document are examples, not defaults.
 For example, run `go tool task build -- haproxy` or `go tool task build -- apache-exporter --builder my-builder`.
 Tool tasks also pass arguments through: `go tool task jsonnetfmt -- -i` formats the built-in pipeline file.
 `go tool task buildctl -- --help` exposes the Go-managed BuildKit client while builds continue to use Docker Buildx.
-`go tool task gorelease` checks Go module compatibility.
 `go tool task goreleaser -- <arguments>` packages and publishes release artifacts through [.goreleaser.yaml](.goreleaser.yaml).
 
 ### Running haproxy binary image

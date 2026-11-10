@@ -72,11 +72,6 @@ tasks:
     cmds:
       - go run ./cmd/metadata {{.CLI_ARGS}}
 
-  gorelease:
-    desc: Check Go module release compatibility
-    cmds:
-      - go tool gorelease {{.CLI_ARGS}}
-
   goreleaser:
     desc: Package and publish release artifacts
     cmds:
