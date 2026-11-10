@@ -4,13 +4,6 @@ ARG TARGET_PREFIX=/home/nobody
 ARG HARDENING_CFLAGS="-O2 -pipe -fPIC -fstack-protector-strong -fstack-clash-protection -ffunction-sections -fdata-sections -ftrivial-auto-var-init=zero"
 
 
-FROM --platform=$BUILDPLATFORM golang:1.27.3-alpine AS script-tools
-ARG TARGETOS TARGETARCH
-WORKDIR /src
-COPY go.mod go.sum ./
-COPY cmd/haproxy-apply-otel-patches/ ./cmd/haproxy-apply-otel-patches/
-RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -trimpath -ldflags='-s -w' -o /script-tools/haproxy-apply-otel-patches ./cmd/haproxy-apply-otel-patches
-
 FROM alpine:${ALPINE_VERSION} AS otel-base
 RUN --mount=type=cache,target=/var/cache/apk \
     apk add \
@@ -160,7 +153,7 @@ ARG OPENTELEMETRY_PROTO_VERSION
 ARG NLOHMANN_JSON_VERSION
 ARG HARDENING_CFLAGS
 ADD ".tmp/opentelemetry-cpp-${OPENTELEMETRY_CPP_VERSION}.tar.gz" /tmp/
-COPY --from=script-tools /script-tools/haproxy-apply-otel-patches /usr/local/bin/
+COPY haproxy/haproxy-apply-otel-patches.sh /usr/local/bin/
 ADD ".tmp/opentelemetry-proto-${OPENTELEMETRY_PROTO_VERSION}.tar.gz" /tmp/
 ADD ".tmp/nlohmann-json-${NLOHMANN_JSON_VERSION}.tar.gz" /tmp/
 ADD ".tmp/opentelemetry-c-wrapper-${HAPROXY_OTEL_C_WRAPPER_VERSION}.tar.gz" /build/
@@ -171,7 +164,7 @@ COPY --from=otel-grpc /opt /opt
 RUN apk add c-ares-dev curl-dev curl-static brotli-static libidn2-static libpsl-static libunistring-static nghttp2-static zstd-static \
     && mv "/build/opentelemetry-c-wrapper-${HAPROXY_OTEL_C_WRAPPER_VERSION}" /build/opentelemetry-c-wrapper \
     && cd "/tmp/opentelemetry-cpp-${OPENTELEMETRY_CPP_VERSION}" \
-    && /usr/local/bin/haproxy-apply-otel-patches \
+    && /usr/local/bin/haproxy-apply-otel-patches.sh \
     && PKG_CONFIG_PATH=/opt/lib/pkgconfig cmake -S "/tmp/opentelemetry-cpp-${OPENTELEMETRY_CPP_VERSION}" -B build \
         -DCMAKE_INSTALL_PREFIX=/opt \
         -DCMAKE_C_FLAGS="${HARDENING_CFLAGS}" \
