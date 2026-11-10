@@ -41,7 +41,8 @@ The Taskfile selects every tracked shell script with `git ls-files -z -- '**/*.s
 Use `go tool task jsonnetfmt -- -i` to format the package pipeline and `go tool task jsonnetfmt -- --test` to check it.
 Use `go tool task release -- <gorelease flags>` for Go module compatibility checks.
 `go tool task buildctl -- --help` exposes the BuildKit client without changing the Docker Buildx build driver.
-Target builds require Docker Buildx and a running Linux Docker daemon as documented in the root README.
+Target builds require Docker Buildx and a running Linux Docker daemon.
+See the root README for [build configuration and invocation examples](../README.md#build-configuration).
 Run the checks from the repository root:
 
 ```sh

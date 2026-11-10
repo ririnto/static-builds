@@ -16,59 +16,8 @@ tasks:
         set -- {{.CLI_ARGS}}
         go run ./cmd/download "${1:-}"
         ROOT_DIR=$(pwd)
-        usage() {
-          echo "Usage: go tool task build -- <target> [buildx args...]"
-          echo ""
-          echo "Arguments:"
-          echo "  target          Build target (e.g., nginx, haproxy, apache-httpd)"
-          echo "  buildx args     Additional arguments passed to docker buildx build"
-          echo ""
-          echo "Environment variables:"
-          echo "  BUILDKIT_PLATFORM     Target platform for cross-platform builds"
-          echo "                      Default: linux/amd64"
-          echo "                      Example: BUILDKIT_PLATFORM=linux/arm64"
-          echo "  BUILD_OUTPUT_DEST     Output destination directory for build artifacts"
-          echo "                      Default: .out/<target>/"
-          echo "                      Example (CI): .out/<target>/"
-          echo "                      Example: BUILD_OUTPUT_DEST=/custom/output/nginx"
-          echo "  BUILDKIT_CACHE_BACKEND Cache backend type for Docker BuildKit"
-          echo "                      Default: local"
-          echo "                      Allowed: local, gha"
-          echo "                      Example: BUILDKIT_CACHE_BACKEND=gha"
-          echo "  BUILDKIT_NETWORK      Network mode for Docker BuildKit"
-          echo "                      Default: default"
-          echo "                      Allowed: default, host, none"
-          echo "                      Example: BUILDKIT_NETWORK=default"
-          echo ""
-          echo "Examples:"
-          echo "  go tool task build -- nginx"
-          echo "  go tool task build -- haproxy --progress=plain"
-          echo "  BUILDKIT_PLATFORM=linux/arm64 go tool task build -- nginx"
-          echo "  BUILD_OUTPUT_DEST=.out/custom/nginx go tool task build -- nginx"
-          exit 1
-        }
-        if [ "$#" -lt 1 ] || [ -z "$1" ]; then
-          echo "Error: TARGET is required; pass a target as the first argument." >&2
-          usage
-        fi
         TARGET="$1"
         shift
-        case "${TARGET}" in
-          *[!A-Za-z0-9._-]*)
-            echo "Error: Invalid target '${TARGET}'"
-            echo "Allowed characters: letters, numbers, dot, underscore, hyphen"
-            exit 1
-            ;;
-        esac
-        if [ ! -d "${ROOT_DIR}/${TARGET}" ]; then
-          echo "Error: Target directory '${TARGET}' not found"
-          exit 1
-        fi
-        if [ ! -f "${ROOT_DIR}/${TARGET}/Dockerfile" ]; then
-          echo "Error: Dockerfile not found in '${TARGET}'"
-          exit 1
-        fi
-        cd "${ROOT_DIR}"
         METADATA_ENV=$(go tool task manifest -- get-env "${TARGET}")
         BUILDKIT_PLATFORM="${BUILDKIT_PLATFORM:-linux/amd64}"
         BUILDKIT_CACHE_BACKEND="${BUILDKIT_CACHE_BACKEND:-local}"
@@ -85,8 +34,7 @@ tasks:
             CACHE_TO="type=gha,mode=max,scope=${TARGET}"
             ;;
           *)
-            echo "Error: Invalid BUILDKIT_CACHE_BACKEND '${BUILDKIT_CACHE_BACKEND}'"
-            echo "Allowed values: local, gha"
+            echo "Error: Invalid BUILDKIT_CACHE_BACKEND '${BUILDKIT_CACHE_BACKEND}' (allowed: local, gha)" >&2
             exit 1
             ;;
         esac

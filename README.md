@@ -62,18 +62,25 @@ pnpm run build -- nginx
 
 Build artifacts are written to `.out/<target>/` by default for both local and CI builds.
 You can override this with `BUILD_OUTPUT_DEST`.
+
+### Build configuration
+
 Build configuration accepts inherited environment values.
 
-- `BUILDKIT_PLATFORM` defaults to `linux/amd64`.
-- `BUILDKIT_NETWORK` defaults to `default`.
-- `BUILDKIT_CACHE_BACKEND` defaults to `local`.
-- `BUILD_OUTPUT_DEST` defaults to `.out/<target>/` under the repository root.
-- `CACHE_DIR` defaults to `.cache/<target>/` under the repository root.
+| Variable | Default | Values and purpose |
+| --- | --- | --- |
+| `BUILDKIT_PLATFORM` | `linux/amd64` | Select a target platform supported by the builder, such as `linux/arm64`. |
+| `BUILDKIT_NETWORK` | `default` | Select `default`, `host`, or `none` for RUN-step networking. |
+| `BUILDKIT_CACHE_BACKEND` | `local` | Select `local` or `gha` for cache import and export. |
+| `BUILD_OUTPUT_DEST` | `.out/<target>/` | Select an artifact output directory relative to the repository root or an absolute path. |
+| `CACHE_DIR` | `.cache/<target>/` | Select a local cache directory relative to the repository root or an absolute path when using the `local` backend. |
 
-```sh
-BUILDKIT_PLATFORM=linux/arm64 go tool task build -- nginx
-BUILD_OUTPUT_DEST=.out/custom/nginx CACHE_DIR=.cache/custom/nginx go tool task build -- nginx
-```
+Build invocation examples:
+
+- `go tool task build -- nginx`
+- `go tool task build -- haproxy --progress=plain`
+- `BUILDKIT_PLATFORM=linux/arm64 go tool task build -- nginx`
+- `BUILD_OUTPUT_DEST=.out/custom/nginx CACHE_DIR=.cache/custom/nginx go tool task build -- nginx`
 
 ### Network and platform behavior
 
