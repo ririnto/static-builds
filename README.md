@@ -419,7 +419,7 @@ Selected release contents:
 - GitLab package builds retain artifacts without custom publisher jobs.
 - GitLab contributor validation invokes Go tests, golangci-lint, shell formatting, and Jsonnet checks through `go tool task`.
 - The Node, pnpm, and Java contributor checks run in local hooks only.
-- The package component installs BuildKit, runc, RootlessKit, and UID mapping helpers from Alpine packages.
+- The package component installs BuildKit, fuse-overlayfs, runc, RootlessKit, and UID mapping helpers from Alpine packages.
 - It creates user 1000 and maps `user:100000:65536` in both `/etc/subuid` and `/etc/subgid`.
 - It invokes the upstream daemonless script as that user without Docker services.
 - The runner must permit unprivileged user namespaces and rootless mounts.

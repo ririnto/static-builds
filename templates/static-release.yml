@@ -18,7 +18,7 @@ spec:
     BUILDKITD_FLAGS: --oci-worker-no-process-sandbox
     BUILD_OUTPUT_DEST: "$CI_PROJECT_DIR/.out/$[[ inputs.target ]]"
   before_script:
-    - apk add --no-cache ca-certificates git buildkit runc rootlesskit shadow-uidmap su-exec
+    - apk add --no-cache ca-certificates git buildkit fuse3 fuse-overlayfs runc rootlesskit shadow-uidmap su-exec
     - adduser -D -u 1000 user
     - echo user:100000:65536 > /etc/subuid
     - echo user:100000:65536 > /etc/subgid
