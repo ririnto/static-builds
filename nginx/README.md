@@ -41,10 +41,10 @@ curl http://127.0.0.1:18081/njs
 
 The Dockerfile performs these checks before exporting the binary and scripting examples:
 
-- Static linking assertions.
-- Executable and scripting-file presence checks.
-- Version inspection under strace.
-- Scripting configuration validation.
+- Static linking assertions
+- Executable and scripting-file presence checks
+- Version inspection under strace
+- Scripting configuration validation
 
 Upstream njs runtime behavior is not re-tested by this target.
 The custom [healthcheck target](../nginx-upstream-healthcheck/README.md) retains runtime probes.

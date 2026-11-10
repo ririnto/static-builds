@@ -29,13 +29,13 @@ On macOS, Go-managed tools may compile dependencies that require system SDK head
 Export `SDKROOT=$(xcrun --show-sdk-path)` when the compiler or linker cannot locate the system SDK.
 The following tools are managed through `go.mod`:
 
-- Task.
-- shfmt.
-- Jsonnet.
-- jsonnetfmt.
-- golangci-lint.
-- gorelease.
-- buildctl.
+- Task
+- shfmt
+- Jsonnet
+- jsonnetfmt
+- golangci-lint
+- gorelease
+- buildctl
 
 The Taskfile selects every tracked shell script with `git ls-files -z -- '**/*.sh'` for shfmt.
 Use `go tool jsonnetfmt -i .gitlab/ci/package-pipeline.gitlab-ci.jsonnet` to format the package pipeline and `go tool jsonnetfmt --test .gitlab/ci/package-pipeline.gitlab-ci.jsonnet` to check it.
@@ -57,10 +57,10 @@ The lockfile records the resolved dependency graph.
 Markdown validation uses pnpm and markdownlint-cli2, including the `code-block-style` rule for fenced code blocks.
 `fix` applies the following changes:
 
-- Markdown lint fixes.
-- Shell formatting through the Go-managed Task entrypoint.
-- Jsonnet formatting through `go tool jsonnetfmt`.
-- Ultracite fixes.
+- Markdown lint fixes
+- Shell formatting through the Go-managed Task entrypoint
+- Jsonnet formatting through `go tool jsonnetfmt`
+- Ultracite fixes
 
 Markdownlint loads the local Markdownlint rules through `customRules`, applying the shared Markdownlint baseline with the repository's stricter exceptions.
 The `docs/no-box-drawing` rule reports the first Unicode box-drawing character per line, including fenced code, without automatic replacements.

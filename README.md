@@ -31,13 +31,13 @@ The Taskfile writes artifacts to `.out/<target>/` and imports and exports local 
 
 The following tools are managed through `go.mod`:
 
-- Task.
-- shfmt.
-- Jsonnet.
-- jsonnetfmt.
-- golangci-lint.
-- gorelease.
-- buildctl.
+- Task
+- shfmt
+- Jsonnet
+- jsonnetfmt
+- golangci-lint
+- gorelease
+- buildctl
 
 The pnpm version declared in `package.json` provides equivalent package-script entrypoints.
 Target compilers are installed in Dockerfile stages, so they are not host prerequisites.
