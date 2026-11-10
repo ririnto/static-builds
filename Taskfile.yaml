@@ -13,124 +13,50 @@ tasks:
       - "{{.TASK_EXE | shellQuote}} --list"
 
   build:
-    desc: Download sources and build a target (TARGET required)
-    requires:
-      vars: [TARGET]
-    preconditions:
-      - sh: test -n {{.TARGET | default "" | shellQuote}}
-        msg: TARGET must be nonempty.
+    desc: Download sources and build a target (-- <target> [buildx args...])
     cmds:
-      - task: download
-        vars:
-          TARGET: "{{.TARGET}}"
-      - >-
-        BUILDKIT_PLATFORM={{.BUILDKIT_PLATFORM | default "linux/amd64" | shellQuote}} BUILDKIT_NETWORK={{.BUILDKIT_NETWORK | default "default" | shellQuote}} BUILDKIT_CACHE_BACKEND={{.BUILDKIT_CACHE_BACKEND | default "local" | shellQuote}} BUILD_OUTPUT_DEST={{.BUILD_OUTPUT_DEST | default (printf "%s/.out/%s" .ROOT_DIR .TARGET) | shellQuote}} CACHE_DIR={{.CACHE_DIR | default (printf "%s/.cache/%s" .ROOT_DIR .TARGET) | shellQuote}} sh .github/build.sh {{.TARGET | shellQuote}} {{.CLI_ARGS}}
+      - |-
+        set -eu
+        set -- {{.CLI_ARGS}}
+        go run ./cmd/download "${1:-}"
+        sh .github/build.sh "$@"
+
+  buildctl:
+    desc: Run the BuildKit client
+    cmds:
+      - go tool buildctl {{.CLI_ARGS}}
 
   download:
-    desc: Download a target's sources (TARGET required)
-    requires:
-      vars: [TARGET]
-    preconditions:
-      - sh: test -n {{.TARGET | default "" | shellQuote}}
-        msg: TARGET must be nonempty.
+    desc: Download a target's sources (-- <target>)
     cmds:
-      - go run ./cmd/download {{.TARGET | shellQuote}}
+      - go run ./cmd/download {{.CLI_ARGS}}
 
   manifest:
-    desc: Query manifest metadata (QUERY and VALUE required)
-    requires:
-      vars: [QUERY, VALUE]
+    desc: Query manifest metadata (-- <command> <argument>)
     cmds:
-      - go run ./cmd/metadata {{.QUERY | shellQuote}} {{.VALUE | shellQuote}}
+      - go run ./cmd/metadata {{.CLI_ARGS}}
 
-  release-guard:
-    desc: Validate a release tag (TARGET and TAG required)
-    requires:
-      vars: [TARGET, TAG]
+  release:
+    desc: Check Go module release compatibility
     cmds:
-      - go run ./cmd/release-guard {{.TARGET | shellQuote}} {{.TAG | shellQuote}}
+      - go tool gorelease {{.CLI_ARGS}}
 
-  release-resolve:
-    desc: Resolve and validate a release target (TAG required)
-    requires:
-      vars: [TAG]
+  jsonnet:
+    desc: Render the GitLab package pipeline
     cmds:
-      - go run ./cmd/release-resolve {{.TAG | shellQuote}}
+      - go tool jsonnet {{.CLI_ARGS}} .gitlab/ci/package-pipeline.jsonnet
 
-  package-release:
-    desc: Package metadata-selected outputs (TARGET and PACKAGE required)
-    requires:
-      vars: [TARGET, PACKAGE]
+  jsonnetfmt:
+    desc: Format the GitLab package pipeline
     cmds:
-      - go run ./cmd/package-release {{.TARGET | shellQuote}} {{.PACKAGE | shellQuote}}
+      - go tool jsonnetfmt {{.CLI_ARGS}} .gitlab/ci/package-pipeline.jsonnet
 
-  release-publish:
-    desc: Publish a release archive through go-github (TAG required)
-    requires:
-      vars: [TAG]
+  shfmt:
+    desc: Format maintained shell scripts
     cmds:
-      - go run ./cmd/release-publish {{.TAG | shellQuote}}
+      - find {{.SHELL_PATHS}} -type f -name '*.sh' -print0 | xargs -0 go tool shfmt {{.CLI_ARGS}}
 
-  list-targets:
-    desc: List targets from metadata.json
+  golangci-lint:
+    desc: Lint Go source
     cmds:
-      - python3 -c "import json;[print(k) for k in json.load(open('metadata.json'))]"
-
-  shfmt-check:
-    desc: Check shell formatting
-    cmds:
-      - find {{.SHELL_PATHS}} -type f -name '*.sh' -print0 | xargs -0 go tool shfmt -d -i 2 -ci
-
-  shfmt-write:
-    desc: Fix shell formatting
-    cmds:
-      - find {{.SHELL_PATHS}} -type f -name '*.sh' -print0 | xargs -0 go tool shfmt -w -i 2 -ci
-
-  format-go:
-    desc: Format maintained Go source
-    cmds:
-      - gofmt -w cmd internal
-
-  tidy-go:
-    desc: Tidy Go module dependencies
-    cmds:
-      - go mod tidy
-
-  lint-go:
-    desc: Lint Go source with golangci-lint
-    cmds:
-      - go tool golangci-lint run ./...
-
-  test-go:
-    desc: Run command tests
-    cmds:
-      - go test ./... {{.CLI_ARGS}}
-
-  jsonnet-check:
-    desc: Evaluate the main and feature-branch package pipelines
-    cmds:
-      - >-
-        output=$(mktemp); trap 'rm -f "$output"' EXIT; go tool jsonnet -S --ext-str branch=main --ext-str target= --ext-str component_ref=example.invalid/group/static-builds/static-release@main .gitlab/ci/package-pipeline.jsonnet > "$output"
-      - >-
-        output=$(mktemp); trap 'rm -f "$output"' EXIT; go tool jsonnet -S --ext-str branch=feature/tooling-check --ext-str target= --ext-str component_ref=example.invalid/group/static-builds/static-release@feature/tooling-check .gitlab/ci/package-pipeline.jsonnet > "$output"
-
-  jsonnetfmt-check:
-    desc: Check package pipeline Jsonnet formatting
-    cmds:
-      - go tool jsonnetfmt --test .gitlab/ci/package-pipeline.jsonnet
-
-  jsonnetfmt-write:
-    desc: Fix package pipeline Jsonnet formatting
-    cmds:
-      - go tool jsonnetfmt --in-place .gitlab/ci/package-pipeline.jsonnet
-
-  package-pipeline:
-    desc: Render a GitLab child pipeline (BRANCH=main COMPONENT_REF=...)
-    requires:
-      vars: [BRANCH, COMPONENT_REF]
-    preconditions:
-      - sh: test -n {{.COMPONENT_REF | default "" | shellQuote}}
-        msg: COMPONENT_REF must be nonempty.
-    cmds:
-      - >-
-        go tool jsonnet -S --ext-str {{printf "branch=%s" .BRANCH | shellQuote}} --ext-str {{printf "target=%s" (.TARGET | default "") | shellQuote}} --ext-str {{printf "component_ref=%s" .COMPONENT_REF | shellQuote}} .gitlab/ci/package-pipeline.jsonnet
+      - go tool golangci-lint {{.CLI_ARGS}}

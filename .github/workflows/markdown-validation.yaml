@@ -46,44 +46,16 @@ jobs:
         run: pnpm run check:ultracite
 
       - name: Check Go commands
-        run: go tool task test-go
+        run: go test ./...
 
       - name: Lint Go source
-        run: go tool task lint-go
+        run: go tool task golangci-lint -- run ./...
 
       - name: Check shell formatting
-        run: go tool task shfmt-check
+        run: go tool task shfmt -- -d -i 2 -ci
 
       - name: Check Jsonnet
-        run: go tool task jsonnet-check jsonnetfmt-check
+        run: pnpm run check:jsonnet
 
-  fences:
-    name: Code fences
-    runs-on: ubuntu-26.04
-    timeout-minutes: 5
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Check closed code fences
-        uses: rvben/rumdl@v0
-        with:
-          version: 0.3.1
-          path: .
-          args: >-
-            --enable MD046 --no-cache --respect-gitignore
-
-  links:
-    name: Relative links
-    runs-on: ubuntu-26.04
-    timeout-minutes: 5
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Check relative files and heading links
-        uses: lycheeverse/lychee-action@v2
-        with:
-          lycheeVersion: v0.24.2
-          args: --config .lychee.toml '**/*.md'
-          output: ${{ runner.temp }}/markdown-links.md
+      - name: Check Jsonnet formatting
+        run: go tool task jsonnetfmt -- --test

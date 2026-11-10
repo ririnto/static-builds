@@ -33,7 +33,9 @@ jobs:
         id: resolve
         env:
           TAG: ${{ github.ref_name }}
-        run: go tool task release-resolve TAG="$TAG"
+        run: |
+          target=$(go tool task manifest -- get-target-from-tag "$TAG")
+          printf 'target=%s\n' "$target" >> "$GITHUB_OUTPUT"
 
   release:
     needs: resolve-target

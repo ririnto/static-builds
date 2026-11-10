@@ -36,7 +36,20 @@ jobs:
         env:
           TARGET: ${{ inputs.target }}
           TAG: ${{ inputs.tag }}
-        run: go tool task release-guard TARGET="$TARGET" TAG="$TAG"
+        shell: bash
+        run: |
+          prefix=$(go tool task manifest -- get-tag-prefix "$TARGET")
+          official=$(go tool task manifest -- get-official-version "$TARGET")
+          test "${TAG#"$prefix"-}" != "$TAG"
+          version_revision=${TAG#"$prefix"-}
+          test "${version_revision%.*}" != "$version_revision"
+          version=${version_revision%.*}
+          revision=${version_revision##*.}
+          printf '%s\n' "$revision" | grep -E '^[0-9]+$'
+          if [ "$version" != "$official" ]; then
+            test "${version#"$official"-}" != "$version"
+            printf '%s\n' "${version#"$official"-}" | grep -E '^[A-Za-z0-9]+([.-][A-Za-z0-9]+)*$'
+          fi
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -58,7 +71,7 @@ jobs:
           BUILDKIT_CACHE_BACKEND: gha
           BUILD_OUTPUT_DEST: ${{ github.workspace }}/.out/${{ inputs.target }}
           TARGET: ${{ inputs.target }}
-        run: go tool task build TARGET="$TARGET"
+        run: go tool task build -- "$TARGET"
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@v0.36.0
@@ -78,7 +91,12 @@ jobs:
         env:
           TARGET: ${{ inputs.target }}
           TAG: ${{ inputs.tag }}
-        run: go tool task package-release TARGET="$TARGET" PACKAGE="$TAG"
+        shell: bash
+        run: |
+          files=$(mktemp)
+          trap 'rm -f "$files"' EXIT
+          go tool task manifest -- get-release-files "$TARGET" > "$files"
+          tar -czvf "$TAG.tar.gz" -C ".out/$TARGET" -T "$files"
 
       - name: Upload release artifacts
         uses: actions/upload-artifact@v7
@@ -104,11 +122,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Set up Go
-        uses: actions/setup-go@v7
-        with:
-          go-version-file: go.mod
-
       - name: Download release package
         uses: actions/download-artifact@v8
         with:
@@ -119,4 +132,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           TAG: ${{ inputs.tag }}
-        run: go tool task release-publish TAG="$TAG"
+        shell: bash
+        run: |
+          if response=$(gh api --include "repos/$GH_REPO/releases/tags/$TAG" 2>&1); then
+            printf '%s\n' "$response"
+            gh release upload "$TAG" "$TAG.tar.gz" --clobber
+          else
+            printf '%s\n' "$response"
+            printf '%s\n' "$response" | grep -E '^HTTP/[0-9.]+ 404 '
+            gh release create "$TAG" "$TAG.tar.gz" --verify-tag --title "$TAG" --notes "Release $TAG"
+          fi

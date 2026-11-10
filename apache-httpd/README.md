@@ -55,7 +55,7 @@ Task downloads the inputs before invoking the Docker Buildx entrypoint, includin
 These commands assume the default output directory and must be adjusted if `BUILD_OUTPUT_DEST` is overridden.
 
 ```bash
-go tool task build TARGET=apache-httpd
+go tool task build -- apache-httpd
 ./.out/apache-httpd/bin/httpd -V 2>&1
 ./.out/apache-httpd/bin/httpd -l 2>&1
 ./.out/apache-httpd/bin/httpd -d "$PWD/.out/apache-httpd" -M 2>&1

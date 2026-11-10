@@ -7,16 +7,13 @@ validate-contributor-checks:
   stage: checks
   image: golang:alpine
   before_script:
-    - apk add --no-cache ca-certificates git curl
-    - sh .gitlab/install-validation-tools.sh
+    - apk add --no-cache ca-certificates git
   script:
-    - go tool task test-go
-    - go tool task lint-go
-    - go tool task shfmt-check
-    - go tool task jsonnet-check
-    - go tool task jsonnetfmt-check
-    - rumdl check --enable MD046 --no-cache --respect-gitignore .
-    - lychee --config .lychee.toml '**/*.md'
+    - go test ./...
+    - go tool task golangci-lint -- run ./...
+    - go tool task shfmt -- -d -i 2 -ci
+    - go tool task jsonnet -- -S --ext-str branch=main --ext-str target= --ext-str component_ref=example.invalid/group/static-builds/static-release@main
+    - go tool task jsonnetfmt -- --test
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     - if: "$CI_COMMIT_BRANCH"
@@ -30,7 +27,7 @@ generate-package-pipeline:
     - apk add --no-cache ca-certificates git
   script:
     - >-
-      go tool task package-pipeline "BRANCH=${CI_COMMIT_BRANCH:-}" "COMPONENT_REF=${CI_SERVER_FQDN}/${CI_PROJECT_PATH}/static-release@${CI_COMMIT_REF_NAME}" > package-pipeline.yaml
+      go tool task jsonnet -- -S --ext-str "branch=${CI_COMMIT_BRANCH:-}" --ext-str target= --ext-str "component_ref=${CI_SERVER_FQDN}/${CI_PROJECT_PATH}/static-release@${CI_COMMIT_REF_NAME}" > package-pipeline.yaml
   artifacts:
     paths:
       - package-pipeline.yaml

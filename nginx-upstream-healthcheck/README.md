@@ -5,7 +5,7 @@ The healthcheck code is compiled into the binary as `ngx_http_upstream_healthche
 
 ## Build and packaged files
 
-Build this target with `go tool task build TARGET=nginx-upstream-healthcheck`.
+Build this target with `go tool task build -- nginx-upstream-healthcheck`.
 
 Build metadata selects the NGINX, njs, QuickJS-NG, and VTS release versions.
 
@@ -246,8 +246,8 @@ The NGINX results classify the point where each probe succeeded or failed while 
 
 ## Build and contributor checks
 
-Build this target with `go tool task build TARGET=nginx-upstream-healthcheck`.
+Build this target with `go tool task build -- nginx-upstream-healthcheck`.
 The Dockerfile verifies static linking, njs HTTP and stream execution, and scratch-root startup before exporting the binary, configurations, and runtime identity files.
 Verification lives in Dockerfile stages without per-target startup scripts or separate functional harnesses.
-Run `go tool task test-go` and `pnpm check` from the repository root for Go command tests and contributor tooling checks.
+Run `go test ./...` and `pnpm check` from the repository root for Go command tests and contributor tooling checks.
 These checks do not establish runtime healthcheck acceptance.
