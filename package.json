@@ -25,7 +25,8 @@
     "pre-commit": "run-s check",
     "pre-push": "run-s check",
     "prepare": "husky",
-    "tasks": "go tool task"
+    "tasks": "go tool task",
+    "verify:branch-lock": "java -XX:+UseParallelGC -cp node_modules/tla-chaos-loop/tools/tla2tools.jar tlc2.TLC -workers 1 -metadir \"$(mktemp -d)\" -config .claude/skills/branch-download/references/model/BranchLock.cfg .claude/skills/branch-download/references/model/BranchLock.tla"
   },
   "devDependencies": {
     "@oxc-project/types": "catalog:",

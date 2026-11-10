@@ -17,11 +17,7 @@ The `tla-chaos-loop` dependency supplies the TLC executable JAR.
 Run TLC from the repository root:
 
 ```sh
-java -XX:+UseParallelGC -cp node_modules/tla-chaos-loop/tools/tla2tools.jar tlc2.TLC \
-  -workers 1 \
-  -metadir "$(mktemp -d)" \
-  -config .claude/skills/branch-download/references/model/BranchLock.cfg \
-  .claude/skills/branch-download/references/model/BranchLock.tla
+pnpm run verify:branch-lock
 ```
 
 Check the command's exit status and invariant report.
