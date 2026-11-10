@@ -5,7 +5,7 @@ The healthcheck code is compiled into the binary as `ngx_http_upstream_healthche
 
 ## Build and packaged files
 
-Build this target with `make build nginx-upstream-healthcheck`.
+Build this target with `go tool task build TARGET=nginx-upstream-healthcheck`.
 
 Build metadata selects the NGINX, njs, QuickJS-NG, and VTS release versions.
 
@@ -267,7 +267,7 @@ The `proxy/tests/fixtures/nginx.conf.template` and `proxy/tests/fixtures/ca.cnf.
 
 Validate runner cleanup offline with `python3 proxy/tests/verify-runner.py`.
 Check shell syntax with `bash -n proxy/tests/run.sh proxy/tests/run-docker.sh`.
-Run `make lint` and `make shfmt-check` for shell lint and formatting.
+Run `go tool task lint` and `go tool task shfmt-check` for shell lint and formatting.
 
 The Python 3 check uses a local Docker CLI fixture to exercise partial creation, signal cleanup, ownership guards, and exit-status retention.
 It runs offline without a Docker daemon.
@@ -288,4 +288,4 @@ It mounts the binary read-only and creates one uniquely named container with a f
 It defaults to the repository's `linux/amd64` build platform.
 Pass `--platform linux/arm64` when the binary was built for another platform.
 It removes its container and image on normal completion or interruption.
-Neither runner is part of `make build nginx-upstream-healthcheck`, so build verification does not imply functional-suite acceptance.
+Neither runner is part of `go tool task build TARGET=nginx-upstream-healthcheck`, so build verification does not imply functional-suite acceptance.
