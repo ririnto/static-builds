@@ -417,7 +417,7 @@ Selected release contents:
 - The prepare job exports the rendered child pipeline, and package jobs invoke named Taskfile tasks without a separate toolchain download.
 - GitLab package builds retain artifacts without custom publisher jobs.
 - GitLab contributor validation invokes Go tests, golangci-lint, shell formatting, and Jsonnet checks through `go tool task`.
-- The Node and pnpm contributor suite remains in the existing GitHub workflow and local hooks.
+- The Node, pnpm, and Java contributor checks run in local hooks only.
 - The package component installs Docker CLI and Buildx from Alpine packages.
 - The runner must provide the Docker service and its shared TLS certificate directory without disabling TLS or build sandbox protections.
 - `feature/*` branches append `-beta` to the package version.

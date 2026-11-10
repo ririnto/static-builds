@@ -145,7 +145,7 @@ Keep custom Markdownlint rules under `rules/`.
 - Verify static binaries inside Dockerfiles without per-target verify shell scripts or proxy harnesses.
 - Keep push and pull-request validation CI limited to contributor checks, without target builds or releases.
 - Invoke Go tests, golangci-lint, shfmt, and Jsonnet tools through named `go tool task` tasks in GitLab validation jobs.
-- Keep Node and pnpm validation in the GitHub workflow and local contributor hooks.
+- Keep Node, pnpm, and Java validation in local contributor hooks only.
 - Use existing verification entrypoints rather than introducing a test framework.
 
 ### Name release tags

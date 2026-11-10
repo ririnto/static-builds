@@ -10,16 +10,15 @@ Link related issues instead of expanding a completed issue's scope.
 Check Markdown rendering, relative links, and instruction loading paths after editing.
 Use the repository's `.markdownlint-cli2.jsonc` when running Markdown lint.
 
-### Markdown validation
+### Contributor validation
 
-The [GitHub validation workflow](workflows/markdown-validation.yaml) reports documentation and tooling checks on every pull request without building targets or publishing releases.
+The [GitHub validation workflow](workflows/markdown-validation.yaml) runs Go-managed tooling checks on every pull request without building targets or publishing releases.
 GitLab invokes Go tests, golangci-lint, shell formatting, and Jsonnet checks through `go tool task` before its manual package trigger.
 Its Go jobs use `golang:alpine` with Go's default `GOTOOLCHAIN=auto` behavior honoring the `go.mod` directive.
 The package component invokes the same direct Docker Buildx Taskfile entrypoint as local builds.
-Node and pnpm validation remains in the GitHub workflow and local contributor hooks.
+Node, pnpm, and Java checks run through local contributor hooks.
 It also supports manual runs.
-Every pull request is checked because deleting a linked file can break documentation without changing Markdown.
-The Markdown job also runs rule tests, TypeScript validation, Ultracite, Go tests, golangci-lint, shell formatting, Jsonnet checks, and the branch-lock model.
+The GitHub job runs Go tests, golangci-lint, shell formatting, and Jsonnet checks.
 
 Install the Node.js version supported by `package.json` and the pnpm version declared there for Node-side tooling.
 Install the Go version declared in `go.mod` for repository tasks and Go-managed contributor tools.
