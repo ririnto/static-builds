@@ -30,11 +30,10 @@ local includes = [
 local publishJobs = {
   ['publish-' + t]: {
     stage: 'publish',
-    image: 'golang:1.27.3-alpine',
+    image: 'alpine',
     needs: [{ job: 'gitlab-static-package-' + t, artifacts: true }],
-    before_script: ['apk add --no-cache ca-certificates git'],
+    before_script: ['apk add --no-cache ca-certificates curl'],
     script: [
-      'go run ./cmd/setup-curl',
       |||
         curl --fail-with-body --show-error --header "JOB-TOKEN: $CI_JOB_TOKEN" \
           --upload-file "%(pn)s.tar.gz" \

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"compress/gzip"
 	"fmt"
 	"os"
 	"os/exec"
@@ -37,10 +38,24 @@ func run(args []string) error {
 	if err := release.Verify(directory, files); err != nil {
 		return err
 	}
-	command := exec.Command("tar", append([]string{"-czvf", archive, "-C", directory}, files...)...)
+	output, err := os.Create(archive)
+	if err != nil {
+		return err
+	}
+	compressed := gzip.NewWriter(output)
+	command := exec.Command("tar", append([]string{"-cvf", "-", "-C", directory}, files...)...)
 	command.Env = append(os.Environ(), "COPYFILE_DISABLE=1")
-	command.Stdout, command.Stderr = os.Stdout, os.Stderr
-	return command.Run()
+	command.Stdout, command.Stderr = compressed, os.Stderr
+	err = command.Run()
+	compressErr := compressed.Close()
+	closeErr := output.Close()
+	if err != nil {
+		return err
+	}
+	if compressErr != nil {
+		return compressErr
+	}
+	return closeErr
 }
 
 func main() {

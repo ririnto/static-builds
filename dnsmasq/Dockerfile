@@ -3,6 +3,14 @@ ARG UBI10_MINIMAL_VERSION
 ARG TARGET_PREFIX=/home/nobody
 
 
+FROM --platform=$BUILDPLATFORM golang:1.27.3-alpine AS script-tools
+ARG TARGETOS TARGETARCH
+WORKDIR /src
+COPY go.mod go.sum ./
+COPY cmd/verify-dnsmasq/ ./cmd/verify-dnsmasq/
+RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -trimpath -ldflags='-s -w' -o /script-tools/verify-dnsmasq ./cmd/verify-dnsmasq
+
+
 FROM alpine:${ALPINE_VERSION} AS build
 ARG DNSMASQ_VERSION
 ARG TARGET_PREFIX
@@ -29,8 +37,8 @@ ARG DNSMASQ_VERSION
 RUN --mount=type=cache,target=/var/cache/dnf \
     microdnf -y install file binutils strace
 COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
-COPY dnsmasq/dnsmasq-verify.sh /usr/local/bin/
-RUN /usr/local/bin/dnsmasq-verify.sh
+COPY --from=script-tools /script-tools/verify-dnsmasq /usr/local/bin/
+RUN /usr/local/bin/verify-dnsmasq
 
 
 FROM scratch

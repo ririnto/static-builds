@@ -13,7 +13,10 @@ Use the repository's `.markdownlint-cli2.jsonc` when running Markdown lint.
 ### Markdown validation
 
 The [GitHub validation workflow](workflows/markdown-validation.yaml) reports documentation and tooling checks on every pull request without building targets or publishing releases.
-GitLab runs Go tests, ShellCheck, shell formatting, Jsonnet, code-fence, and relative-link checks directly before its manual package trigger.
+GitLab runs Go tests, Jsonnet, code-fence, and relative-link checks directly before its manual package trigger.
+Its Go jobs use `golang:alpine` with Go's default `GOTOOLCHAIN=auto` behavior honoring the `go.mod` directive.
+The package component invokes the same daemonless rootless Go build command as native Linux under a non-root user with subordinate ID ranges.
+Rust-based rumdl and Lychee remain provisioned by the repository validation-tool command.
 Node and pnpm validation remains in the GitHub workflow and local contributor hooks.
 It also supports manual runs.
 Every pull request is checked because deleting a linked file can break documentation without changing Markdown.
@@ -23,8 +26,7 @@ The Markdown job also runs the rule tests, TypeScript validation, and Ultracite 
 Install the Node.js version supported by `package.json` and the pnpm version declared there for Node-side tooling.
 Install the Go version declared in `go.mod` for repository tasks and Go-managed contributor tools.
 Use rumdl 0.3.1 and Lychee 0.24.2, matching the workflow's tool versions.
-Install ShellCheck for shell linting.
-Task, shfmt, Jsonnet, jsonnetfmt, buildctl, and buildkitd are managed through `go.mod`.
+Task, Jsonnet, jsonnetfmt, buildctl, and buildkitd are managed through `go.mod`.
 Linux target builds additionally require the rootless runtime prerequisites documented in the root README.
 Native macOS target builds retain the Docker Buildx prerequisites documented there.
 Run the checks from the repository root:
@@ -38,8 +40,8 @@ pnpm run fix
 The root package manifest references Node-side tooling through the pnpm workspace catalog.
 `pnpm-workspace.yaml` defines the catalog-backed `katex` development override required by `micromark-extension-math`.
 The lockfile records the resolved dependency graph.
-`check` runs Markdown lint, rule tests, TypeScript validation, Ultracite, code-fence validation, relative-link validation, ShellCheck, shell formatting, Jsonnet evaluation, and Jsonnet formatting checks.
-`fix` applies Markdown lint fixes and the Go-managed shell and Jsonnet formatters through Task.
+`check` runs Markdown lint, rule tests, TypeScript validation, Ultracite, code-fence validation, relative-link validation, Go command and process tests, Jsonnet evaluation, and Jsonnet formatting checks.
+`fix` applies Markdown lint fixes and the Go-managed Jsonnet formatter through Task.
 It also applies Ultracite fixes.
 Markdownlint loads the local Markdownlint rules through `customRules`, applying the shared Markdownlint baseline with the repository's stricter exceptions.
 The `docs/no-box-drawing` rule reports the first Unicode box-drawing character per line, including fenced code, without automatic replacements.
@@ -78,7 +80,7 @@ The table maps effective enforcement to engineering qualities rather than adding
 | Pillar | Effective enforcement | Applicable scope and rationale |
 | --- | --- | --- |
 | Performance | Ultracite core `no-await-in-loop`, `unicorn/prefer-set-has`, and `unicorn/prefer-array-some`, plus `oxc/no-accumulating-spread`. | The linted tooling checks sequential work, collection operations, and repeated accumulator copies. |
-| Stability | Ultracite core `no-unsafe-finally`, `no-unsafe-optional-chaining`, `no-constant-condition`, and `import/no-cycle`, plus type-aware lint, TypeScript checking, and ShellCheck. | Tooling and maintained shell scripts receive static checks for unsafe control flow, invalid accesses, types, and shell failures. |
+| Stability | Ultracite core `no-unsafe-finally`, `no-unsafe-optional-chaining`, `no-constant-condition`, and `import/no-cycle`, plus type-aware lint, TypeScript checking. | Tooling receives static checks for unsafe control flow, invalid accesses, and types. |
 | Consistency | Core `prefer-named-capture-group` and `require-unicode-regexp`, Markdownlint `table-column-style`, and the local `docs/no-box-drawing` rule. | Linted tooling and maintained Markdown retain readable regex captures, compact tables, and portable tree markers. |
 | Maintainability | Core `no-unused-vars` and `import/no-duplicates`, spacing rules, rumdl MD046, and offline Lychee checks. | Tooling and documentation avoid unused bindings, duplicate imports, unclosed fences, and broken local references. |
 
@@ -126,14 +128,12 @@ Publish through the feature branch and pull request rather than pushing changes 
 
 Explain in the issue when existing guards remain because inversion requires artificial flags or deeper nesting.
 
-The Python command harnesses build Go executables with the version declared in `go.mod`.
-Run `python3 proxy/tests/verify-release.py` for release command and fake API regressions.
-Run `go test ./...` for the Go command tests.
-Run `python3 proxy/tests/verify-metadata.py` after changing metadata queries or parsing.
-
-- Run `python3 proxy/tests/verify-download.py` for downloader regressions.
-- Run `python3 proxy/tests/verify-nginx.py` for nginx verifier regressions.
-- Run `python3 proxy/tests/verify-runner.py` for Docker runner regressions.
+Run `go tool task test-go` or `go test ./...` for metadata, download, release, build runner, and target verifier regressions.
+The tests build actual command executables and exercise process lifetimes, signals, cleanup, output contracts, and fake publisher API behavior.
+Run `go tool task test-healthcheck` against an already-built healthcheck binary on Linux.
+Run `go tool task test-healthcheck-docker` for the Docker-backed functional suite on macOS.
+Both functional tasks accept `BINARY`, and the Docker task also accepts `PLATFORM`.
+The full functional suite requires its target binary and runtime dependencies, so it is separate from the offline contributor checks.
 
 The downloader and nginx verifier require GNU Coreutils `timeout` or `gtimeout`.
 The downloader also requires wget and OpenSSL.

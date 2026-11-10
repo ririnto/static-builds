@@ -23,11 +23,10 @@ func run() error {
 		return err
 	}
 	defer os.RemoveAll(temporary)
-	commands := [][]string{{"apk", "add", "--no-cache", "ca-certificates", "git", "curl", "xz"}}
+	commands := [][]string{{"apk", "add", "--no-cache", "ca-certificates", "git", "curl"}}
 	for _, tool := range []struct{ name, url, format string }{
 		{"rumdl", "https://github.com/rvben/rumdl/releases/download/v0.3.1/rumdl-v0.3.1-" + architecture + "-unknown-linux-musl.tar.gz", "--gzip"},
 		{"lychee", "https://github.com/lycheeverse/lychee/releases/download/lychee-v0.24.2/lychee-" + architecture + "-unknown-linux-musl.tar.gz", "--gzip"},
-		{"shellcheck", "https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0.linux." + architecture + ".tar.xz", "--xz"},
 	} {
 		directory := filepath.Join(temporary, tool.name)
 		if err := os.Mkdir(directory, 0700); err != nil {
@@ -43,7 +42,7 @@ func run() error {
 			return err
 		}
 	}
-	for _, name := range []string{"rumdl", "lychee", "shellcheck"} {
+	for _, name := range []string{"rumdl", "lychee"} {
 		var source string
 		err := filepath.WalkDir(filepath.Join(temporary, name), func(path string, entry os.DirEntry, err error) error {
 			if err == nil && !entry.IsDir() && entry.Name() == name && source == "" {

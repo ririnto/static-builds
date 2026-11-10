@@ -251,41 +251,39 @@ For this target, `verify-runtime` also starts nginx inside a chroot of the scrat
 It checks the default configuration, fetches the default HTTP page, confirms a live master PID, and waits for graceful shutdown under a timeout.
 It also checks the packaged healthcheck configuration with a temporary CA at `/conf/backend-ca.pem` and removes that CA before export.
 The final stage exports that checked filesystem.
-Build scripts and fixture configurations live in separate source files rather than embedded Dockerfile or documentation scripts.
-The source-checkout verification commands below use scripts and fixtures that are not included in release packages.
-The shared `nginx/nginx-verify.sh` script preserves the existing static-build verification contract.
+Go build commands and fixture configurations live in separate source files rather than embedded Dockerfile or documentation scripts.
+The source-checkout verification commands below use Go commands and fixtures that are not included in release packages.
+The shared `cmd/verify-nginx` command preserves the existing static-build verification contract.
 Each HTTP probe has a 15-second GNU `timeout` deadline, with curl request limits of two seconds for the retrying probe and five seconds for the second probe.
 On success, failure, `INT`, or `TERM`, it cancels active probes and forwards `QUIT` to the supervised nginx process group.
 GNU `timeout` escalates resistant probes to `KILL` after one second and resistant nginx processes after two seconds.
 The verifier reaps both supervisors and removes its temporary response file.
 The nginx supervisor also imposes a 40-second server lifetime bound.
-Run `python3 proxy/tests/verify-nginx.py` from the repository root to check cancellation, failed probes, deadlines, and shutdown with local process fixtures.
-This standalone regression requires Python 3 and GNU Coreutils `timeout` or `gtimeout` and does not invoke Docker.
+Run `go test ./cmd/verify-nginx` from the repository root to check cancellation, failed probes, deadlines, and shutdown with local process fixtures.
+This standalone regression requires Go and GNU Coreutils `timeout` or `gtimeout` and does not invoke Docker.
 It does not run healthcheck functional scenarios.
-The standalone suite lives under `proxy/tests/`, which is a test layout rather than a build target.
-The `proxy/tests/fixtures/nginx.conf.template` and `proxy/tests/fixtures/ca.cnf.template` files provide separate fixture sources.
+The standalone suite lives under `cmd/healthcheck-integration`, with configuration fixtures under `proxy/tests/fixtures/`.
+The `proxy/tests/fixtures/nginx.conf.template` file provides the functional configuration, and the Go runner generates certificate fixtures.
 
-Validate runner cleanup offline with `python3 proxy/tests/verify-runner.py`.
-Check shell syntax with `bash -n proxy/tests/run.sh proxy/tests/run-docker.sh`.
-Run `go tool task lint` and `go tool task shfmt-check` for shell lint and formatting.
+Validate runner cleanup offline with `go tool task test-go`.
 
-The Python 3 check uses a local Docker CLI fixture to exercise partial creation, signal cleanup, ownership guards, and exit-status retention.
+The Go check uses a local Docker CLI fixture to exercise partial creation, signal cleanup, ownership guards, and exit-status retention.
 It runs offline without a Docker daemon.
 
-Run `proxy/tests/run.sh` against an already-built Linux binary with `proxy/tests/run.sh .out/nginx-upstream-healthcheck/sbin/nginx`.
+Run `go tool task test-healthcheck BINARY=.out/nginx-upstream-healthcheck/sbin/nginx` against an already-built Linux binary.
 
-The local runner needs Bash, core utilities, grep, sed, curl, dnsmasq, OpenSSL, `setsid`, and socat.
+The local runner needs Go, dnsmasq, OpenSSL, socat, and sleep.
 It creates loopback fixtures and certificate files under a temporary directory, then removes the fixture process groups and files on exit or signal.
 The fixtures cover HTTP and stream L4 connection results, verified TLS-only checks with no client application bytes, HTTPS status and timeout results, TLS protocol and certificate failures, stream TLS payload expectations, dynamic DNS replacement, fall/rise and recovery, IPv6, metrics visibility across workers, and VTS metrics.
 The suite also checks that HTTP and stream TLS configurations fail when either the TLS name or trusted CA is missing.
 It validates literal HTTP and stream proxy destinations that create implicit upstreams without healthcheck settings.
 
-On macOS or another host without the required Linux runtime tools, use `proxy/tests/run-docker.sh`.
-Run `proxy/tests/run-docker.sh .out/nginx-upstream-healthcheck/sbin/nginx`.
+On macOS or another host without the required Linux runtime tools, use `go tool task test-healthcheck-docker`.
+Run `go tool task test-healthcheck-docker BINARY=.out/nginx-upstream-healthcheck/sbin/nginx`.
 
 The wrapper reads `UBI10_MINIMAL_VERSION` from `metadata.json` and passes the matching `registry.access.redhat.com/ubi10/ubi-minimal` image to the test build.
 It mounts the binary read-only and creates one uniquely named container with a four-CPU and eight-GiB cap.
 It defaults to the repository's `linux/amd64` build platform.
-Pass `--platform linux/arm64` when the binary was built for another platform.
+Pass `PLATFORM=linux/arm64` when the binary was built for another platform.
 It removes its container and image on normal completion or interruption.
 Neither runner is part of `go tool task build TARGET=nginx-upstream-healthcheck`, so build verification does not imply functional-suite acceptance.

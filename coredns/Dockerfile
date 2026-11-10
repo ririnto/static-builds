@@ -3,6 +3,14 @@ ARG UBI10_MINIMAL_VERSION
 ARG TARGET_PREFIX=/home/nobody
 
 
+FROM --platform=$BUILDPLATFORM golang:1.27.3-alpine AS script-tools
+ARG TARGETOS TARGETARCH
+WORKDIR /src
+COPY go.mod go.sum ./
+COPY cmd/verify-coredns/ ./cmd/verify-coredns/
+RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -trimpath -ldflags='-s -w' -o /script-tools/verify-coredns ./cmd/verify-coredns
+
+
 FROM golang:${GOLANG_IMAGE_TAG} AS build
 ARG COREDNS_VERSION
 ARG TARGET_PREFIX
@@ -29,8 +37,8 @@ ARG TARGET_PREFIX
 RUN --mount=type=cache,target=/var/cache/dnf \
     microdnf -y install file binutils strace
 COPY --from=build /build/coredns-${COREDNS_VERSION}/coredns ${TARGET_PREFIX}/coredns
-COPY coredns/coredns-verify.sh /usr/local/bin/
-RUN /usr/local/bin/coredns-verify.sh
+COPY --from=script-tools /script-tools/verify-coredns /usr/local/bin/
+RUN /usr/local/bin/verify-coredns
 
 
 FROM scratch

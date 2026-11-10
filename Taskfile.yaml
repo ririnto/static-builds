@@ -2,10 +2,6 @@ version: "3"
 
 silent: true
 
-vars:
-  SHELL_PATHS: >-
-    apache-exporter apache-httpd coredns dnsmasq haproxy monit nginx nginx-upstream-healthcheck vector proxy/tests
-
 tasks:
   default:
     desc: List available tasks
@@ -41,20 +37,23 @@ tasks:
     cmds:
       - python3 -c "import json;[print(k) for k in json.load(open('metadata.json'))]"
 
-  lint:
-    desc: Run ShellCheck on maintained shell scripts
+  test-go:
+    desc: Run Go command and process regression tests
     cmds:
-      - find {{.SHELL_PATHS}} -type f -name '*.sh' -print0 | xargs -0 shellcheck
+      - go test ./...
 
-  shfmt-check:
-    desc: Check shell formatting
+  test-healthcheck:
+    desc: Run the Linux healthcheck functional suite (BINARY=...)
+    preconditions:
+      - sh: test "$(uname -s)" = Linux
+        msg: The functional suite requires Linux, use test-healthcheck-docker on macOS.
     cmds:
-      - find {{.SHELL_PATHS}} -type f -name '*.sh' -print0 | xargs -0 go tool shfmt -d -i 2 -ci
+      - go run ./cmd/healthcheck-integration {{.BINARY | default ".out/nginx-upstream-healthcheck/sbin/nginx" | shellQuote}}
 
-  shfmt-write:
-    desc: Fix shell formatting
+  test-healthcheck-docker:
+    desc: Run the Docker-backed healthcheck suite (BINARY=... PLATFORM=...)
     cmds:
-      - find {{.SHELL_PATHS}} -type f -name '*.sh' -print0 | xargs -0 go tool shfmt -w -i 2 -ci
+      - go run ./cmd/healthcheck-docker --platform {{.PLATFORM | default "linux/amd64" | shellQuote}} {{.BINARY | default ".out/nginx-upstream-healthcheck/sbin/nginx" | shellQuote}}
 
   jsonnet-check:
     desc: Evaluate the main and feature-branch package pipelines

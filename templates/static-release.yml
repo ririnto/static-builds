@@ -13,22 +13,21 @@ spec:
   stage: $[[ inputs.stage ]]
   rules:
     - when: $[[ inputs.run_policy ]]
-  image:
-    name: moby/buildkit:rootless
-    entrypoint: [""]
+  image: golang:alpine
   variables:
     BUILDKIT_CACHE_BACKEND: local
     BUILD_OUTPUT_DEST: "$CI_PROJECT_DIR/.out/$[[ inputs.target ]]"
   before_script:
-    - mkdir -p "$CI_PROJECT_DIR/.cache/go-toolchain"
-    - wget -O "$CI_PROJECT_DIR/.cache/go-toolchain/go.tar.gz" "https://go.dev/dl/go1.27.3.linux-$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz"
-    - tar -xzf "$CI_PROJECT_DIR/.cache/go-toolchain/go.tar.gz" -C "$CI_PROJECT_DIR/.cache/go-toolchain"
-    - rm "$CI_PROJECT_DIR/.cache/go-toolchain/go.tar.gz"
-    - export PATH="$CI_PROJECT_DIR/.cache/go-toolchain/go/bin:$PATH"
+    - apk add --no-cache ca-certificates git rootlesskit shadow-uidmap runc util-linux coreutils su-exec
+    - adduser -D -u 1000 builder
+    - echo builder:100000:65536 >> /etc/subuid
+    - echo builder:100000:65536 >> /etc/subgid
+    - chown -R builder:builder "$CI_PROJECT_DIR"
+    - export GOPATH="$CI_PROJECT_DIR/.cache/go" GOCACHE="$CI_PROJECT_DIR/.cache/go-build"
   script:
-    - go run ./cmd/download "$[[ inputs.target ]]"
-    - go run ./cmd/build-rootless "$[[ inputs.target ]]"
-    - go run ./cmd/package-release "$[[ inputs.target ]]" "$[[ inputs.package_name ]]"
+    - su-exec builder go run ./cmd/download "$[[ inputs.target ]]"
+    - su-exec builder go run ./cmd/build "$[[ inputs.target ]]"
+    - su-exec builder go run ./cmd/package-release "$[[ inputs.target ]]" "$[[ inputs.package_name ]]"
   artifacts:
     paths:
       - ".out/$[[ inputs.target ]]/"
