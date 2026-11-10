@@ -85,7 +85,8 @@ Build invocation examples:
 
 ### Network and platform behavior
 
-All hosts use the configured Docker Buildx builder directly.
+Local and GitHub builds use the configured Docker Buildx builder directly.
+GitLab uses `go tool task build-rootless` with an ephemeral rootless BuildKit daemon.
 `BUILDKIT_NETWORK=none` disables RUN-step networking.
 `BUILDKIT_NETWORK=host` requests host networking from the selected builder.
 The build does not automatically configure a Linux VM or cross-platform emulation.
@@ -376,7 +377,7 @@ Invalid examples:
 
 Local build caching uses the root `.cache/<target>/` directories by default.
 GitHub release builds use the GitHub Actions cache backend with a separate scope for each target.
-GitLab package builds use the same direct Buildx command and retain local-cache behavior.
+GitLab package builds use daemonless rootless BuildKit and retain local-cache behavior.
 
 ## CI Behavior
 
@@ -411,15 +412,17 @@ Selected release contents:
 - The GitLab check job runs Go-managed contributor checks before package generation and retains the manual parent trigger.
 - GitLab pipelines on `main` and `feature/*` generate a child configuration with `.gitlab/ci/package-pipeline.gitlab-ci.jsonnet`.
 - One manual parent trigger starts the child pipeline, which builds and publishes its selected targets automatically.
-- The package component uses `golang:alpine` and invokes the Taskfile build task with a TLS-enabled Docker service.
+- The package component uses `golang:alpine` and invokes `go tool task build-rootless`.
 - When `curl` is absent, `go tool task download -- <target>` uses the image's BusyBox `wget` and `timeout` fallback.
 - Contributor validation and pipeline generation use `golang:alpine` with Go's default `GOTOOLCHAIN=auto` behavior honoring the `go.mod` directive.
 - The prepare job exports the rendered child pipeline, and package jobs invoke named Taskfile tasks without a separate toolchain download.
 - GitLab package builds retain artifacts without custom publisher jobs.
 - GitLab contributor validation invokes Go tests, golangci-lint, shell formatting, and Jsonnet checks through `go tool task`.
 - The Node, pnpm, and Java contributor checks run in local hooks only.
-- The package component installs Docker CLI and Buildx from Alpine packages.
-- The runner must provide the Docker service and its shared TLS certificate directory without disabling TLS or build sandbox protections.
+- The package component installs BuildKit, runc, RootlessKit, and UID mapping helpers from Alpine packages.
+- It creates user 1000 and maps `user:100000:65536` in both `/etc/subuid` and `/etc/subgid`.
+- It invokes the upstream daemonless script as that user without Docker services.
+- The runner must permit unprivileged user namespaces and rootless mounts.
 - `feature/*` branches append `-beta` to the package version.
 - Release packaging and publication use GoReleaser in the GitHub release workflow.
 - The generated child pipeline includes the local component at `templates/static-release.yml`.

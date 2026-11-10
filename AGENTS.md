@@ -42,12 +42,13 @@ Keep custom Markdownlint rules under `rules/`.
 - Define tool-named Taskfile tasks with argument pass-through after `--`.
 - Manage Task, shfmt, Jsonnet, jsonnetfmt, golangci-lint, GoReleaser, and buildctl through the root Go module.
 - Invoke Go tests, formatting, and module maintenance through `go tool task test`, `go tool task fmt`, and `go tool task tidy`.
-- Invoke Docker Buildx directly from the Taskfile build task on every host.
+- Use the Taskfile build task for local and GitHub Docker Buildx builds.
+- Use the Taskfile build-rootless task for daemonless rootless GitLab builds without Docker-in-Docker.
 - Require an explicit build target and never select a default target.
 - Use `golang:alpine` for GitLab Go jobs and invoke named Taskfile tasks with Go's default toolchain selection.
 - Follow EditorConfig with four-space indentation, except two spaces for shell and YAML files.
 - Keep custom Go commands only for source download and manifest queries.
-- Keep direct Buildx invocation in the Taskfile build task without platform adapters.
+- Keep Buildx and daemonless BuildKit invocations in their named Taskfile tasks.
 - Include all maintained shell scripts in shfmt coverage.
 - Use pnpm catalogs with `^x.y.z` caret ranges for Node dependencies and required overrides.
 - Reference catalog entries from `package.json` and overrides instead of duplicating versions.

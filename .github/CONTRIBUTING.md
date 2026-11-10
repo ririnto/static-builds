@@ -15,7 +15,7 @@ Use the repository's `.markdownlint-cli2.jsonc` when running Markdown lint.
 The [GitHub validation workflow](workflows/markdown-validation.yaml) runs Go-managed tooling checks on every pull request without building targets or publishing releases.
 GitLab invokes Go tests, golangci-lint, shell formatting, and Jsonnet checks through `go tool task` before its manual package trigger.
 Its Go jobs use `golang:alpine` with Go's default `GOTOOLCHAIN=auto` behavior honoring the `go.mod` directive.
-The package component invokes the same direct Docker Buildx Taskfile entrypoint as local builds.
+The GitLab package component invokes `go tool task build-rootless` without Docker-in-Docker.
 Node, pnpm, and Java checks run through local contributor hooks.
 It also supports manual runs.
 The GitHub job runs Go tests, golangci-lint, shell formatting, and Jsonnet checks.
@@ -40,7 +40,10 @@ The following tools are managed through `go.mod`:
 The Taskfile selects tracked shell scripts and contributor hooks with Git and invokes shfmt through Task iteration.
 Use `go tool task jsonnetfmt -- -i` to format the package pipeline and `go tool task jsonnetfmt -- --test` to check it.
 `go tool task buildctl -- --help` exposes the BuildKit client without changing the Docker Buildx build driver.
-Target builds require Docker Buildx and a running Linux Docker daemon.
+Local target builds require Docker Buildx and a running Linux Docker daemon.
+GitLab builds use a non-root user with subordinate UID and GID ranges of `100000:65536`.
+The runner must permit unprivileged user namespaces and rootless mounts.
+The job uses `--oci-worker-no-process-sandbox` because the container masks `/proc`, so build processes share the daemon process namespace.
 See the root README for [build configuration and invocation examples](../README.md#build-configuration).
 Run the checks from the repository root:
 
