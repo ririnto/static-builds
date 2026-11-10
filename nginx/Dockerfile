@@ -73,11 +73,10 @@ COPY nginx/scripting.conf nginx/scripting.js ${TARGET_PREFIX}/conf/
 
 
 FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
-ARG NJS_VERSION
 ARG TARGET_PREFIX
 
 RUN --mount=type=cache,target=/var/cache/dnf \
-    microdnf -y install file binutils strace openssl
+    microdnf -y install file binutils strace
 COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
 RUN readelf -h "${TARGET_PREFIX}/sbin/nginx" | grep -E 'Type:|Machine:'
 RUN file "${TARGET_PREFIX}/sbin/nginx" | grep -E 'statically linked|static-pie linked'
@@ -88,30 +87,6 @@ RUN test -r "${TARGET_PREFIX}/conf/scripting.js"
 
 RUN strace "${TARGET_PREFIX}/sbin/nginx" -V
 RUN "${TARGET_PREFIX}/sbin/nginx" -t -c conf/scripting.conf
-
-RUN nginx_pid=; \
-    response_file=$(mktemp /tmp/njs-result.XXXXXX) || exit $?; \
-    cleanup() { \
-        status=$?; \
-        trap - EXIT INT TERM; \
-        if [ -n "$nginx_pid" ]; then \
-            kill -QUIT "$nginx_pid" || exit $?; \
-            wait "$nginx_pid" || exit $?; \
-        fi; \
-        rm -f "$response_file" || exit $?; \
-        exit "$status"; \
-    }; \
-    trap cleanup EXIT; \
-    trap 'exit 130' INT; \
-    trap 'exit 143' TERM; \
-    timeout --signal=QUIT --kill-after=2s 40s "${TARGET_PREFIX}/sbin/nginx" -c conf/scripting.conf -g 'daemon off;' & \
-    nginx_pid=$!; \
-    timeout --signal=TERM --kill-after=1s 15s curl --retry 10 --retry-connrefused --retry-delay 1 --retry-max-time 10 --max-time 2 -fsS -o "$response_file" http://127.0.0.1:18081/njs && \
-    grep -Fx "njs ${NJS_VERSION} engine QuickJS" "$response_file" && \
-    timeout --signal=TERM --kill-after=1s 15s curl --max-time 5 -fsS -o "$response_file" http://127.0.0.1:18081/njs && \
-    grep -Fx "njs ${NJS_VERSION} engine QuickJS" "$response_file" && \
-    timeout 3 bash -c 'exec 3<>/dev/tcp/127.0.0.1/18082; IFS= read -r response <&3; printf "%s\n" "$response"' | grep -Fx "njs ${NJS_VERSION} engine QuickJS";
-
 
 FROM scratch
 

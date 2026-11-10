@@ -88,7 +88,8 @@ The same configuration checks function-body spacing and adjacent test registrati
 The test spacing rule recognizes registrations imported from Vitest, Jest globals, and Bun, but does not recognize `node:test` registrations.
 `check:ultracite` runs Ultracite with type-aware lint across its discovered files.
 `check:typescript` checks those TypeScript files through `tsconfig.json` and the Node LTS compiler preset.
-Ultracite checks the njs runtime example in `nginx/scripting.js` for lint and formatting, while target builds provide its runtime-aware validation.
+Ultracite checks the njs runtime example in `nginx/scripting.js` for lint and formatting.
+Both nginx targets validate the scripting configuration, while only the custom healthcheck target runs runtime probes.
 The njs example uses upstream `njs-types` declarations through its own TypeScript configuration.
 
 The table maps effective enforcement to engineering qualities rather than adding another prose rule set.
