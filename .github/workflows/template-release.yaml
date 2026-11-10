@@ -27,26 +27,26 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Validate release tag
-        env:
-          TARGET: ${{ inputs.target }}
-          TAG: ${{ inputs.tag }}
-        run: sh .github/release-guard.sh "$TARGET" "$TAG"
-
       - name: Set up Go
         uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
 
+      - name: Validate release tag
+        env:
+          TARGET: ${{ inputs.target }}
+          TAG: ${{ inputs.tag }}
+        run: go run ./cmd/release-guard "$TARGET" "$TAG"
+
       - name: Prepare rootless BuildKit prerequisites
-        run: sh .github/setup-rootless.sh
+        run: go run ./cmd/setup-rootless
 
       - name: Cache source downloads
         uses: actions/cache@v6
         with:
           path: ${{ github.workspace }}/.tmp
           key: >-
-            tmp-${{ inputs.target }}-${{ hashFiles('metadata.json', 'download.sh', 'metadata.sh', 'metadata.awk', 'package-release.sh') }}
+            tmp-${{ inputs.target }}-${{ hashFiles('metadata.json', 'cmd/**/*.go', 'internal/**/*.go', 'go.mod', 'go.sum') }}
           restore-keys: >-
             tmp-${{ inputs.target }}-
 
@@ -63,7 +63,7 @@ jobs:
       - name: Verify release files exist
         env:
           TARGET: ${{ inputs.target }}
-        run: sh .github/release-verify.sh "$TARGET"
+        run: go run ./cmd/release-verify "$TARGET"
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@v0.36.0
@@ -83,7 +83,7 @@ jobs:
         env:
           TARGET: ${{ inputs.target }}
           TAG: ${{ inputs.tag }}
-        run: sh package-release.sh "$TARGET" "$TAG"
+        run: go run ./cmd/package-release "$TARGET" "$TAG"
 
       - name: Upload release artifacts
         uses: actions/upload-artifact@v7
@@ -124,4 +124,4 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           TAG: ${{ inputs.tag }}
-        run: sh .github/release-publish.sh "$TAG"
+        run: go run ./cmd/release-publish "$TAG"

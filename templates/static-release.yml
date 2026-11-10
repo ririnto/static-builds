@@ -19,10 +19,16 @@ spec:
   variables:
     BUILDKIT_CACHE_BACKEND: local
     BUILD_OUTPUT_DEST: "$CI_PROJECT_DIR/.out/$[[ inputs.target ]]"
+  before_script:
+    - mkdir -p "$CI_PROJECT_DIR/.cache/go-toolchain"
+    - wget -O "$CI_PROJECT_DIR/.cache/go-toolchain/go.tar.gz" "https://go.dev/dl/go1.27.3.linux-$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz"
+    - tar -xzf "$CI_PROJECT_DIR/.cache/go-toolchain/go.tar.gz" -C "$CI_PROJECT_DIR/.cache/go-toolchain"
+    - rm "$CI_PROJECT_DIR/.cache/go-toolchain/go.tar.gz"
+    - export PATH="$CI_PROJECT_DIR/.cache/go-toolchain/go/bin:$PATH"
   script:
-    - sh download.sh "$[[ inputs.target ]]"
-    - sh .gitlab/build-rootless.sh "$[[ inputs.target ]]"
-    - sh package-release.sh "$[[ inputs.target ]]" "$[[ inputs.package_name ]]"
+    - go run ./cmd/download "$[[ inputs.target ]]"
+    - go run ./cmd/build-rootless "$[[ inputs.target ]]"
+    - go run ./cmd/package-release "$[[ inputs.target ]]" "$[[ inputs.package_name ]]"
   artifacts:
     paths:
       - ".out/$[[ inputs.target ]]/"

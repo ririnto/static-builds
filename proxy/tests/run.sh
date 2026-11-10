@@ -19,7 +19,14 @@ if [ "$(uname -s)" != Linux ]; then
 fi
 
 for command_name in curl date dnsmasq grep mktemp openssl sed setsid sleep socat tr wc; do
-  if ! command -v "$command_name" >/dev/null 2>&1; then
+  command_found=0
+  IFS=: read -r -a command_paths <<<"$PATH"
+  for command_path in "${command_paths[@]}"; do
+    if [ -f "${command_path:-.}/$command_name" ] && [ -x "${command_path:-.}/$command_name" ]; then
+      command_found=1
+    fi
+  done
+  if [ "$command_found" -eq 0 ]; then
     printf 'Required command is missing: %s\n' "$command_name" >&2
     exit 2
   fi

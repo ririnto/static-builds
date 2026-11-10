@@ -5,11 +5,15 @@ stages:
 
 validate-contributor-checks:
   stage: checks
-  image: node:26.13.0-trixie
+  image: golang:1.27.3-alpine
   before_script:
-    - sh .gitlab/install-validation-tools.sh
-    - export PATH="/usr/local/go/bin:$PATH"
-    - npm install --global "$(node -p 'require("./package.json").packageManager')"
+    - apk add --no-cache ca-certificates git
+    - go run ./cmd/install-validation-tools
+    - test "$(apk --print-arch)" = x86_64
+    - curl --fail --location --silent --show-error "https://nodejs.org/dist/v26.13.0/node-v26.13.0-linux-x64-musl.tar.xz" --output /tmp/node.tar.xz
+    - tar --extract --xz --file /tmp/node.tar.xz --directory /usr/local --strip-components=1
+    - rm /tmp/node.tar.xz
+    - npm install --global pnpm@12.16.1
     - pnpm install --frozen-lockfile
   script:
     - pnpm run check
@@ -21,7 +25,9 @@ validate-contributor-checks:
 
 generate-package-pipeline:
   stage: prepare
-  image: golang:1.27.3
+  image: golang:1.27.3-alpine
+  before_script:
+    - apk add --no-cache ca-certificates git
   script:
     - >-
       go tool task package-pipeline "BRANCH=${CI_COMMIT_BRANCH:-}" "COMPONENT_REF=${CI_SERVER_FQDN}/${CI_PROJECT_PATH}/static-release@${CI_COMMIT_REF_NAME}" > package-pipeline.yaml
