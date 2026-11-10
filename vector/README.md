@@ -44,7 +44,7 @@ For plaintext destinations, explicitly specify `http://` in `address` or `routin
 The output below is a historical snapshot, not verification of the version currently selected in [metadata.json](../metadata.json).
 The recorded version output identifies Vector 0.53.0 for `x86_64-unknown-linux-musl`, with reported revision `2b51b40` and timestamp `2026-01-27 21:46:39.386326724`.
 That timestamp is part of the binary's version report, not an established capture date.
-The [Dockerfile](Dockerfile) unpacks the upstream musl release binary and invokes `vector --version` and `vector list` in its verification stage.
+The [Dockerfile](Dockerfile) unpacks the upstream musl release binary and checks the binary in its Dockerfile verify stage before export.
 
 The historical capture date, repository revision, release tag, exact invocation, and host or container environment are unknown.
 The source-backed commands below capture the same introspection surfaces, but do not establish how the historical output was collected.
@@ -53,7 +53,7 @@ The source-backed commands below capture the same introspection surfaces, but do
 
 From the repository root, use the [Taskfile](../Taskfile.yaml) to build the target selected by the current metadata, then run the capture commands on a compatible Linux host.
 The default build platform is `linux/amd64`.
-Task downloads the inputs before invoking the platform-selected BuildKit adapter, including the Dockerfile's verification stage.
+Task downloads the inputs before invoking the Docker Buildx entrypoint, including the Dockerfile verify stage.
 These commands assume the default output directory and must be adjusted if `BUILD_OUTPUT_DEST` is overridden.
 
 ```bash
@@ -63,7 +63,7 @@ go tool task build TARGET=vector
 ```
 
 Record the capture date, repository revision, selected metadata versions, build platform, build environment, exact commands, and results with any replacement output.
-Preserve errors and distinguish build-stage verification from the host captures above.
+Preserve errors and distinguish build results from the host captures above.
 A current-metadata build produces a new snapshot and does not reconstruct the unknown historical environment.
 The historical output below has been preserved without running these commands for this documentation change.
 

@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 ARG ALPINE_VERSION
 ARG UBI10_MINIMAL_VERSION
 ARG TARGET_PREFIX=/home/nobody
@@ -153,7 +154,6 @@ ARG OPENTELEMETRY_PROTO_VERSION
 ARG NLOHMANN_JSON_VERSION
 ARG HARDENING_CFLAGS
 ADD ".tmp/opentelemetry-cpp-${OPENTELEMETRY_CPP_VERSION}.tar.gz" /tmp/
-COPY haproxy/haproxy-apply-otel-patches.sh /usr/local/bin/
 ADD ".tmp/opentelemetry-proto-${OPENTELEMETRY_PROTO_VERSION}.tar.gz" /tmp/
 ADD ".tmp/nlohmann-json-${NLOHMANN_JSON_VERSION}.tar.gz" /tmp/
 ADD ".tmp/opentelemetry-c-wrapper-${HAPROXY_OTEL_C_WRAPPER_VERSION}.tar.gz" /build/
@@ -164,7 +164,7 @@ COPY --from=otel-grpc /opt /opt
 RUN apk add c-ares-dev curl-dev curl-static brotli-static libidn2-static libpsl-static libunistring-static nghttp2-static zstd-static \
     && mv "/build/opentelemetry-c-wrapper-${HAPROXY_OTEL_C_WRAPPER_VERSION}" /build/opentelemetry-c-wrapper \
     && cd "/tmp/opentelemetry-cpp-${OPENTELEMETRY_CPP_VERSION}" \
-    && /usr/local/bin/haproxy-apply-otel-patches.sh \
+    && for patch_file in /build/opentelemetry-c-wrapper/scripts/build/000*-opentelemetry-cpp-*.patch; do patch -p1 <"$patch_file" || exit "$?"; done \
     && PKG_CONFIG_PATH=/opt/lib/pkgconfig cmake -S "/tmp/opentelemetry-cpp-${OPENTELEMETRY_CPP_VERSION}" -B build \
         -DCMAKE_INSTALL_PREFIX=/opt \
         -DCMAKE_C_FLAGS="${HARDENING_CFLAGS}" \
@@ -365,14 +365,30 @@ RUN make install \
     ;
 
 
-FROM registry.access.redhat.com/ubi10/ubi-minimal:${UBI10_MINIMAL_VERSION} AS verify
+FROM docker.io/redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
 ARG TARGET_PREFIX
 
 RUN --mount=type=cache,target=/var/cache/dnf \
     microdnf -y install file binutils strace
 COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
-COPY haproxy/haproxy-verify.sh /usr/local/bin/
-RUN /usr/local/bin/haproxy-verify.sh
+RUN <<'VERIFY'
+set -eu
+echo "=== ELF Header ==="
+readelf -h "${TARGET_PREFIX}/sbin/haproxy" | grep -E 'Type:|Machine:'
+echo "=== Program Headers ==="
+readelf -l "${TARGET_PREFIX}/sbin/haproxy" | grep -E 'INTERP|DYNAMIC' || true
+echo "=== Dynamic Section ==="
+readelf -d "${TARGET_PREFIX}/sbin/haproxy" || true
+file_output="$(file "${TARGET_PREFIX}/sbin/haproxy" 2>&1 || true)"
+ldd_output="$(ldd "${TARGET_PREFIX}/sbin/haproxy" 2>&1 || true)"
+echo "=== file output ==="
+echo "$file_output"
+echo "=== ldd output ==="
+echo "$ldd_output"
+(echo "$file_output" | grep -Eq 'statically linked|static-pie linked') || (echo "Error: file(1) did not report a static binary." && exit 1)
+(echo "$ldd_output" | grep -Eqi 'statically linked|static-pie linked|not a dynamic executable|not a valid dynamic program') || (echo "Error: Dynamic libraries found. This should be a static build!" && exit 1)
+strace "${TARGET_PREFIX}/sbin/haproxy" -vv
+VERIFY
 
 
 FROM scratch

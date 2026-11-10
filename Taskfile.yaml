@@ -4,7 +4,7 @@ silent: true
 
 vars:
   SHELL_PATHS: >-
-    apache-exporter apache-httpd coredns dnsmasq haproxy monit nginx nginx-upstream-healthcheck vector proxy/tests
+    .github .gitlab
 
 tasks:
   default:
@@ -13,7 +13,7 @@ tasks:
       - "{{.TASK_EXE | shellQuote}} --list"
 
   build:
-    desc: Download sources and build a target (TARGET=nginx)
+    desc: Download sources and build a target (TARGET required)
     requires:
       vars: [TARGET]
     preconditions:
@@ -24,10 +24,10 @@ tasks:
         vars:
           TARGET: "{{.TARGET}}"
       - >-
-        BUILDKIT_PLATFORM={{.BUILDKIT_PLATFORM | default "linux/amd64" | shellQuote}} BUILDKIT_NETWORK={{.BUILDKIT_NETWORK | default "default" | shellQuote}} BUILDKIT_CACHE_BACKEND={{.BUILDKIT_CACHE_BACKEND | default "local" | shellQuote}} BUILD_OUTPUT_DEST={{.BUILD_OUTPUT_DEST | default (printf "%s/.out/%s" .ROOT_DIR .TARGET) | shellQuote}} CACHE_DIR={{.CACHE_DIR | default (printf "%s/.cache/%s" .ROOT_DIR .TARGET) | shellQuote}} go run ./cmd/build {{.TARGET | shellQuote}}
+        BUILDKIT_PLATFORM={{.BUILDKIT_PLATFORM | default "linux/amd64" | shellQuote}} BUILDKIT_NETWORK={{.BUILDKIT_NETWORK | default "default" | shellQuote}} BUILDKIT_CACHE_BACKEND={{.BUILDKIT_CACHE_BACKEND | default "local" | shellQuote}} BUILD_OUTPUT_DEST={{.BUILD_OUTPUT_DEST | default (printf "%s/.out/%s" .ROOT_DIR .TARGET) | shellQuote}} CACHE_DIR={{.CACHE_DIR | default (printf "%s/.cache/%s" .ROOT_DIR .TARGET) | shellQuote}} sh .github/build.sh {{.TARGET | shellQuote}} {{.CLI_ARGS}}
 
   download:
-    desc: Download a target's sources (TARGET=nginx)
+    desc: Download a target's sources (TARGET required)
     requires:
       vars: [TARGET]
     preconditions:
@@ -36,15 +36,45 @@ tasks:
     cmds:
       - go run ./cmd/download {{.TARGET | shellQuote}}
 
+  manifest:
+    desc: Query manifest metadata (QUERY and VALUE required)
+    requires:
+      vars: [QUERY, VALUE]
+    cmds:
+      - go run ./cmd/metadata {{.QUERY | shellQuote}} {{.VALUE | shellQuote}}
+
+  release-guard:
+    desc: Validate a release tag (TARGET and TAG required)
+    requires:
+      vars: [TARGET, TAG]
+    cmds:
+      - go run ./cmd/release-guard {{.TARGET | shellQuote}} {{.TAG | shellQuote}}
+
+  release-resolve:
+    desc: Resolve and validate a release target (TAG required)
+    requires:
+      vars: [TAG]
+    cmds:
+      - go run ./cmd/release-resolve {{.TAG | shellQuote}}
+
+  package-release:
+    desc: Package metadata-selected outputs (TARGET and PACKAGE required)
+    requires:
+      vars: [TARGET, PACKAGE]
+    cmds:
+      - go run ./cmd/package-release {{.TARGET | shellQuote}} {{.PACKAGE | shellQuote}}
+
+  release-publish:
+    desc: Publish a release archive through go-github (TAG required)
+    requires:
+      vars: [TAG]
+    cmds:
+      - go run ./cmd/release-publish {{.TAG | shellQuote}}
+
   list-targets:
     desc: List targets from metadata.json
     cmds:
       - python3 -c "import json;[print(k) for k in json.load(open('metadata.json'))]"
-
-  lint:
-    desc: Run ShellCheck on maintained scripts
-    cmds:
-      - find {{.SHELL_PATHS}} -type f -name '*.sh' -print0 | xargs -0 shellcheck
 
   shfmt-check:
     desc: Check shell formatting
@@ -56,23 +86,25 @@ tasks:
     cmds:
       - find {{.SHELL_PATHS}} -type f -name '*.sh' -print0 | xargs -0 go tool shfmt -w -i 2 -ci
 
+  format-go:
+    desc: Format maintained Go source
+    cmds:
+      - gofmt -w cmd internal
+
+  tidy-go:
+    desc: Tidy Go module dependencies
+    cmds:
+      - go mod tidy
+
+  lint-go:
+    desc: Lint Go source with golangci-lint
+    cmds:
+      - go tool golangci-lint run ./...
+
   test-go:
-    desc: Run Go command and process regression tests
+    desc: Run command tests
     cmds:
-      - go test ./...
-
-  test-healthcheck:
-    desc: Run the Linux healthcheck functional suite (BINARY=...)
-    preconditions:
-      - sh: test "$(uname -s)" = Linux
-        msg: The functional suite requires Linux, use test-healthcheck-docker on macOS.
-    cmds:
-      - bash proxy/tests/run.sh {{.BINARY | default ".out/nginx-upstream-healthcheck/sbin/nginx" | shellQuote}}
-
-  test-healthcheck-docker:
-    desc: Run the Docker-backed healthcheck suite (BINARY=... PLATFORM=...)
-    cmds:
-      - bash proxy/tests/run-docker.sh --platform {{.PLATFORM | default "linux/amd64" | shellQuote}} {{.BINARY | default ".out/nginx-upstream-healthcheck/sbin/nginx" | shellQuote}}
+      - go test ./... {{.CLI_ARGS}}
 
   jsonnet-check:
     desc: Evaluate the main and feature-branch package pipelines

@@ -13,23 +13,23 @@ Use the repository's `.markdownlint-cli2.jsonc` when running Markdown lint.
 ### Markdown validation
 
 The [GitHub validation workflow](workflows/markdown-validation.yaml) reports documentation and tooling checks on every pull request without building targets or publishing releases.
-GitLab runs Go tests, ShellCheck, shell formatting, Jsonnet, code-fence, and relative-link checks directly before its manual package trigger.
+GitLab runs Go tests, golangci-lint, shell formatting, Jsonnet, code-fence, and relative-link checks directly before its manual package trigger.
 Its Go jobs use `golang:alpine` with Go's default `GOTOOLCHAIN=auto` behavior honoring the `go.mod` directive.
-The package component invokes the same daemonless rootless Go build command as native Linux under a non-root user with subordinate ID ranges.
-Rust-based rumdl and Lychee remain provisioned by the repository validation-tool command.
+The package component invokes the same direct Docker Buildx shell entrypoint as local builds.
+Rust-based rumdl and Lychee have no Go module entrypoints and are provisioned by `.gitlab/install-validation-tools.sh`.
 Node and pnpm validation remains in the GitHub workflow and local contributor hooks.
 It also supports manual runs.
 Every pull request is checked because deleting a linked file can break documentation without changing Markdown.
 The checks use maintained markdownlint-cli2, rumdl, and Lychee releases.
-The Markdown job also runs the rule tests, TypeScript validation, and Ultracite checks.
+The Markdown job also runs rule tests, TypeScript validation, Ultracite, Go tests, golangci-lint, shell formatting, and Jsonnet checks.
 
 Install the Node.js version supported by `package.json` and the pnpm version declared there for Node-side tooling.
 Install the Go version declared in `go.mod` for repository tasks and Go-managed contributor tools.
+Invoke Go operations through Task rather than running repository commands or tools directly.
+On macOS with an external Clang toolchain, export `SDKROOT=$(xcrun --show-sdk-path)` when the linker cannot locate the system SDK.
 Use rumdl 0.3.1 and Lychee 0.24.2, matching the workflow's tool versions.
-Task, shfmt, Jsonnet, jsonnetfmt, buildctl, and buildkitd are managed through `go.mod`.
-Install ShellCheck for the maintained target verification scripts.
-Linux target builds additionally require the rootless runtime prerequisites documented in the root README.
-Native macOS target builds retain the Docker Buildx prerequisites documented there.
+Task, shfmt, Jsonnet, jsonnetfmt, and golangci-lint are managed through `go.mod`.
+Target builds require Docker Buildx and a running Linux Docker daemon as documented in the root README.
 Run the checks from the repository root:
 
 ```sh
@@ -41,7 +41,7 @@ pnpm run fix
 The root package manifest references Node-side tooling through the pnpm workspace catalog.
 `pnpm-workspace.yaml` defines the catalog-backed `katex` development override required by `micromark-extension-math`.
 The lockfile records the resolved dependency graph.
-`check` runs Markdown lint, rule tests, TypeScript validation, Ultracite, code-fence validation, relative-link validation, Go command and process tests, ShellCheck, shell formatting, Jsonnet evaluation, and Jsonnet formatting checks.
+`check` runs Markdown lint, rule tests, TypeScript validation, Ultracite, code-fence validation, relative-link validation, download and manifest Go tests, golangci-lint, shell formatting, Jsonnet evaluation, and Jsonnet formatting checks.
 `fix` applies Markdown lint fixes and the Go-managed shell and Jsonnet formatters through Task.
 It also applies Ultracite fixes.
 Markdownlint loads the local Markdownlint rules through `customRules`, applying the shared Markdownlint baseline with the repository's stricter exceptions.
@@ -129,21 +129,10 @@ Publish through the feature branch and pull request rather than pushing changes 
 
 Explain in the issue when existing guards remain because inversion requires artificial flags or deeper nesting.
 
-Run `python3 proxy/tests/verify-metadata.py`, `python3 proxy/tests/verify-download.py`, `python3 proxy/tests/verify-nginx.py`, `python3 proxy/tests/verify-release.py`, and `python3 proxy/tests/verify-runner.py` for the restored verification matrices.
-These harnesses exercise actual commands and scripts, process lifetimes, signals, cleanup, output contracts, and fake publisher API behavior.
-Run the runner matrix on non-root Linux so its daemonless path exercises the function-level build command.
-Run `go tool task test-go` or `go test ./...` for the retained direct build lifecycle, Buildx dispatch, deterministic packaging, metadata environment, and publisher API tests.
-Run `go tool task test-healthcheck` against an already-built healthcheck binary on Linux.
-Run `go tool task test-healthcheck-docker` for the Docker-backed functional suite on macOS.
-Both functional tasks accept `BINARY`, and the Docker task also accepts `PLATFORM`.
-The full functional suite requires its target binary and runtime dependencies, so it is separate from the offline contributor checks.
-
-The downloader and nginx verifier require GNU Coreutils `timeout` or `gtimeout`.
-The downloader also requires wget and OpenSSL.
-Linux containers running process-lifecycle fixtures need an init process to reap orphaned children.
-Use Docker's `--init` option when running these fixtures in a container.
-The native healthcheck module is maintained project source.
-Changes to its scheduling, probe I/O, or cleanup require a target build and the separate [functional suite](../nginx-upstream-healthcheck/README.md#build-verification).
+Run `go tool task test-go` for the retained command tests.
+The contributor check entrypoint includes these tests, standard `go tool task lint-go` checks, and `go tool task shfmt-check` formatting through Task.
+Target builds run their Dockerfile verify stages without per-target verify scripts or external runtime harnesses.
+The custom healthcheck module remains maintained production source.
 
 For build changes, run `go tool task build TARGET=<target>` for each affected target before creating release tags.
 The release workflows run on release tags or reusable workflow calls.

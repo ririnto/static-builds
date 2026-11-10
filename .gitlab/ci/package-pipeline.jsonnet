@@ -27,25 +27,8 @@ local includes = [
   for t in targets
 ];
 
-local publishJobs = {
-  ['publish-' + t]: {
-    stage: 'publish',
-    image: 'alpine',
-    needs: [{ job: 'gitlab-static-package-' + t, artifacts: true }],
-    before_script: ['apk add --no-cache ca-certificates curl'],
-    script: [
-      |||
-        curl --fail-with-body --show-error --header "JOB-TOKEN: $CI_JOB_TOKEN" \
-          --upload-file "%(pn)s.tar.gz" \
-          "$CI_API_V4_URL/projects/$CI_PROJECT_ID/packages/generic/%(t)s/%(pn)s/%(pn)s.tar.gz"
-      ||| % { pn: packageName(t), t: t },
-    ],
-  }
-  for t in targets
-};
-
 std.manifestYamlDoc(
-  { stages: ['build', 'publish'], include: includes } + publishJobs,
+  { stages: ['build'], include: includes },
   indent_array_in_object=true,
   quote_keys=false,
 )

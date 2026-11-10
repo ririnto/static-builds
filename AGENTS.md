@@ -30,7 +30,7 @@ Add top-level directories only from this allowlist.
 | --- | --- |
 | Targets | `apache-exporter/`, `apache-httpd/`, `coredns/`, `dnsmasq/`, `haproxy/`, `monit/`, `nginx/`, `nginx-upstream-healthcheck/`, `vector/` |
 | Hidden support | `.cache/`, `.github/`, `.gitlab/`, `.husky/`, `.out/`, `.tmp/` |
-| Other support | `cmd/`, `internal/`, `proxy/`, `rules/`, `templates/` |
+| Other support | `cmd/`, `internal/`, `rules/`, `templates/` |
 
 Require a Dockerfile in every target directory.
 Keep custom Markdownlint rules under `rules/`.
@@ -40,22 +40,22 @@ Keep custom Markdownlint rules under `rules/`.
 ### Configure dependencies and contributor checks
 
 - Define repository task entrypoints in `Taskfile.yaml` and delegate package scripts to `go tool task`.
-- Manage Task, shfmt, Jsonnet, jsonnetfmt, buildctl, and buildkitd through the root Go module.
-- Use the repository's ephemeral daemonless rootless path with `go tool buildkitd` and `go tool buildctl` for native Linux and GitLab package builds.
-- Run rootless builds as a non-root user with subordinate ID ranges and the normal sandbox protections.
-- Use Docker Buildx for native macOS builds.
-- Use `golang:alpine` for GitLab Go jobs and invoke repository commands directly with Go's default toolchain selection.
+- Manage Task, shfmt, Jsonnet, jsonnetfmt, and golangci-lint through the root Go module.
+- Route Go commands and tools through named Taskfile tasks.
+- Invoke Docker Buildx directly from the maintained shell build entrypoint on every host.
+- Require an explicit build target and never select a default target.
+- Use `golang:alpine` for GitLab Go jobs and invoke named Taskfile tasks with Go's default toolchain selection.
 - Follow EditorConfig with four-space indentation, except two spaces for shell and YAML files.
-- Keep public Go commands at the original function-level entrypoints and keep platform build adapters inside `cmd/build`.
-- Keep image build helpers, target verification, and proxy test orchestration in their maintained shell and Python files.
-- Include all maintained shell scripts in ShellCheck and shfmt coverage.
+- Keep Go commands for source download, manifest queries, and the existing release flow.
+- Keep direct Buildx invocation in the maintained CI shell entrypoint without platform adapters.
+- Include all maintained shell scripts in shfmt coverage.
 - Use pnpm catalogs with `^x.y.z` caret ranges for Node dependencies and required overrides.
 - Reference catalog entries from `package.json` and overrides instead of duplicating versions.
 - Remove overrides when upstream dependencies select supported patched versions themselves.
 - Keep the package manager version free of hash suffixes.
 - Keep Husky's `prepare` script and tracked pre-commit and pre-push hooks connected to the full `pnpm check` entrypoint.
-- Include Go command and process tests, ShellCheck, shfmt, Markdown lint, rule tests, TypeScript, Ultracite, code-fence checks, relative-link checks, and Jsonnet evaluation and formatting in contributor checks.
-- Keep the Linux and Docker-backed healthcheck functional tasks separate from offline contributor checks because they require a built target and runtime dependencies.
+- Include Go command tests, golangci-lint, shfmt, Markdown lint, rule tests, TypeScript, Ultracite, code-fence checks, relative-link checks, and Jsonnet evaluation and formatting in contributor checks.
+- Keep contributor checks independent of target builds and runtime verification harnesses.
 - Verify successful Git operations and failure propagation through those hooks.
 - Use Ultracite as the only direct caller of Oxlint and Oxfmt.
 - Route scripts, hooks, workflows, documentation, and validation commands through Ultracite rather than calling Oxlint or Oxfmt directly.
@@ -87,10 +87,10 @@ Keep custom Markdownlint rules under `rules/`.
 - Keep existing guards when equivalent inversion requires artificial flags or deeper nesting.
 - Let existing lint rules and formatter output take precedence over these control-flow preferences.
 
-### Keep scripts separate
+### Keep Dockerfiles authoritative
 
-- Keep scripts and executable source in separate files, referenced from Dockerfiles, configurations, and documentation.
-- Do not embed script bodies in those files.
+- Keep target build and configure commands inside each target Dockerfile.
+- Keep built-artifact verification inside Dockerfile verify stages rather than external scripts or harnesses.
 
 ## Documentation
 
@@ -138,10 +138,11 @@ Keep custom Markdownlint rules under `rules/`.
 
 ### Verify builds and validation workflows
 
-- Update every affected Dockerfile verify block together when changing duplicated static verification.
-- Update documentation describing the changed shared verification contract.
+- Keep every final artifact dependent on its Dockerfile verify stage.
+- Use Docker Hub `redhat/ubi10-minimal` with the manifest-selected UBI tag for verify stages.
+- Verify static binaries inside Dockerfiles without per-target verify shell scripts or proxy harnesses.
 - Keep push and pull-request validation CI limited to contributor checks, without target builds or releases.
-- Run Go tests, ShellCheck, shfmt, Jsonnet evaluation and formatting, code-fence checks, and relative-link checks directly in GitLab validation jobs.
+- Run Go tests, golangci-lint, shfmt, Jsonnet evaluation and formatting, code-fence checks, and relative-link checks directly in GitLab validation jobs.
 - Keep Node and pnpm validation in the GitHub workflow and local contributor hooks.
 - Use existing verification entrypoints rather than introducing a test framework.
 
@@ -154,8 +155,8 @@ Keep custom Markdownlint rules under `rules/`.
 
 - For GitLab package pipelines on `main` and `feature/*`, prefer one manual parent job generating a child pipeline.
 - Generate that pipeline through `.gitlab/ci/package-pipeline.jsonnet` and reuse `templates/static-release.yml`.
-- Upload GitLab packages only to Package Registry.
-- Use plain Alpine publisher jobs with CA certificates and curl, preserving the JOB-TOKEN upload interface.
+- Keep GitLab package builds as artifact-only jobs without custom publisher jobs.
+- Keep release publication in the existing Go release tooling.
 - Append `-beta` to package versions on `feature/*` branches.
 
 ## YAML filenames
@@ -177,9 +178,10 @@ Keep custom Markdownlint rules under `rules/`.
 
 - Follow [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md) for contributor procedures, tool setup, issues, commits, and pull requests.
 - Complete each bounded change with its applicable checks before starting dependent work.
-- Reproduce failures through the real build or verifier entrypoint and fix their root causes.
+- Reproduce failures through the affected production entrypoint and fix their root causes.
 - Inspect exported binaries and release package members when changing build or packaging behavior.
-- Establish runtime acceptance through real build or verifier evidence, not static checks alone.
+- Report actual build exit results separately from contributor-check evidence.
+- Record build-time errors separately from the exit verdict and address them without discarding diagnostics.
 - Record actual, reused, failed, and unrun evidence separately, including unavailable checks.
 
 ### Complete delivery and cleanup

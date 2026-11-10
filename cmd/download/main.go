@@ -58,7 +58,7 @@ func download(ctx context.Context, url, destination string) (err error) {
 				return err
 			}
 			if attempts >= 60 {
-				return fmt.Errorf("Timed out waiting for branch download lock: %s", lock)
+				return fmt.Errorf("timed out waiting for branch download lock: %s", lock)
 			}
 			if err := pause(ctx, time.Second); err != nil {
 				return err
@@ -77,11 +77,11 @@ func download(ctx context.Context, url, destination string) (err error) {
 		return nil
 	}
 	if !strings.HasPrefix(url, "https://") {
-		return fmt.Errorf("Unsupported URL scheme (https only): %s", url)
+		return fmt.Errorf("unsupported URL scheme (https only): %s", url)
 	}
 	temporary, err := os.CreateTemp(filepath.Dir(destination), filepath.Base(destination)+".tmp.")
 	if err != nil {
-		return fmt.Errorf("Failed to create temporary file in %s: %w", filepath.Dir(destination), err)
+		return fmt.Errorf("failed to create temporary file in %s: %w", filepath.Dir(destination), err)
 	}
 	path := temporary.Name()
 	if err := temporary.Close(); err != nil {
@@ -145,7 +145,7 @@ func download(ctx context.Context, url, destination string) (err error) {
 		if err == nil {
 			info, err := os.Stat(path)
 			if err != nil || info.Size() == 0 {
-				return fmt.Errorf("Downloaded file is empty: %s (from %s)", destination, url)
+				return fmt.Errorf("downloaded file is empty: %s (from %s)", destination, url)
 			}
 			return os.Rename(path, destination)
 		}
@@ -177,9 +177,9 @@ func run(ctx context.Context, args []string) error {
 		return fmt.Errorf("usage: download <target>")
 	}
 	if strings.ContainsAny(args[0], "/\\") || strings.IndexFunc(args[0], func(c rune) bool {
-		return !(c >= 'A' && c <= 'Z' || c >= 'a' && c <= 'z' || c >= '0' && c <= '9' || strings.ContainsRune("._-", c))
+		return (c < 'A' || c > 'Z') && (c < 'a' || c > 'z') && (c < '0' || c > '9') && !strings.ContainsRune("._-", c)
 	}) >= 0 {
-		return fmt.Errorf("Invalid target '%s'", args[0])
+		return fmt.Errorf("invalid target '%s'", args[0])
 	}
 	data, err := metadata.LoadDefault()
 	if err != nil {

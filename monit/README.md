@@ -48,8 +48,7 @@ Commands include: `start`, `stop`, `restart`, `monitor`, `unmonitor`, `reload`, 
 
 The output below is a historical snapshot, not verification of the version currently selected in [metadata.json](../metadata.json).
 The recorded version output identifies Monit 5.35.2 with SSL, IPv6, compression, and large-file support, without PAM.
-The [Dockerfile](Dockerfile) relinks the binary as static PIE and invokes `monit -V` in its verification stage.
-The `monit -h` capture describes the command surface and is not a command in that verification stage.
+The [Dockerfile](Dockerfile) relinks the binary as static PIE and checks the built artifact in its Dockerfile verify stage before export.
 
 The historical capture date, repository revision, release tag, exact invocation, and host or container environment are unknown.
 The source-backed commands below capture the same introspection surfaces, but do not establish how the historical output was collected.
@@ -58,7 +57,7 @@ The source-backed commands below capture the same introspection surfaces, but do
 
 From the repository root, use the [Taskfile](../Taskfile.yaml) to build the target selected by the current metadata, then run the capture commands on a compatible Linux host.
 The default build platform is `linux/amd64`.
-Task downloads the inputs before invoking the platform-selected BuildKit adapter, including the Dockerfile's verification stage.
+Task downloads the inputs before invoking the Docker Buildx entrypoint, including the Dockerfile verify stage.
 These commands assume the default output directory and must be adjusted if `BUILD_OUTPUT_DEST` is overridden.
 
 ```bash
@@ -68,7 +67,7 @@ go tool task build TARGET=monit
 ```
 
 Record the capture date, repository revision, selected metadata versions, build platform, build environment, exact commands, and results with any replacement output.
-Preserve errors and distinguish build-stage verification from the host captures above.
+Preserve errors and distinguish build results from the host captures above.
 A current-metadata build produces a new snapshot and does not reconstruct the unknown historical environment.
 The historical output below has been preserved without running these commands for this documentation change.
 

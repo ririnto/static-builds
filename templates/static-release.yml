@@ -14,20 +14,21 @@ spec:
   rules:
     - when: $[[ inputs.run_policy ]]
   image: golang:alpine
+  services:
+    - name: docker:dind
   variables:
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_CERTDIR: /certs
+    DOCKER_TLS_VERIFY: "1"
+    DOCKER_CERT_PATH: /certs/client
     BUILDKIT_CACHE_BACKEND: local
     BUILD_OUTPUT_DEST: "$CI_PROJECT_DIR/.out/$[[ inputs.target ]]"
   before_script:
-    - apk add --no-cache ca-certificates git rootlesskit shadow-uidmap runc util-linux coreutils su-exec
-    - adduser -D -u 1000 builder
-    - echo builder:100000:65536 >> /etc/subuid
-    - echo builder:100000:65536 >> /etc/subgid
-    - chown -R builder:builder "$CI_PROJECT_DIR"
-    - export GOPATH="$CI_PROJECT_DIR/.cache/go" GOCACHE="$CI_PROJECT_DIR/.cache/go-build"
+    - apk add --no-cache ca-certificates git docker-cli docker-cli-buildx
+    - docker buildx create --use --driver docker-container
   script:
-    - su-exec builder go run ./cmd/download "$[[ inputs.target ]]"
-    - su-exec builder go run ./cmd/build "$[[ inputs.target ]]"
-    - su-exec builder go run ./cmd/package-release "$[[ inputs.target ]]" "$[[ inputs.package_name ]]"
+    - go tool task build TARGET="$[[ inputs.target ]]"
+    - go tool task package-release TARGET="$[[ inputs.target ]]" PACKAGE="$[[ inputs.package_name ]]"
   artifacts:
     paths:
       - ".out/$[[ inputs.target ]]/"

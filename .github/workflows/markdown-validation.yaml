@@ -25,6 +25,11 @@ jobs:
           node-version: 26.13.0
           cache: pnpm
 
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
@@ -39,6 +44,18 @@ jobs:
 
       - name: Check Ultracite
         run: pnpm run check:ultracite
+
+      - name: Check Go commands
+        run: go tool task test-go
+
+      - name: Lint Go source
+        run: go tool task lint-go
+
+      - name: Check shell formatting
+        run: go tool task shfmt-check
+
+      - name: Check Jsonnet
+        run: go tool task jsonnet-check jsonnetfmt-check
 
   fences:
     name: Code fences

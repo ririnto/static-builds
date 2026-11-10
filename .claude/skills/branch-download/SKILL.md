@@ -47,20 +47,12 @@ A model result establishes only the stated bounded model and requires replay aga
 
 ## Check real downloader behavior
 
-Run this production-interface verifier from the repository root:
+Run the surviving command tests from the repository root:
 
 ```sh
-python3 proxy/tests/verify-download.py
+go tool task test-go
 ```
 
-It needs Python 3, Go, OpenSSL, wget, and GNU Coreutils or BusyBox `timeout`, or GNU `gtimeout`.
-All eight scenarios must pass.
-It exercises wget success, deadlines, resistant children, cancellation after wget starts, HTTP failure, missing deadline commands, and fixture cleanup using local HTTPS fixtures.
-It uses one attempt and forces the wget path.
-It does not cover curl, retry and backoff, concurrent branch writers, destination preservation, archive integrity, or the lock-recording interruption window.
-
-A scratch copy with wget's `-k 1` escalation removed failed the resistant-child scenario by exceeding the six-second driver deadline.
-The restored source passed all eight scenarios.
-This negative control demonstrates sensitivity to that deadline regression only, independently of the failing lock property.
-A separate 100-trial child-signal experiment did not reproduce a child leak, but did not force the spawn-to-PID-assignment window.
-That child path remains inconclusive and is outside the lock model.
+These tests cover the retained source-download and manifest interfaces without a separate process-lifecycle harness.
+They do not establish the historical model's correspondence with the current Go downloader or prove signal-race behavior.
+Use targeted production-interface evidence when changing lock ownership or cancellation, and report untested runtime behavior explicitly.
