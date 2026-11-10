@@ -13,7 +13,7 @@ validate-contributor-checks:
     - go tool task golangci-lint -- run ./...
     - go tool task shfmt -- -d -i 2 -ci
     - go tool jsonnet -S --ext-str branch=main --ext-str target= --ext-str component_ref=example.invalid/group/static-builds/static-release@main .gitlab/ci/package-pipeline.gitlab-ci.jsonnet
-    - go tool jsonnetfmt --test .gitlab/ci/package-pipeline.gitlab-ci.jsonnet
+    - go tool task jsonnetfmt -- --test
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     - if: "$CI_COMMIT_BRANCH"

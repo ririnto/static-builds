@@ -38,7 +38,7 @@ The following tools are managed through `go.mod`:
 - buildctl
 
 The Taskfile selects every tracked shell script with `git ls-files -z -- '**/*.sh'` for shfmt.
-Use `go tool jsonnetfmt -i .gitlab/ci/package-pipeline.gitlab-ci.jsonnet` to format the package pipeline and `go tool jsonnetfmt --test .gitlab/ci/package-pipeline.gitlab-ci.jsonnet` to check it.
+Use `go tool task jsonnetfmt -- -i` to format the package pipeline and `go tool task jsonnetfmt -- --test` to check it.
 Use `go tool task release -- <gorelease flags>` for Go module compatibility checks.
 `go tool task buildctl -- --help` exposes the BuildKit client without changing the Docker Buildx build driver.
 Target builds require Docker Buildx and a running Linux Docker daemon as documented in the root README.
@@ -59,7 +59,7 @@ Markdown validation uses pnpm and markdownlint-cli2, including the `code-block-s
 
 - Markdown lint fixes
 - Shell formatting through the Go-managed Task entrypoint
-- Jsonnet formatting through `go tool jsonnetfmt`
+- Jsonnet formatting through the Go-managed Task entrypoint
 - Ultracite fixes
 
 Markdownlint loads the local Markdownlint rules through `customRules`, applying the shared Markdownlint baseline with the repository's stricter exceptions.
