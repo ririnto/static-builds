@@ -9,31 +9,25 @@ Init == /\ phase = "beforeMkdir"
 
 Mkdir == /\ phase = "beforeMkdir"
          /\ lock' = TRUE
-         /\ phase' = "beforeRecord"
+         /\ phase' = "beforeDefer"
          /\ UNCHANGED <<recorded, interrupted>>
-RecordLock == /\ phase = "beforeRecord"
-              /\ recorded' = TRUE
-              /\ phase' = "work"
-              /\ UNCHANGED <<lock, interrupted>>
-CompleteWork == /\ phase = "work"
-                /\ phase' = "exitTrap"
-                /\ UNCHANGED <<lock, recorded, interrupted>>
-Signal == /\ phase \in {"beforeMkdir", "beforeRecord", "work"}
-          /\ phase' = "signalTrap"
+RegisterCleanup == /\ phase = "beforeDefer"
+                   /\ recorded' = TRUE
+                   /\ phase' = "work"
+                   /\ UNCHANGED <<lock, interrupted>>
+Signal == /\ phase \in {"beforeMkdir", "beforeDefer", "work", "cleanup"}
+          /\ ~interrupted
           /\ interrupted' = TRUE
-          /\ UNCHANGED <<lock, recorded>>
-SignalExit == /\ phase = "signalTrap"
-              /\ phase' = "exitTrap"
-              /\ UNCHANGED <<lock, recorded, interrupted>>
-CheckLock == /\ phase = "exitTrap"
-             /\ phase' = IF recorded THEN "removeLock" ELSE "done"
-             /\ UNCHANGED <<lock, recorded, interrupted>>
-RemoveLock == /\ phase = "removeLock"
+          /\ UNCHANGED <<phase, lock, recorded>>
+Return == /\ phase = "work"
+          /\ phase' = "cleanup"
+          /\ UNCHANGED <<lock, recorded, interrupted>>
+RemoveLock == /\ phase = "cleanup"
+              /\ recorded
               /\ lock' = FALSE
               /\ phase' = "done"
               /\ UNCHANGED <<recorded, interrupted>>
 Done == /\ phase = "done" /\ UNCHANGED vars
-Next == Mkdir \/ RecordLock \/ CompleteWork \/ Signal \/ SignalExit \/
-        CheckLock \/ RemoveLock \/ Done
+Next == Mkdir \/ RegisterCleanup \/ Signal \/ Return \/ RemoveLock \/ Done
 NoAbandonedLock == (phase = "done" /\ interrupted) => ~lock
 =============================================================================

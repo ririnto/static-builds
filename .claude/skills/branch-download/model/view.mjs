@@ -1,4 +1,4 @@
-export const title = "Branch download lock ownership";
+export const title = "Branch download lock cleanup";
 
 /**
  * @param {{phase: string}} value Model state.
@@ -6,12 +6,10 @@ export const title = "Branch download lock ownership";
  */
 export const state = (value) =>
   ({
+    beforeDefer: "Lock created, cleanup not yet registered",
     beforeMkdir: "Waiting to create the lock",
-    beforeRecord: "Lock created, ownership not yet recorded",
+    cleanup: "Download is returning",
     done: "Download has stopped",
-    exitTrap: "Exit cleanup checks the lock",
-    removeLock: "Cleanup removes the lock",
-    signalTrap: "Interruption is handled",
     work: "Download owns its lock"
   })[value.phase];
 
@@ -21,12 +19,10 @@ export const state = (value) =>
  */
 export const step = (action) =>
   ({
-    CheckLock: "Cleanup checks recorded ownership",
-    CompleteWork: "Download finishes",
     Done: "Download remains stopped",
     Mkdir: "Lock is created",
-    RecordLock: "Cleanup ownership is recorded",
+    RegisterCleanup: "Lock cleanup is registered",
     RemoveLock: "Lock is removed",
-    Signal: "Download is interrupted",
-    SignalExit: "Signal handler exits"
+    Return: "Download returns",
+    Signal: "Cancellation is requested"
   })[action] ?? action;
