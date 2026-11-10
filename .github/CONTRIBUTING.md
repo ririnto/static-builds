@@ -15,7 +15,7 @@ Use the repository's `.markdownlint-cli2.jsonc` when running Markdown lint.
 The [GitHub validation workflow](workflows/markdown-validation.yaml) reports documentation and tooling checks on every pull request without building targets or publishing releases.
 GitLab runs Go tests, golangci-lint, shell formatting, and Jsonnet checks directly before its manual package trigger.
 Its Go jobs use `golang:alpine` with Go's default `GOTOOLCHAIN=auto` behavior honoring the `go.mod` directive.
-The package component invokes the same direct Docker Buildx shell entrypoint as local builds.
+The package component invokes the same direct Docker Buildx Taskfile entrypoint as local builds.
 Node and pnpm validation remains in the GitHub workflow and local contributor hooks.
 It also supports manual runs.
 Every pull request is checked because deleting a linked file can break documentation without changing Markdown.
@@ -27,9 +27,18 @@ Run Go tests, `gofmt -w cmd internal`, and `go mod tidy` directly.
 Invoke managed tools through tool-named Task tasks with arguments after `--`.
 On macOS, Go-managed tools may compile dependencies that require system SDK headers through CGO.
 Export `SDKROOT=$(xcrun --show-sdk-path)` when the compiler or linker cannot locate the system SDK.
-Task, shfmt, Jsonnet, jsonnetfmt, golangci-lint, gorelease, and buildctl are managed through `go.mod`.
-The Taskfile defines shell selection with `SHELL_PATHS: >-` and the formatter-normalized value `.github .gitlab`.
-Use `go tool task jsonnetfmt -- -i` to format the package pipeline and `go tool task jsonnetfmt -- --test` to check it.
+The following tools are managed through `go.mod`:
+
+- Task.
+- shfmt.
+- Jsonnet.
+- jsonnetfmt.
+- golangci-lint.
+- gorelease.
+- buildctl.
+
+The Taskfile selects every tracked shell script with `git ls-files -z -- '**/*.sh'` for shfmt.
+Use `go tool jsonnetfmt -i .gitlab/ci/package-pipeline.gitlab-ci.jsonnet` to format the package pipeline and `go tool jsonnetfmt --test .gitlab/ci/package-pipeline.gitlab-ci.jsonnet` to check it.
 Use `go tool task release -- <gorelease flags>` for Go module compatibility checks.
 `go tool task buildctl -- --help` exposes the BuildKit client without changing the Docker Buildx build driver.
 Target builds require Docker Buildx and a running Linux Docker daemon as documented in the root README.
@@ -45,9 +54,14 @@ The root package manifest references Node-side tooling through the pnpm workspac
 `pnpm-workspace.yaml` defines the catalog-backed `katex` development override required by `micromark-extension-math`.
 The lockfile records the resolved dependency graph.
 `check` runs markdownlint-cli2, rule tests, TypeScript validation, Ultracite, download and manifest Go tests, golangci-lint, shell formatting, Jsonnet evaluation, and Jsonnet formatting checks.
-Markdown validation uses pnpm and markdownlint-cli2, including MD046 for fenced code-block style.
-`fix` applies Markdown lint fixes and the Go-managed shell and Jsonnet formatters through Task.
-It also applies Ultracite fixes.
+Markdown validation uses pnpm and markdownlint-cli2, including the `code-block-style` rule for fenced code blocks.
+`fix` applies the following changes:
+
+- Markdown lint fixes.
+- Shell formatting through the Go-managed Task entrypoint.
+- Jsonnet formatting through `go tool jsonnetfmt`.
+- Ultracite fixes.
+
 Markdownlint loads the local Markdownlint rules through `customRules`, applying the shared Markdownlint baseline with the repository's stricter exceptions.
 The `docs/no-box-drawing` rule reports the first Unicode box-drawing character per line, including fenced code, without automatic replacements.
 The `docs/no-em-dash` rule rejects em dashes in text tokens while skipping code spans, code blocks, HTML tokens, and image alt text.

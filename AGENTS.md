@@ -42,12 +42,12 @@ Keep custom Markdownlint rules under `rules/`.
 - Define tool-named Taskfile tasks with argument pass-through after `--`.
 - Manage Task, shfmt, Jsonnet, jsonnetfmt, golangci-lint, gorelease, and buildctl through the root Go module.
 - Run Go tests, gofmt, and go mod tidy directly.
-- Invoke Docker Buildx directly from the maintained shell build entrypoint on every host.
+- Invoke Docker Buildx directly from the Taskfile build task on every host.
 - Require an explicit build target and never select a default target.
 - Use `golang:alpine` for GitLab Go jobs and invoke named Taskfile tasks with Go's default toolchain selection.
 - Follow EditorConfig with four-space indentation, except two spaces for shell and YAML files.
 - Keep custom Go commands only for source download and manifest queries.
-- Keep direct Buildx invocation in the maintained CI shell entrypoint without platform adapters.
+- Keep direct Buildx invocation in the Taskfile build task without platform adapters.
 - Include all maintained shell scripts in shfmt coverage.
 - Use pnpm catalogs with `^x.y.z` caret ranges for Node dependencies and required overrides.
 - Reference catalog entries from `package.json` and overrides instead of duplicating versions.
@@ -154,7 +154,7 @@ Keep custom Markdownlint rules under `rules/`.
 ### Publish GitLab packages
 
 - For GitLab package pipelines on `main` and `feature/*`, prefer one manual parent job generating a child pipeline.
-- Generate that pipeline through `.gitlab/ci/package-pipeline.jsonnet` and reuse `templates/static-release.yml`.
+- Generate that pipeline through `.gitlab/ci/package-pipeline.gitlab-ci.jsonnet` and reuse `templates/static-release.yml`.
 - Keep GitLab package builds as artifact-only jobs without custom publisher jobs.
 - Use the GitHub CLI for GitHub release publication and gorelease for Go module compatibility checks.
 - Append `-beta` to package versions on `feature/*` branches.

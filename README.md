@@ -29,7 +29,16 @@ The selected worker must support local filesystem export, cache import/export, a
 Use a native worker or separately configured emulation when the worker architecture differs from the selected platform.
 The Taskfile writes artifacts to `.out/<target>/` and imports and exports local cache in `.cache/<target>/` by default.
 
-Task, shfmt, Jsonnet, jsonnetfmt, golangci-lint, gorelease, and buildctl are managed through `go.mod`.
+The following tools are managed through `go.mod`:
+
+- Task.
+- shfmt.
+- Jsonnet.
+- jsonnetfmt.
+- golangci-lint.
+- gorelease.
+- buildctl.
+
 The pnpm version declared in `package.json` provides equivalent package-script entrypoints.
 Target compilers are installed in Dockerfile stages, so they are not host prerequisites.
 
@@ -54,8 +63,12 @@ pnpm run build -- nginx
 Build artifacts are written to `.out/<target>/` by default for both local and CI builds.
 You can override this with `BUILD_OUTPUT_DEST`.
 Build configuration accepts inherited environment values.
-`BUILDKIT_PLATFORM`, `BUILDKIT_NETWORK`, and `BUILDKIT_CACHE_BACKEND` default to `linux/amd64`, `default`, and `local`.
-`BUILD_OUTPUT_DEST` and `CACHE_DIR` default to `.out/<target>/` and `.cache/<target>/` under the repository root.
+
+- `BUILDKIT_PLATFORM` defaults to `linux/amd64`.
+- `BUILDKIT_NETWORK` defaults to `default`.
+- `BUILDKIT_CACHE_BACKEND` defaults to `local`.
+- `BUILD_OUTPUT_DEST` defaults to `.out/<target>/` under the repository root.
+- `CACHE_DIR` defaults to `.cache/<target>/` under the repository root.
 
 ```sh
 BUILDKIT_PLATFORM=linux/arm64 go tool task build -- nginx
@@ -121,7 +134,7 @@ Follow the [contribution guide](.github/CONTRIBUTING.md) for documentation style
 
 `metadata.json` defines source versions and build image versions for every target.
 Each target's `env` declares `"UBI10_MINIMAL_VERSION": "10.2"`.
-`.github/build.sh` reads it with `go tool task manifest -- get-env <target>` and passes it to Docker Buildx as `--build-arg=UBI10_MINIMAL_VERSION=10.2`.
+The Taskfile `build` task reads it with `go tool task manifest -- get-env <target>` and passes it to Docker Buildx as `--build-arg=UBI10_MINIMAL_VERSION=10.2`.
 Each Dockerfile declares `ARG UBI10_MINIMAL_VERSION` and consumes the value in `FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify`.
 The registry-implicit `redhat/ubi10-minimal` reference resolves through Docker Hub.
 Use the latest supported LTS release when upstream provides an LTS series.
@@ -388,7 +401,7 @@ Selected release contents:
 
 - Configure the GitLab project to use `.gitlab-ci.yaml` as its custom CI/CD configuration path after merge.
 - The GitLab check job runs Go-managed contributor checks before package generation and retains the manual parent trigger.
-- GitLab pipelines on `main` and `feature/*` generate a child configuration with `.gitlab/ci/package-pipeline.jsonnet`.
+- GitLab pipelines on `main` and `feature/*` generate a child configuration with `.gitlab/ci/package-pipeline.gitlab-ci.jsonnet`.
 - One manual parent trigger starts the child pipeline, which builds and publishes its selected targets automatically.
 - The package component uses `golang:alpine` and invokes the Buildx shell entrypoint through Task with a TLS-enabled Docker service.
 - When `curl` is absent, `go tool task download -- <target>` uses the image's BusyBox `wget` and `timeout` fallback.

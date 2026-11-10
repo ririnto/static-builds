@@ -55,7 +55,9 @@ jobs:
         run: go tool task shfmt -- -d -i 2 -ci
 
       - name: Check Jsonnet
-        run: pnpm run check:jsonnet
+        run: |-
+          go tool jsonnet -S --ext-str branch=main --ext-str target= --ext-str component_ref=example.invalid/group/static-builds/static-release@main .gitlab/ci/package-pipeline.gitlab-ci.jsonnet
+          go tool jsonnet -S --ext-str branch=feature/tooling-check --ext-str target= --ext-str component_ref=example.invalid/group/static-builds/static-release@feature/tooling-check .gitlab/ci/package-pipeline.gitlab-ci.jsonnet
 
       - name: Check Jsonnet formatting
-        run: go tool task jsonnetfmt -- --test
+        run: go tool jsonnetfmt --test .gitlab/ci/package-pipeline.gitlab-ci.jsonnet

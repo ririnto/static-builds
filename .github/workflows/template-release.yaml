@@ -37,18 +37,17 @@ jobs:
           TARGET: ${{ inputs.target }}
           TAG: ${{ inputs.tag }}
         shell: bash
-        run: |
+        run: |-
           prefix=$(go tool task manifest -- get-tag-prefix "$TARGET")
           official=$(go tool task manifest -- get-official-version "$TARGET")
           test "${TAG#"$prefix"-}" != "$TAG"
           version_revision=${TAG#"$prefix"-}
           test "${version_revision%.*}" != "$version_revision"
           version=${version_revision%.*}
-          revision=${version_revision##*.}
-          printf '%s\n' "$revision" | grep -E '^[0-9]+$'
+          echo "${version_revision##*.}" | grep -E '^[0-9]+$'
           if [ "$version" != "$official" ]; then
             test "${version#"$official"-}" != "$version"
-            printf '%s\n' "${version#"$official"-}" | grep -E '^[A-Za-z0-9]+([.-][A-Za-z0-9]+)*$'
+            echo "${version#"$official"-}" | grep -E '^[A-Za-z0-9]+([.-][A-Za-z0-9]+)*$'
           fi
 
       - name: Set up Docker Buildx
@@ -92,7 +91,7 @@ jobs:
           TARGET: ${{ inputs.target }}
           TAG: ${{ inputs.tag }}
         shell: bash
-        run: |
+        run: |-
           files=$(mktemp)
           trap 'rm -f "$files"' EXIT
           go tool task manifest -- get-release-files "$TARGET" > "$files"
@@ -133,12 +132,12 @@ jobs:
           GH_REPO: ${{ github.repository }}
           TAG: ${{ inputs.tag }}
         shell: bash
-        run: |
+        run: |-
           if response=$(gh api --include "repos/$GH_REPO/releases/tags/$TAG" 2>&1); then
-            printf '%s\n' "$response"
+            echo "$response"
             gh release upload "$TAG" "$TAG.tar.gz" --clobber
           else
-            printf '%s\n' "$response"
-            printf '%s\n' "$response" | grep -E '^HTTP/[0-9.]+ 404 '
+            echo "$response"
+            echo "$response" | grep -E '^HTTP/[0-9.]+ 404 '
             gh release create "$TAG" "$TAG.tar.gz" --verify-tag --title "$TAG" --notes "Release $TAG"
           fi
