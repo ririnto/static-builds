@@ -442,7 +442,8 @@ Selected release contents:
 - The package component runs `buildctl-daemonless.sh` in the official `moby/buildkit:rootless` image with its entrypoint cleared and upstream UID and GID 1000.
 - When `curl` is absent, `go run ./cmd/download` uses the image's BusyBox `wget` and `timeout` fallback.
 - Contributor validation, pipeline generation, and generated publisher jobs use `golang:1.27.3-alpine` with CA certificates and Git available before Go downloads.
-- Contributor validation installs the official Node 26.13.0 `linux-x64-musl` archive and pnpm 12.16.1 on x86_64 runners.
+- GitLab contributor validation runs Go tests, ShellCheck, shell formatting, Jsonnet, code-fence, and relative-link checks directly without installing Node or pnpm.
+- The Node and pnpm contributor suite remains in the existing GitHub workflow and local hooks.
 - The generated publisher jobs install the current Alpine `curl` package before uploading artifacts.
 - The rootless package component installs Go 1.27.3 in its writable cache directory without changing the image user or rootless prerequisites.
 - `feature/*` branches append `-beta` to the package version.

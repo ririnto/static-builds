@@ -9,14 +9,14 @@ validate-contributor-checks:
   before_script:
     - apk add --no-cache ca-certificates git
     - go run ./cmd/install-validation-tools
-    - test "$(apk --print-arch)" = x86_64
-    - curl --fail --location --silent --show-error "https://nodejs.org/dist/v26.13.0/node-v26.13.0-linux-x64-musl.tar.xz" --output /tmp/node.tar.xz
-    - tar --extract --xz --file /tmp/node.tar.xz --directory /usr/local --strip-components=1
-    - rm /tmp/node.tar.xz
-    - npm install --global pnpm@12.16.1
-    - pnpm install --frozen-lockfile
   script:
-    - pnpm run check
+    - go test ./...
+    - go tool task lint
+    - go tool task shfmt-check
+    - go tool task jsonnet-check
+    - go tool task jsonnetfmt-check
+    - rumdl check --enable MD046 --no-cache --respect-gitignore .
+    - lychee --config .lychee.toml '**/*.md'
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     - if: "$CI_COMMIT_BRANCH"

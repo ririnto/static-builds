@@ -13,7 +13,8 @@ Use the repository's `.markdownlint-cli2.jsonc` when running Markdown lint.
 ### Markdown validation
 
 The [GitHub validation workflow](workflows/markdown-validation.yaml) reports documentation and tooling checks on every pull request without building targets or publishing releases.
-GitLab runs the same complete repository check entrypoint before its manual package trigger.
+GitLab runs Go tests, ShellCheck, shell formatting, Jsonnet, code-fence, and relative-link checks directly before its manual package trigger.
+Node and pnpm validation remains in the GitHub workflow and local contributor hooks.
 It also supports manual runs.
 Every pull request is checked because deleting a linked file can break documentation without changing Markdown.
 The checks use maintained markdownlint-cli2, rumdl, and Lychee releases.

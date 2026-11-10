@@ -23,7 +23,7 @@ func run() error {
 		return err
 	}
 	defer os.RemoveAll(temporary)
-	commands := [][]string{{"apk", "add", "--no-cache", "ca-certificates", "git", "curl", "xz", "libstdc++", "libatomic"}}
+	commands := [][]string{{"apk", "add", "--no-cache", "ca-certificates", "git", "curl", "xz"}}
 	for _, tool := range []struct{ name, url, format string }{
 		{"rumdl", "https://github.com/rvben/rumdl/releases/download/v0.3.1/rumdl-v0.3.1-" + architecture + "-unknown-linux-musl.tar.gz", "--gzip"},
 		{"lychee", "https://github.com/lycheeverse/lychee/releases/download/lychee-v0.24.2/lychee-" + architecture + "-unknown-linux-musl.tar.gz", "--gzip"},
