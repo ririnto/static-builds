@@ -13,7 +13,8 @@ Use the repository's `.markdownlint-cli2.jsonc` when running Markdown lint.
 ### Markdown validation
 
 The [GitHub validation workflow](workflows/markdown-validation.yaml) reports documentation and tooling checks on every pull request without building targets or publishing releases.
-GitLab runs the same complete repository check entrypoint before its manual package trigger.
+GitLab runs Go tests, ShellCheck, shell formatting, Jsonnet, code-fence, and relative-link checks directly before its manual package trigger.
+Node and pnpm validation remains in the GitHub workflow and local contributor hooks.
 It also supports manual runs.
 Every pull request is checked because deleting a linked file can break documentation without changing Markdown.
 The checks use maintained markdownlint-cli2, rumdl, and Lychee releases.
@@ -23,7 +24,7 @@ Install the Node.js version supported by `package.json` and the pnpm version dec
 Install the Go version declared in `go.mod` for repository tasks and Go-managed contributor tools.
 Use rumdl 0.3.1 and Lychee 0.24.2, matching the workflow's tool versions.
 Install ShellCheck for shell linting.
-Task, shfmt, Jsonnet, jsonnetfmt, buildctl, buildkitd, and GitHub CLI are managed through `go.mod`.
+Task, shfmt, Jsonnet, jsonnetfmt, buildctl, and buildkitd are managed through `go.mod`.
 Linux target builds additionally require the rootless runtime prerequisites documented in the root README.
 Native macOS target builds retain the Docker Buildx prerequisites documented there.
 Run the checks from the repository root:
@@ -125,6 +126,9 @@ Publish through the feature branch and pull request rather than pushing changes 
 
 Explain in the issue when existing guards remain because inversion requires artificial flags or deeper nesting.
 
+The Python command harnesses build Go executables with the version declared in `go.mod`.
+Run `python3 proxy/tests/verify-release.py` for release command and fake API regressions.
+Run `go test ./...` for the Go command tests.
 Run `python3 proxy/tests/verify-metadata.py` after changing metadata queries or parsing.
 
 - Run `python3 proxy/tests/verify-download.py` for downloader regressions.

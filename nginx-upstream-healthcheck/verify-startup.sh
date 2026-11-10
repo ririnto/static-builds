@@ -1,6 +1,7 @@
 #!/bin/sh
 set -eu
 server_pid=
+response_file=$(mktemp /tmp/healthcheck-startup.XXXXXX)
 
 # Stops and reaps the bounded scratch-root nginx supervisor.
 # @return The status that triggered cleanup.
@@ -12,6 +13,7 @@ cleanup() {
     kill -QUIT "$server_pid" || true
     wait "$server_pid" || true
   fi
+  rm -f "$response_file"
   exit "$status"
 }
 
@@ -27,7 +29,7 @@ chroot /runtime /sbin/nginx -p / -t -c conf/upstream-healthcheck.conf
 rm -f /tmp/healthcheck-build-ca.key /runtime/conf/backend-ca.pem /runtime/etc/hosts
 timeout --signal=QUIT --kill-after=2s 20s chroot /runtime /sbin/nginx -p / -g 'daemon off;' &
 server_pid=$!
-timeout --signal=TERM --kill-after=1s 15s curl --retry 10 --retry-connrefused --retry-delay 1 --retry-max-time 10 --max-time 2 -fsS http://127.0.0.1/ >/dev/null
+timeout --signal=TERM --kill-after=1s 15s curl --retry 10 --retry-connrefused --retry-delay 1 --retry-max-time 10 --max-time 2 -fsS --output "$response_file" http://127.0.0.1/
 kill -0 "$(cat /runtime/logs/nginx.pid)"
 kill -QUIT "$server_pid"
 wait "$server_pid"

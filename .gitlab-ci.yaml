@@ -5,14 +5,18 @@ stages:
 
 validate-contributor-checks:
   stage: checks
-  image: node:26.13.0-trixie
+  image: golang:1.27.3-alpine
   before_script:
-    - sh .gitlab/install-validation-tools.sh
-    - export PATH="/usr/local/go/bin:$PATH"
-    - npm install --global "$(node -p 'require("./package.json").packageManager')"
-    - pnpm install --frozen-lockfile
+    - apk add --no-cache ca-certificates git
+    - go run ./cmd/install-validation-tools
   script:
-    - pnpm run check
+    - go test ./...
+    - go tool task lint
+    - go tool task shfmt-check
+    - go tool task jsonnet-check
+    - go tool task jsonnetfmt-check
+    - rumdl check --enable MD046 --no-cache --respect-gitignore .
+    - lychee --config .lychee.toml '**/*.md'
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     - if: "$CI_COMMIT_BRANCH"
@@ -21,7 +25,9 @@ validate-contributor-checks:
 
 generate-package-pipeline:
   stage: prepare
-  image: golang:1.27.3
+  image: golang:1.27.3-alpine
+  before_script:
+    - apk add --no-cache ca-certificates git
   script:
     - >-
       go tool task package-pipeline "BRANCH=${CI_COMMIT_BRANCH:-}" "COMPONENT_REF=${CI_SERVER_FQDN}/${CI_PROJECT_PATH}/static-release@${CI_COMMIT_REF_NAME}" > package-pipeline.yaml

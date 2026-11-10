@@ -12,9 +12,9 @@ Build statically-linked binaries using Docker multi-stage builds for portable, m
 
 ## Prerequisites
 
-Local builds require the Go version declared in `go.mod`, a POSIX-compatible `sh` with its standard built-ins, AWK, and common host utilities.
-The build scripts use `basename`, `dirname`, `mkdir`, `mktemp`, `mv`, `printf`, `pwd`, `rm`, `rmdir`, `sleep`, and `tr`.
-See the [Taskfile](Taskfile.yaml), [download script](download.sh), and [metadata helper](metadata.sh).
+Local builds require the Go version declared in `go.mod` and the host tools used by the selected adapter.
+Release packaging uses the host `tar` to preserve archive ordering and metadata.
+See the [Taskfile](Taskfile.yaml), [download command](cmd/download/main.go), and [metadata command](cmd/metadata/main.go).
 
 Install `curl` or `wget` to download target sources, and allow network access to their upstream hosts.
 The `wget` fallback also requires GNU Coreutils or BusyBox `timeout`, or GNU Coreutils `gtimeout` on macOS, to enforce the per-attempt wall-clock deadline.
@@ -35,7 +35,7 @@ Use a native worker or separately configured emulation when the worker architect
 The Taskfile writes artifacts to `.out/<target>/` and imports and exports local cache in `.cache/<target>/` by default.
 
 Python 3 is needed for `go tool task list-targets`, not for `go tool task build TARGET=<target>`.
-Task, shfmt, Jsonnet, jsonnetfmt, buildctl, buildkitd, and GitHub CLI are managed through `go.mod`.
+Task, shfmt, Jsonnet, jsonnetfmt, buildctl, and buildkitd are managed through `go.mod`.
 The pnpm version declared in `package.json` provides equivalent package-script entrypoints.
 Target compilers and verification tools are installed or run in Dockerfile stages, so they are not host prerequisites.
 
@@ -82,8 +82,8 @@ Native macOS builds use the configured Docker Buildx builder.
 GitLab package builds retain their existing rootless network restrictions.
 The build does not automatically configure a Linux VM or cross-platform emulation.
 The Linux launcher ignores inherited `BUILDKIT_HOST`, `BUILDKITD_FLAGS`, `BUILDKITD`, `BUILDCTL`, and `ROOTLESSKIT` overrides so each invocation owns its daemon and state.
-Additional arguments to `.github/build-daemonless.sh` are buildctl build arguments.
-Use `.github/build-buildx.sh` for the existing Buildx argument interface.
+Additional arguments to `go run ./cmd/build-daemonless` are buildctl build arguments.
+Use `go run ./cmd/build-buildx` for the existing Buildx argument interface.
 
 ### Running haproxy binary image
 
@@ -98,30 +98,28 @@ docker run --rm \
 ```text
 .
 +-- metadata.json           # Canonical build/release metadata
-+-- build-env.sh            # Shared build argument normalization
 +-- Taskfile.yaml           # Repository task entrypoints
-+-- go.mod                  # Go-managed contributor tools
++-- go.mod                  # Go commands, client library, and toolchain tools
 +-- go.sum                  # Go module checksums
 +-- .gitlab-ci.yaml         # GitLab CI configuration
-+-- download.sh             # Source download dispatcher
-+-- metadata.sh             # Metadata query helper
-+-- metadata.awk            # Metadata JSON parser
-+-- package-release.sh      # Release package helper
-+-- .github/
-|   +-- build.sh            # Platform-selecting build entrypoint
-|   +-- build-buildx.sh     # Native macOS Buildx adapter
-|   +-- build-daemonless.sh # Native Linux rootless lifecycle
-|   +-- setup-rootless.sh   # GitHub rootless prerequisite preflight
-|   +-- release-guard.sh    # Release tag validator
-|   +-- workflows/
-|       +-- release-from-tag.yaml
-|       +-- template-release.yaml
-+-- .gitlab/
-|   +-- ci/
-|   |   +-- package-pipeline.jsonnet # GitLab child pipeline generator
-|   |   +-- setup-curl.sh
-|   +-- build-rootless.sh   # Rootless BuildKit build entry
-|   +-- install-validation-tools.sh
++-- cmd/                    # Individual Go command entrypoints
+|   +-- build/              # Platform-selecting build dispatcher
+|   +-- build-buildx/       # Native macOS Buildx adapter
+|   +-- build-daemonless/   # Native Linux rootless lifecycle
+|   +-- build-rootless/     # GitLab rootless build adapter
+|   +-- download/           # Source download command
+|   +-- metadata/           # Metadata query command
+|   +-- package-release/    # Release archive command
+|   +-- release-guard/      # Release tag validation
+|   +-- release-resolve/    # Tag-to-target resolution
+|   +-- release-verify/     # Artifact verification
+|   +-- release-publish/    # GitHub API publishing
+|   +-- setup-rootless/     # GitHub prerequisite preflight
+|   +-- setup-curl/         # GitLab curl installation
+|   +-- install-validation-tools/
++-- internal/               # Shared metadata, buildconfig, and release packages
++-- .github/workflows/      # Release and contributor workflows
++-- .gitlab/ci/             # GitLab child pipeline generator
 +-- templates/              # GitLab CI components
 |   +-- static-release.yml
 +-- .tmp/                   # Downloaded source cache (gitignored)
@@ -252,7 +250,7 @@ Each target must follow this structure:
 5. Verify: Targets are loaded from `metadata.json`.
 
 6. Extend the tag trigger filter in [.github/workflows/release-from-tag.yaml](.github/workflows/release-from-tag.yaml) with the target's `tag_prefix` followed by `-*`.
-   The existing `resolve-target` job derives target selection from `metadata.json` through `metadata.sh get-target-from-tag` and validates the tag with `.github/release-guard.sh`.
+   The existing `resolve-target` job derives target selection from `metadata.json` through `go run ./cmd/metadata get-target-from-tag` and validates the tag with `go run ./cmd/release-guard`.
    Keep that resolution job and its reusable release call unchanged.
    Release file selection and official versions also come from `metadata.json`.
 
@@ -306,7 +304,7 @@ The following versions are the metadata selections for this dated capture.
 | vector | 0.58.0 | ACTUAL PASS | ACTUAL PASS |
 | monit | 6.0.0 | ACTUAL PASS | ACTUAL PASS |
 
-For each target, [package-release.sh](package-release.sh) packaged the exported artifacts into a temporary archive whose members exactly matched `release_files` in [metadata.json](metadata.json).
+For each target, the release packager at that historical revision packaged the exported artifacts into a temporary archive whose members exactly matched `release_files` in [metadata.json](metadata.json).
 Both nginx profiles passed their njs 1.0.1 HTTP and stream checks with QuickJS 0.17.0.
 The newly exported healthcheck binary also passed `proxy/tests/run-docker.sh .out/nginx-upstream-healthcheck/sbin/nginx`.
 That standalone suite covers the L4/L6/L7 classifications, verified TLS-only and HTTPS checks, stream payload expectations, configuration rejection, DNS replacement, recovery, IPv6, multiple workers, and VTS described in the [healthcheck profile](nginx-upstream-healthcheck/README.md#build-verification).
@@ -399,7 +397,7 @@ Invalid examples:
 
 ## How It Works
 
-1. Task runs `download.sh` to resolve the target's download resources from `metadata.json` before starting the build.
+1. Task runs `go run ./cmd/download` to resolve the target's download resources from `metadata.json` before starting the build.
 2. The platform dispatcher selects ephemeral rootless BuildKit on Linux or Docker Buildx on macOS to execute the multi-stage Dockerfile.
 3. Built artifacts go to `.out/<target>/` for both local builds and CI.
 4. Verify stages use the UBI 10 minimal version from `metadata.json`, and the final exported artifact comes from the target's `scratch` stage.
@@ -442,8 +440,12 @@ Selected release contents:
 - GitLab pipelines on `main` and `feature/*` generate a child configuration with `.gitlab/ci/package-pipeline.jsonnet`.
 - One manual parent trigger starts the child pipeline, which builds and publishes its selected targets automatically.
 - The package component runs `buildctl-daemonless.sh` in the official `moby/buildkit:rootless` image with its entrypoint cleared and upstream UID and GID 1000.
-- When `curl` is absent, `download.sh` uses the image's BusyBox `wget` and `timeout` fallback.
+- When `curl` is absent, `go run ./cmd/download` uses the image's BusyBox `wget` and `timeout` fallback.
+- Contributor validation, pipeline generation, and generated publisher jobs use `golang:1.27.3-alpine` with CA certificates and Git available before Go downloads.
+- GitLab contributor validation runs Go tests, ShellCheck, shell formatting, Jsonnet, code-fence, and relative-link checks directly without installing Node or pnpm.
+- The Node and pnpm contributor suite remains in the existing GitHub workflow and local hooks.
 - The generated publisher jobs install the current Alpine `curl` package before uploading artifacts.
+- The rootless package component installs Go 1.27.3 in its writable cache directory without changing the image user or rootless prerequisites.
 - `feature/*` branches append `-beta` to the package version.
 - GitLab uploads to Package Registry only.
   GitHub uploads to Release only.
@@ -451,4 +453,6 @@ Selected release contents:
 - The generated child pipeline includes the local component at `templates/static-release.yml`.
 - GitLab component discovery requires the conventional `templates/*.yml` filename, so `templates/static-release.yml` remains the supported exception to the `.yaml` filename rule.
 - The parent configuration uses the supported custom configuration path documented by [GitLab](https://docs.gitlab.com/ci/pipelines/settings/#specify-a-custom-cicd-configuration-file), while the local component follows [GitLab's component discovery convention](https://docs.gitlab.com/ci/components/).
-- GitHub release packaging and GitLab package generation both reuse `package-release.sh`.
+- GitHub release packaging and GitLab package generation both reuse `go run ./cmd/package-release`.
+GitHub publishing uses go-github with `GH_TOKEN` and `GH_REPO`, falling back to `GITHUB_REPOSITORY` for the repository binding.
+A missing release is created only after HTTP 404, and an existing archive asset is replaced before upload.

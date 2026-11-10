@@ -157,6 +157,8 @@ def _daemonless_command():
 def _verify_daemonless(repository):
     with tempfile.TemporaryDirectory(prefix="daemonless-runner-") as temporary:
         root = Path(temporary)
+        daemonless = root / "build-daemonless"
+        subprocess.run(["go", "build", "-o", str(daemonless), "./cmd/build-daemonless"], cwd=repository, check=True)
         for scenario, expected in (
             ("success", 0), ("client_failure", 37), ("startup_failure", 1),
             ("interrupt_hup", 129), ("interrupt_int", 130), ("interrupt_term", 143),
@@ -184,7 +186,7 @@ def _verify_daemonless(repository):
                     "BUILDKIT_HOST": "unix:///foreign.sock", "BUILDKITD_FLAGS": "--oci-worker-no-process-sandbox",
                 }
                 process = subprocess.Popen(
-                    ["sh", str(repository / ".github/build-daemonless.sh"), "nginx"],
+                    [str(daemonless), "nginx"],
                     cwd=repository, env=environment, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
                 )
                 instances.append((directory, process))
@@ -263,7 +265,7 @@ def _main():
     if binary is None:
         raise RuntimeError("The true command is required as the executable input fixture.")
     with tempfile.TemporaryDirectory(prefix="healthcheck-runner-") as temporary:
-        directory = Path(temporary)
+        directory = Path(temporary).resolve()
         docker = directory / "docker"
         docker.write_text(f"#!{sys.executable}\n" + Path(__file__).read_text())
         docker.chmod(0o755)
@@ -313,13 +315,12 @@ def _main():
                     raise AssertionError(f"{scenario}: task-owned {resource} leaked")
             print(f"PASS {scenario}")
     with tempfile.TemporaryDirectory(prefix="rootless-build-output-") as temporary:
-        directory = Path(temporary)
+        directory = Path(temporary).resolve()
         rootless_repository = directory / "repo"
         rootless_repository.mkdir()
-        (rootless_repository / ".gitlab").mkdir()
-        shutil.copy2(repository / ".gitlab/build-rootless.sh", rootless_repository / ".gitlab/build-rootless.sh")
-        for filename in ("build-env.sh", "metadata.sh", "metadata.awk", "metadata.json"):
-            shutil.copy2(repository / filename, rootless_repository / filename)
+        command = rootless_repository / "build-rootless"
+        subprocess.run(["go", "build", "-o", str(command), "./cmd/build-rootless"], cwd=repository, check=True)
+        shutil.copy2(repository / "metadata.json", rootless_repository / "metadata.json")
         (rootless_repository / "nginx").mkdir()
         (rootless_repository / "nginx/Dockerfile").write_text("FROM scratch\n")
         mock_bin = directory / "bin"
@@ -368,7 +369,7 @@ def _main():
                     expected_destination = rootless_repository / expected_destination
                 expected_destination_argument = destination
             result = subprocess.run(
-                ["sh", str(rootless_repository / ".gitlab/build-rootless.sh"), "nginx"],
+                [str(command), "nginx"],
                 cwd=rootless_repository,
                 env=environment,
                 capture_output=True,

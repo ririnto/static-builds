@@ -4,7 +4,7 @@ silent: true
 
 vars:
   SHELL_PATHS: >-
-    build-env.sh download.sh metadata.sh package-release.sh apache-exporter apache-httpd coredns dnsmasq haproxy monit nginx nginx-upstream-healthcheck vector .github .gitlab proxy/tests
+    apache-exporter apache-httpd coredns dnsmasq haproxy monit nginx nginx-upstream-healthcheck vector proxy/tests
 
 tasks:
   default:
@@ -24,7 +24,7 @@ tasks:
         vars:
           TARGET: "{{.TARGET}}"
       - >-
-        BUILDKIT_PLATFORM={{.BUILDKIT_PLATFORM | default "linux/amd64" | shellQuote}} BUILDKIT_NETWORK={{.BUILDKIT_NETWORK | default "default" | shellQuote}} BUILDKIT_CACHE_BACKEND={{.BUILDKIT_CACHE_BACKEND | default "local" | shellQuote}} BUILD_OUTPUT_DEST={{.BUILD_OUTPUT_DEST | default (printf "%s/.out/%s" .ROOT_DIR .TARGET) | shellQuote}} CACHE_DIR={{.CACHE_DIR | default (printf "%s/.cache/%s" .ROOT_DIR .TARGET) | shellQuote}} sh .github/build.sh {{.TARGET | shellQuote}}
+        BUILDKIT_PLATFORM={{.BUILDKIT_PLATFORM | default "linux/amd64" | shellQuote}} BUILDKIT_NETWORK={{.BUILDKIT_NETWORK | default "default" | shellQuote}} BUILDKIT_CACHE_BACKEND={{.BUILDKIT_CACHE_BACKEND | default "local" | shellQuote}} BUILD_OUTPUT_DEST={{.BUILD_OUTPUT_DEST | default (printf "%s/.out/%s" .ROOT_DIR .TARGET) | shellQuote}} CACHE_DIR={{.CACHE_DIR | default (printf "%s/.cache/%s" .ROOT_DIR .TARGET) | shellQuote}} go run ./cmd/build {{.TARGET | shellQuote}}
 
   download:
     desc: Download a target's sources (TARGET=nginx)
@@ -34,7 +34,7 @@ tasks:
       - sh: test -n {{.TARGET | default "" | shellQuote}}
         msg: TARGET must be nonempty.
     cmds:
-      - sh download.sh {{.TARGET | shellQuote}}
+      - go run ./cmd/download {{.TARGET | shellQuote}}
 
   list-targets:
     desc: List targets from metadata.json
@@ -60,9 +60,9 @@ tasks:
     desc: Evaluate the main and feature-branch package pipelines
     cmds:
       - >-
-        go tool jsonnet -S --ext-str branch=main --ext-str target= --ext-str component_ref=example.invalid/group/static-builds/static-release@main .gitlab/ci/package-pipeline.jsonnet > /dev/null
+        output=$(mktemp); trap 'rm -f "$output"' EXIT; go tool jsonnet -S --ext-str branch=main --ext-str target= --ext-str component_ref=example.invalid/group/static-builds/static-release@main .gitlab/ci/package-pipeline.jsonnet > "$output"
       - >-
-        go tool jsonnet -S --ext-str branch=feature/tooling-check --ext-str target= --ext-str component_ref=example.invalid/group/static-builds/static-release@feature/tooling-check .gitlab/ci/package-pipeline.jsonnet > /dev/null
+        output=$(mktemp); trap 'rm -f "$output"' EXIT; go tool jsonnet -S --ext-str branch=feature/tooling-check --ext-str target= --ext-str component_ref=example.invalid/group/static-builds/static-release@feature/tooling-check .gitlab/ci/package-pipeline.jsonnet > "$output"
 
   jsonnetfmt-check:
     desc: Check package pipeline Jsonnet formatting

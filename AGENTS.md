@@ -30,7 +30,7 @@ Add top-level directories only from this allowlist.
 | --- | --- |
 | Targets | `apache-exporter/`, `apache-httpd/`, `coredns/`, `dnsmasq/`, `haproxy/`, `monit/`, `nginx/`, `nginx-upstream-healthcheck/`, `vector/` |
 | Hidden support | `.cache/`, `.github/`, `.gitlab/`, `.husky/`, `.out/`, `.tmp/` |
-| Other support | `proxy/`, `rules/`, `templates/` |
+| Other support | `cmd/`, `internal/`, `proxy/`, `rules/`, `templates/` |
 
 Require a Dockerfile in every target directory.
 Keep custom Markdownlint rules under `rules/`.
@@ -40,7 +40,7 @@ Keep custom Markdownlint rules under `rules/`.
 ### Configure dependencies and contributor checks
 
 - Define repository task entrypoints in `Taskfile.yaml` and delegate package scripts to `go tool task`.
-- Manage Task, shfmt, Jsonnet, jsonnetfmt, buildctl, buildkitd, and GitHub CLI through the root Go module.
+- Manage Task, shfmt, Jsonnet, jsonnetfmt, buildctl, and buildkitd through the root Go module.
 - Use ephemeral rootless BuildKit for native Linux builds, Docker Buildx for native macOS builds, and the official rootless BuildKit image for GitLab package builds.
 - Follow EditorConfig with four-space indentation, except two spaces for shell and YAML files.
 - Use pnpm catalogs with `^x.y.z` caret ranges for Node dependencies and required overrides.

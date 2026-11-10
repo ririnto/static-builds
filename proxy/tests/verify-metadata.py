@@ -9,7 +9,7 @@ import tempfile
 
 def _query(repository, metadata, command, argument):
     return subprocess.run(
-        ["sh", str(repository / "metadata.sh"), command, argument],
+        [str(repository), command, argument],
         env={**os.environ, "METADATA_PATH_OVERRIDE": str(metadata)},
         capture_output=True,
         text=True,
@@ -26,6 +26,9 @@ def _expect(repository, metadata, command, argument, output):
 def _main():
     repository = Path(__file__).resolve().parents[2]
     with tempfile.TemporaryDirectory(prefix="metadata-verification-") as temporary:
+        command = Path(temporary) / "metadata"
+        subprocess.run(["go", "build", "-o", str(command), "./cmd/metadata"], cwd=repository, check=True)
+        repository = command
         metadata = Path(temporary) / "metadata.json"
         target = {
             "tag_prefix": "fixture",

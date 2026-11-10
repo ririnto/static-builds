@@ -95,8 +95,8 @@ def _stop_fixtures(process, wget_pid_file, timeout_pid_file):
 
 def _verify(repository, directory, server, wget, limiter, scenario):
     directory.mkdir()
-    for name in ("download.sh", "metadata.sh", "metadata.awk"):
-        shutil.copyfile(repository / name, directory / name)
+    shutil.copyfile(repository, directory / "download")
+    (directory / "download").chmod(0o755)
     binary = directory / "bin"
     binary.mkdir()
     for name in _HOST_COMMANDS:
@@ -139,7 +139,8 @@ def _verify(repository, directory, server, wget, limiter, scenario):
     }
     started = time.monotonic()
     process = subprocess.Popen(
-        [str(binary / "sh"), str(directory / "download.sh"), "fixture"],
+        [str(directory / "download"), "fixture"],
+        cwd=directory,
         env=environment, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
         start_new_session=True,
     )
@@ -192,6 +193,9 @@ def _main():
         raise RuntimeError("This verification requires wget and timeout or gtimeout.")
     with tempfile.TemporaryDirectory(prefix="download-deadline-") as temporary:
         directory = Path(temporary)
+        command = directory / "download"
+        subprocess.run(["go", "build", "-o", str(command), "./cmd/download"], cwd=repository, check=True)
+        repository = command
         certificate = directory / "certificate.pem"
         key = directory / "key.pem"
         subprocess.run([
