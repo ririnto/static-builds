@@ -5,29 +5,30 @@ description: Check branch-download lock interruption and downloader deadline cle
 
 # Verify branch download cleanup
 
-Use this skill when changing branch lock ownership, signal handling, or wget deadlines in `cmd/download`.
+Run these checks when changing branch lock ownership, signal handling, or wget deadlines in `cmd/download`.
 The model describes lock ownership and context cancellation in `cmd/download/main.go`.
 Compare its transitions with the current source before relying on a model result.
 
 ## Check the lock model
 
-Install repository dependencies with `pnpm install --frozen-lockfile` and use the installed `/statechart` skill to run `model/BranchLock.tla` with `model/BranchLock.cfg` and `model/view.mjs`.
-Set `TLA2TOOLS` to the repository's `node_modules/tla-chaos-loop/tools/tla2tools.jar` so the tool does not bootstrap another checker.
-The catalog resolves `tla-chaos-loop` 1.1.0, whose bundled TLC reports build `2026.07.18.145032`.
-The recorded run used Node 26.13.0 and Java 25.0.5.
-From the repository root, set `STATECHART` to the installed `/statechart` executable and run:
+Install repository dependencies with `pnpm install --frozen-lockfile`.
+Install Java 25 or a compatible Java runtime.
+The `tla-chaos-loop` dependency supplies the TLC executable JAR.
+Run TLC from the repository root:
 
 ```sh
-TLA2TOOLS="$PWD/node_modules/tla-chaos-loop/tools/tla2tools.jar" "$STATECHART" \
-  "$PWD/.claude/skills/branch-download/model/BranchLock.tla" \
-  --config "$PWD/.claude/skills/branch-download/model/BranchLock.cfg" \
-  --view "$PWD/.claude/skills/branch-download/model/view.mjs" \
-  --out "$(mktemp -d)/out"
+java -XX:+UseParallelGC -cp node_modules/tla-chaos-loop/tools/tla2tools.jar tlc2.TLC \
+  -workers 1 \
+  -metadir "$(mktemp -d)" \
+  -config .claude/skills/branch-download/references/model/BranchLock.cfg \
+  .claude/skills/branch-download/references/model/BranchLock.tla
 ```
 
-Read every result with `/statechart` and compare the generated chart and report with the retained `model/chart.mmd` and `model/report.txt`.
+Check the command's exit status and invariant report.
+The retained `references/model/chart.mmd` shows the model's phase transitions in Mermaid.
+The chart omits cancellation steps that leave the displayed phase unchanged.
+Update the chart and `references/model/report.txt` when the model changes.
 The recorded check passes `NoAbandonedLock` and deadlock checking over 10 states.
-The chart hides cancellation steps that do not change its displayed phase.
 
 The model follows one branch download with an initially absent lock.
 `Mkdir` represents successful `os.Mkdir`, and `RegisterCleanup` represents the subsequent deferred removal registration.
