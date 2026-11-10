@@ -109,6 +109,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
       - name: Download release package
         uses: actions/download-artifact@v8
         with:
