@@ -99,74 +99,67 @@ ENTRYPOINT ["/sbin/nginx", "-p", "/", "-g", "daemon off;"]
 
 FROM verify AS verify-runtime
 COPY --from=runtime / /runtime/
-RUN <<'EOF'
-set -e
-trap 'rm -f /tmp/healthcheck-build-ca.key /runtime/conf/backend-ca.pem /runtime/etc/hosts' EXIT
-openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj /CN=healthcheck-build-ca \
-    -keyout /tmp/healthcheck-build-ca.key -out /runtime/conf/backend-ca.pem
-echo "127.0.0.1 maintenance.internal" >/runtime/etc/hosts
-chroot /runtime /sbin/nginx -p / -t -c conf/upstream-healthcheck.conf
-EOF
-RUN <<'EOF'
-set -eu
-test_dir=$(mktemp -d /runtime/conf/healthcheck-verify.XXXXXX)
-pid=
-trap '
-    status=$?
-    trap - EXIT
-    if [ -n "$pid" ]; then
-        if kill "$pid"; then
-            wait "$pid" || status=1
-        else
-            status=1
-        fi
-    fi
-    rm -rf "$test_dir" || status=1
-    exit "$status"
-' EXIT
-chmod 755 "$test_dir"
-cat >"$test_dir/nginx.conf" <<CONFIG
-worker_processes 1;
-pid /conf/${test_dir##*/}/nginx.pid;
-error_log stderr notice;
-events { worker_connections 64; }
-http {
-    access_log off;
-    upstream backend {
-        zone backend 64k;
-        server 127.0.0.1:18091;
-        healthcheck type=http interval=200ms timeout=500ms fall=2 rise=2 uri=/ready;
-    }
-    server {
-        listen 127.0.0.1:18091;
-        location = /ready { root /conf/${test_dir##*/}; }
-        location / { return 200 'backend'; }
-    }
-    server {
-        listen 127.0.0.1:18092;
-        location / { proxy_pass http://backend; }
-    }
-}
-CONFIG
-touch "$test_dir/ready"
-chroot /runtime /sbin/nginx -p / -c "conf/${test_dir##*/}/nginx.conf" -g 'daemon off;' &
-pid=$!
-wait_for_status() {
-    for attempt in $(seq 1 15); do
-        if [ "$(curl --connect-timeout 1 --max-time 2 -o /dev/null -w '%{http_code}' http://127.0.0.1:18092/)" = "$1" ]; then
-            return 0
-        fi
-        sleep 1
-    done
-    echo "Timed out waiting for proxy status $1" >&2
-    return 1
-}
-wait_for_status 200
-rm "$test_dir/ready"
-wait_for_status 502
-touch "$test_dir/ready"
-wait_for_status 200
-EOF
+RUN set -e; \
+    trap 'rm -f /tmp/healthcheck-build-ca.key /runtime/conf/backend-ca.pem /runtime/etc/hosts' EXIT; \
+    openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj /CN=healthcheck-build-ca \
+        -keyout /tmp/healthcheck-build-ca.key -out /runtime/conf/backend-ca.pem; \
+    echo "127.0.0.1 maintenance.internal" >/runtime/etc/hosts; \
+    chroot /runtime /sbin/nginx -p / -t -c conf/upstream-healthcheck.conf
+RUN set -eu; \
+    test_dir=$(mktemp -d /runtime/conf/healthcheck-verify.XXXXXX); \
+    pid=; \
+    trap 'status=$?; \
+        trap - EXIT; \
+        if [ -n "$pid" ]; then \
+            if kill "$pid"; then \
+                wait "$pid" || status=1; \
+            else \
+                status=1; \
+            fi; \
+        fi; \
+        rm -rf "$test_dir" || status=1; \
+        exit "$status"' EXIT; \
+    chmod 755 "$test_dir"; \
+    printf '%s\n' \
+        'worker_processes 1;' \
+        "pid /conf/${test_dir##*/}/nginx.pid;" \
+        'error_log stderr notice;' \
+        'events { worker_connections 64; }' \
+        'http {' \
+        '    access_log off;' \
+        '    upstream backend {' \
+        '        zone backend 64k;' \
+        '        server 127.0.0.1:18091;' \
+        '        healthcheck type=http interval=200ms timeout=500ms fall=2 rise=2 uri=/ready;' \
+        '    }' \
+        '    server {' \
+        '        listen 127.0.0.1:18091;' \
+        "        location = /ready { root /conf/${test_dir##*/}; }" \
+        "        location / { return 200 'backend'; }" \
+        '    }' \
+        '    server {' \
+        '        listen 127.0.0.1:18092;' \
+        '        location / { proxy_pass http://backend; }' \
+        '    }' \
+        '}' >"$test_dir/nginx.conf"; \
+    touch "$test_dir/ready"; \
+    chroot /runtime /sbin/nginx -p / -c "conf/${test_dir##*/}/nginx.conf" -g 'daemon off;' & \
+    pid=$!; \
+    wait_for_status() { \
+        for attempt in $(seq 1 15); do \
+            if [ "$(curl --connect-timeout 1 --max-time 2 -o /dev/null -w '%{http_code}' http://127.0.0.1:18092/)" = "$1" ]; then \
+                return 0; \
+            fi; \
+            sleep 1; \
+        done; \
+        echo "Timed out waiting for proxy status $1" >&2; \
+        return 1; \
+    }; \
+    wait_for_status 200; \
+    rm "$test_dir/ready"; \
+    wait_for_status 502; \
+    touch "$test_dir/ready"; \
+    wait_for_status 200
 
 FROM runtime
 COPY --from=verify-runtime /runtime/ /

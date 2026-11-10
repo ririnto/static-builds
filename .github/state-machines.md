@@ -31,6 +31,7 @@ The model does not prove download integrity, retry liveness, or concurrent publi
 
 Static verification checks metadata-selected release executables, including Apache HTTPd's `rotatelogs`.
 Each target also executes its version command under `strace` in UBI.
+Vector component lists, CoreDNS plugin lists, HTTPd module lists, and nginx configuration parsing remain build checks.
 Application functional verification belongs to the custom healthcheck target.
 The workflow descriptions reflect source inspection rather than hosted execution evidence.
 

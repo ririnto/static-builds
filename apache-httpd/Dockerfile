@@ -90,6 +90,8 @@ RUN file "${TARGET_PREFIX}/bin/rotatelogs" | grep -E 'statically linked|static-p
 RUN test -x "${TARGET_PREFIX}/bin/httpd"
 RUN test -x "${TARGET_PREFIX}/bin/rotatelogs"
 RUN strace "${TARGET_PREFIX}/bin/httpd" -V
+RUN "${TARGET_PREFIX}/bin/httpd" -l
+RUN "${TARGET_PREFIX}/bin/httpd" -M
 
 FROM scratch
 

@@ -31,6 +31,7 @@ RUN readelf -h "${TARGET_PREFIX}/coredns" | grep -E 'Type:|Machine:'
 RUN file "${TARGET_PREFIX}/coredns" | grep -E 'statically linked|static-pie linked'
 RUN test -x "${TARGET_PREFIX}/coredns"
 RUN strace "${TARGET_PREFIX}/coredns" -version
+RUN "${TARGET_PREFIX}/coredns" -plugins
 
 FROM scratch
 

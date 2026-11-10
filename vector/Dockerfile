@@ -21,6 +21,7 @@ RUN readelf -h "${TARGET_PREFIX}/bin/vector" | grep -E 'Type:|Machine:'
 RUN file "${TARGET_PREFIX}/bin/vector" | grep -E 'statically linked|static-pie linked'
 RUN test -x "${TARGET_PREFIX}/bin/vector"
 RUN strace "${TARGET_PREFIX}/bin/vector" --version
+RUN "${TARGET_PREFIX}/bin/vector" list
 
 FROM scratch
 

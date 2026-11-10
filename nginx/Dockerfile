@@ -80,6 +80,7 @@ RUN test -x "${TARGET_PREFIX}/sbin/nginx"
 RUN test -r "${TARGET_PREFIX}/conf/scripting.conf"
 RUN test -r "${TARGET_PREFIX}/conf/scripting.js"
 RUN strace "${TARGET_PREFIX}/sbin/nginx" -V
+RUN "${TARGET_PREFIX}/sbin/nginx" -t -c conf/scripting.conf
 
 FROM scratch
 
