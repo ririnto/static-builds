@@ -39,7 +39,15 @@ curl http://127.0.0.1:18081/njs
 ./.out/nginx/sbin/nginx -p "$PWD/.out/nginx/" -c conf/scripting.conf -s quit
 ```
 
-The Dockerfile verifies static linking and njs HTTP and stream execution before exporting the binary and scripting examples.
+The Dockerfile performs these checks before exporting the binary and scripting examples:
+
+- Static linking assertions.
+- Executable and scripting-file presence checks.
+- Version inspection under strace.
+- Scripting configuration validation.
+
+Upstream njs runtime behavior is not re-tested by this target.
+The custom [healthcheck target](../nginx-upstream-healthcheck/README.md) retains runtime probes.
 Run `go tool task shfmt -- -d -i 2 -ci` from the repository root to check maintained shell formatting.
 
 ## How to Verify
