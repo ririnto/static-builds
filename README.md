@@ -13,7 +13,7 @@ Build statically-linked binaries using Docker multi-stage builds for portable, m
 ## Prerequisites
 
 Local builds require the Go version declared in `go.mod` and Docker CLI access to a running Linux daemon and the Docker Buildx plugin.
-Release packaging uses the host `tar` to preserve archive ordering and metadata.
+Release packaging uses the host `tar` with metadata-selected paths.
 See the [Taskfile](Taskfile.yaml), [download command](cmd/download/main.go), and [metadata command](cmd/metadata/main.go).
 
 Install `curl` or `wget` to download target sources, and allow network access to their upstream hosts.
@@ -29,8 +29,7 @@ The selected worker must support local filesystem export, cache import/export, a
 Use a native worker or separately configured emulation when the worker architecture differs from the selected platform.
 The Taskfile writes artifacts to `.out/<target>/` and imports and exports local cache in `.cache/<target>/` by default.
 
-Python 3 is needed for `go tool task list-targets`, not for `go tool task build TARGET=<target>`.
-Task, shfmt, Jsonnet, jsonnetfmt, and golangci-lint are managed through `go.mod`.
+Task, shfmt, Jsonnet, jsonnetfmt, golangci-lint, gorelease, and buildctl are managed through `go.mod`.
 The pnpm version declared in `package.json` provides equivalent package-script entrypoints.
 Target compilers are installed in Dockerfile stages, so they are not host prerequisites.
 
@@ -38,33 +37,29 @@ Target compilers are installed in Dockerfile stages, so they are not host prereq
 
 ```sh
 go tool task
-go tool task list-targets
-go tool task download TARGET=nginx
-go tool task build TARGET=nginx
+go tool task download -- nginx
+go tool task build -- nginx
 ```
 
-Task uses named variables rather than Make's additional-goal convention.
-Use `go tool task build TARGET=<target>`, not `go tool task build <target>`.
+Pass the target and additional tool arguments after Task's `--` separator.
 Run these commands from the repository root.
 The equivalent pnpm commands are:
 
 ```sh
 pnpm run tasks
-pnpm run list-targets
-pnpm run download TARGET=nginx
-pnpm run build TARGET=nginx
+pnpm run download -- nginx
+pnpm run build -- nginx
 ```
 
 Build artifacts are written to `.out/<target>/` by default for both local and CI builds.
 You can override this with `BUILD_OUTPUT_DEST`.
-Build configuration accepts inherited environment values or Task CLI assignments.
-Task CLI assignments take precedence over inherited values.
+Build configuration accepts inherited environment values.
 `BUILDKIT_PLATFORM`, `BUILDKIT_NETWORK`, and `BUILDKIT_CACHE_BACKEND` default to `linux/amd64`, `default`, and `local`.
 `BUILD_OUTPUT_DEST` and `CACHE_DIR` default to `.out/<target>/` and `.cache/<target>/` under the repository root.
 
 ```sh
-BUILDKIT_PLATFORM=linux/arm64 go tool task build TARGET=nginx
-go tool task build TARGET=nginx BUILD_OUTPUT_DEST=.out/custom/nginx CACHE_DIR=.cache/custom/nginx
+BUILDKIT_PLATFORM=linux/arm64 go tool task build -- nginx
+BUILD_OUTPUT_DEST=.out/custom/nginx CACHE_DIR=.cache/custom/nginx go tool task build -- nginx
 ```
 
 ### Network and platform behavior
@@ -73,9 +68,13 @@ All hosts use the configured Docker Buildx builder directly.
 `BUILDKIT_NETWORK=none` disables RUN-step networking.
 `BUILDKIT_NETWORK=host` requests host networking from the selected builder.
 The build does not automatically configure a Linux VM or cross-platform emulation.
-Pass additional Buildx arguments with `go tool task build TARGET=<target> -- <buildx arguments>`.
+Pass additional Buildx arguments with `go tool task build -- <target> <buildx arguments>`.
 A build always requires an explicit `TARGET` and fails without one.
 The nginx commands in this document are examples, not defaults.
+For example, run `go tool task build -- haproxy` or `go tool task build -- apache-exporter --builder my-builder`.
+Tool tasks also pass arguments through: `go tool task jsonnetfmt -- -i` formats the built-in pipeline file.
+`go tool task buildctl -- --help` exposes the Go-managed BuildKit client while builds continue to use Docker Buildx.
+`go tool task release` runs gorelease for Go module compatibility checks, not binary asset publication.
 
 ### Running haproxy binary image
 
@@ -97,10 +96,6 @@ docker run --rm \
 +-- cmd/                    # Source download and manifest query commands
 |   +-- download/           # Source download command
 |   +-- metadata/           # Manifest/version metadata query command
-|   +-- package-release/    # Metadata-selected release packaging
-|   +-- release-guard/      # Release tag validation
-|   +-- release-resolve/    # Tag-to-target resolution
-|   +-- release-publish/    # go-github release publication
 +-- internal/               # Shared manifest parser
 +-- .github/workflows/      # Release and contributor workflows
 +-- .gitlab/ci/             # GitLab child pipeline generator
@@ -125,6 +120,10 @@ Follow the [contribution guide](.github/CONTRIBUTING.md) for documentation style
 ### Dependency Updates
 
 `metadata.json` defines source versions and build image versions for every target.
+Each target's `env` declares `"UBI10_MINIMAL_VERSION": "10.2"`.
+`.github/build.sh` reads it with `go tool task manifest -- get-env <target>` and passes it to Docker Buildx as `--build-arg=UBI10_MINIMAL_VERSION=10.2`.
+Each Dockerfile declares `ARG UBI10_MINIMAL_VERSION` and consumes the value in `FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify`.
+The registry-implicit `redhat/ubi10-minimal` reference resolves through Docker Hub.
 Use the latest supported LTS release when upstream provides an LTS series.
 Use the supported stable release when upstream does not provide an LTS series.
 For nginx, follow the stable release series.
@@ -134,7 +133,7 @@ Do not pin dependencies with commit hashes or container image digests.
 The downloader refreshes branch archives on every call and reuses cached release archives.
 Concurrent branch downloads use a lock for each destination.
 Lock waits stop after 60 seconds.
-Run `go tool task build TARGET=<target>` for each affected target before creating release tags.
+Run `go tool task build -- <target>` for each affected target before creating release tags.
 
 Upstream projects use different support policies.
 The following policies guide version selection.
@@ -230,7 +229,8 @@ Each target must follow this structure:
 5. Verify: Targets are loaded from `metadata.json`.
 
 6. Extend the tag trigger filter in [.github/workflows/release-from-tag.yaml](.github/workflows/release-from-tag.yaml) with the target's `tag_prefix` followed by `-*`.
-   The existing `resolve-target` job derives target selection from `metadata.json` through `go tool task manifest QUERY=get-target-from-tag VALUE=<tag>` and validates the tag with `go tool task release-guard TARGET=<target> TAG=<tag>`.
+   The `resolve-target` job derives target selection from `metadata.json` through `go tool task manifest -- get-target-from-tag <tag>`.
+   The reusable release workflow validates the tag against the manifest-selected prefix and official version.
    Keep that resolution job and its reusable release call unchanged.
    Release file selection and official versions also come from `metadata.json`.
 
@@ -243,7 +243,7 @@ Each target must follow this structure:
 
    Add this filter to the existing `on.push.tags` list rather than replacing the caller workflow.
 
-7. Validate: Run `go tool task build TARGET=your-target` to verify the download and build flow works.
+7. Validate: Run `go tool task build -- your-target` to verify the download and build flow works.
 
 ### Allowed Target-Specific Variations
 
@@ -263,8 +263,8 @@ Targets share the same root contract, but some targets vary in builder image, re
 
 ### Contributor checks
 
-Run `go tool task test-go` and `pnpm check` for the surviving Go commands and contributor tools.
-Go lint uses standard `go tool task lint-go` checks, and shell formatting uses `go tool task shfmt-check` through Task.
+Run `go test ./...` and `pnpm check` for the surviving Go commands and contributor tools.
+Go lint uses `go tool task golangci-lint -- run ./...` checks, and shell formatting uses `go tool task shfmt -- -d -i 2 -ci` through Task.
 Builds verify artifacts in Dockerfile stages without per-target verify scripts or separate runtime harnesses.
 Contributor checks do not establish runtime acceptance of the custom healthcheck module.
 
@@ -298,7 +298,7 @@ Target selection, tag-prefix exceptions, release-file selection, and tag-version
 2. Test build: Verify that build works locally:
 
    ```bash
-   go tool task build TARGET=your-target
+   go tool task build -- your-target
    ```
 
 3. Commit version updates with a title and an explanatory body.
@@ -348,7 +348,7 @@ Invalid examples:
 
 ## How It Works
 
-1. Task runs `go tool task download TARGET=<target>` to resolve the target's download resources from `metadata.json` before starting the build.
+1. Task runs `go tool task download -- <target>` to resolve the target's download resources from `metadata.json` before starting the build.
 2. The shell build entrypoint invokes Docker Buildx directly to execute the multi-stage Dockerfile.
 3. Built artifacts go to `.out/<target>/` for both local builds and CI.
 4. Each target verifies built artifacts in its Dockerfile before exporting its `scratch` stage.
@@ -387,23 +387,23 @@ Selected release contents:
 ## GitLab CI
 
 - Configure the GitLab project to use `.gitlab-ci.yaml` as its custom CI/CD configuration path after merge.
-- The GitLab check job runs the complete contributor check entrypoint before package generation and retains the manual parent trigger for publication.
+- The GitLab check job runs Go-managed contributor checks before package generation and retains the manual parent trigger.
 - GitLab pipelines on `main` and `feature/*` generate a child configuration with `.gitlab/ci/package-pipeline.jsonnet`.
 - One manual parent trigger starts the child pipeline, which builds and publishes its selected targets automatically.
 - The package component uses `golang:alpine` and invokes the Buildx shell entrypoint through Task with a TLS-enabled Docker service.
-- When `curl` is absent, `go tool task download TARGET=<target>` uses the image's BusyBox `wget` and `timeout` fallback.
+- When `curl` is absent, `go tool task download -- <target>` uses the image's BusyBox `wget` and `timeout` fallback.
 - Contributor validation and pipeline generation use `golang:alpine` with Go's default `GOTOOLCHAIN=auto` behavior honoring the `go.mod` directive.
 - The prepare job exports the rendered child pipeline, and package jobs invoke named Taskfile tasks without a separate toolchain download.
 - GitLab package builds retain artifacts without custom publisher jobs.
-- GitLab contributor validation runs Go tests, golangci-lint, shell formatting, Jsonnet, code-fence, and relative-link checks directly without installing Node or pnpm.
+- GitLab contributor validation runs Go tests, golangci-lint, shell formatting, and Jsonnet checks directly without installing Node or pnpm.
 - The Node and pnpm contributor suite remains in the existing GitHub workflow and local hooks.
 - The package component installs Docker CLI and Buildx from Alpine packages.
 - The runner must provide the Docker service and its shared TLS certificate directory without disabling TLS or build sandbox protections.
 - `feature/*` branches append `-beta` to the package version.
-- Release publication remains in the existing Go release tool on GitHub.
+- Release publication uses the GitHub CLI in the GitHub release workflow.
 - The generated child pipeline includes the local component at `templates/static-release.yml`.
 - GitLab component discovery requires the conventional `templates/*.yml` filename, so `templates/static-release.yml` remains the supported exception to the `.yaml` filename rule.
 - The parent configuration uses the supported custom configuration path documented by [GitLab](https://docs.gitlab.com/ci/pipelines/settings/#specify-a-custom-cicd-configuration-file), while the local component follows [GitLab's component discovery convention](https://docs.gitlab.com/ci/components/).
-- GitHub release packaging and GitLab package generation both reuse `go tool task package-release TARGET=<target> PACKAGE=<name>`.
-GitHub publishing uses go-github with `GH_TOKEN` and `GH_REPO`, falling back to `GITHUB_REPOSITORY` for the repository binding.
-A missing release is created only after HTTP 404, and an existing archive asset is replaced before upload.
+- GitHub release packaging and GitLab package generation query `go tool task manifest -- get-release-files <target>` and archive those paths with `tar`.
+GitHub publishing uses `gh` with `GH_TOKEN` and `GH_REPO`.
+A missing release is created only after HTTP 404, and an existing archive asset is replaced with `gh release upload --clobber`.

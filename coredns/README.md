@@ -53,7 +53,7 @@ Task downloads the inputs before invoking the Docker Buildx entrypoint, includin
 These commands assume the default output directory and must be adjusted if `BUILD_OUTPUT_DEST` is overridden.
 
 ```bash
-go tool task build TARGET=coredns
+go tool task build -- coredns
 ./.out/coredns/coredns -version
 ./.out/coredns/coredns -plugins
 ```

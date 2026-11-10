@@ -61,7 +61,7 @@ Task downloads the inputs before invoking the Docker Buildx entrypoint, includin
 These commands assume the default output directory and must be adjusted if `BUILD_OUTPUT_DEST` is overridden.
 
 ```bash
-go tool task build TARGET=monit
+go tool task build -- monit
 ./.out/monit/bin/monit -V
 ./.out/monit/bin/monit -h
 ```
@@ -126,7 +126,7 @@ procmatch <pattern>   - Test process matching pattern
 Build monit and inspect the feature set:
 
 ```bash
-CI= GITHUB_ACTIONS= go tool task build TARGET=monit
+CI= GITHUB_ACTIONS= go tool task build -- monit
 ./.out/monit/bin/monit -V
 ./.out/monit/bin/monit -h
 ```

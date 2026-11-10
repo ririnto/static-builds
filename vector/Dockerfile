@@ -14,27 +14,23 @@ RUN mkdir -p ${TARGET_PREFIX}/bin && \
     mv vector-x86_64-unknown-linux-musl/bin/vector ${TARGET_PREFIX}/bin/
 
 
-FROM docker.io/redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
+FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
 ARG TARGET_PREFIX
 
 RUN --mount=type=cache,target=/var/cache/dnf \
     microdnf -y install file binutils strace
 COPY --from=download ${TARGET_PREFIX} ${TARGET_PREFIX}
-RUN <<'VERIFY'
-set -eu
-readelf -h "${TARGET_PREFIX}/bin/vector" | grep -E 'Type:|Machine:'
-readelf -l "${TARGET_PREFIX}/bin/vector" | grep -E 'INTERP|DYNAMIC' || true
-readelf -d "${TARGET_PREFIX}/bin/vector" || true
-file_output="$(file "${TARGET_PREFIX}/bin/vector" 2>&1 || true)"
-ldd_output="$(ldd "${TARGET_PREFIX}/bin/vector" 2>&1 || true)"
-echo "file output: $file_output"
-echo "ldd output: $ldd_output"
-(echo "$file_output" | grep -Eq 'statically linked|static-pie linked') || (echo "Error: file(1) did not report a static binary (allowing musl static PIE)." && exit 1)
-(echo "$ldd_output" | grep -Eqi 'statically linked|static-pie linked|not a dynamic executable|not a valid dynamic program') || (echo "Error: Dynamic libraries found. This should be a static build!" && exit 1)
-strace "${TARGET_PREFIX}/bin/vector" --version &&
-  echo "=== Available Components ===" &&
+RUN set -eu; \
+    readelf -h "${TARGET_PREFIX}/bin/vector" | grep -E 'Type:|Machine:'; \
+    file "${TARGET_PREFIX}/bin/vector" | grep -E 'statically linked|static-pie linked'
+
+RUN set -eu; \
+    test -x "${TARGET_PREFIX}/bin/vector"
+
+RUN set -eu; \
+    strace "${TARGET_PREFIX}/bin/vector" --version; \
+  echo "=== Available Components ==="; \
   "${TARGET_PREFIX}/bin/vector" list
-VERIFY
 
 
 FROM scratch

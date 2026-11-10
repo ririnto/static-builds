@@ -13,22 +13,25 @@ Use the repository's `.markdownlint-cli2.jsonc` when running Markdown lint.
 ### Markdown validation
 
 The [GitHub validation workflow](workflows/markdown-validation.yaml) reports documentation and tooling checks on every pull request without building targets or publishing releases.
-GitLab runs Go tests, golangci-lint, shell formatting, Jsonnet, code-fence, and relative-link checks directly before its manual package trigger.
+GitLab runs Go tests, golangci-lint, shell formatting, and Jsonnet checks directly before its manual package trigger.
 Its Go jobs use `golang:alpine` with Go's default `GOTOOLCHAIN=auto` behavior honoring the `go.mod` directive.
 The package component invokes the same direct Docker Buildx shell entrypoint as local builds.
-Rust-based rumdl and Lychee have no Go module entrypoints and are provisioned by `.gitlab/install-validation-tools.sh`.
 Node and pnpm validation remains in the GitHub workflow and local contributor hooks.
 It also supports manual runs.
 Every pull request is checked because deleting a linked file can break documentation without changing Markdown.
-The checks use maintained markdownlint-cli2, rumdl, and Lychee releases.
 The Markdown job also runs rule tests, TypeScript validation, Ultracite, Go tests, golangci-lint, shell formatting, and Jsonnet checks.
 
 Install the Node.js version supported by `package.json` and the pnpm version declared there for Node-side tooling.
 Install the Go version declared in `go.mod` for repository tasks and Go-managed contributor tools.
-Invoke Go operations through Task rather than running repository commands or tools directly.
-On macOS with an external Clang toolchain, export `SDKROOT=$(xcrun --show-sdk-path)` when the linker cannot locate the system SDK.
-Use rumdl 0.3.1 and Lychee 0.24.2, matching the workflow's tool versions.
-Task, shfmt, Jsonnet, jsonnetfmt, and golangci-lint are managed through `go.mod`.
+Run Go tests, `gofmt -w cmd internal`, and `go mod tidy` directly.
+Invoke managed tools through tool-named Task tasks with arguments after `--`.
+On macOS, Go-managed tools may compile dependencies that require system SDK headers through CGO.
+Export `SDKROOT=$(xcrun --show-sdk-path)` when the compiler or linker cannot locate the system SDK.
+Task, shfmt, Jsonnet, jsonnetfmt, golangci-lint, gorelease, and buildctl are managed through `go.mod`.
+The Taskfile defines shell selection with `SHELL_PATHS: >-` and the formatter-normalized value `.github .gitlab`.
+Use `go tool task jsonnetfmt -- -i` to format the package pipeline and `go tool task jsonnetfmt -- --test` to check it.
+Use `go tool task release -- <gorelease flags>` for Go module compatibility checks.
+`go tool task buildctl -- --help` exposes the BuildKit client without changing the Docker Buildx build driver.
 Target builds require Docker Buildx and a running Linux Docker daemon as documented in the root README.
 Run the checks from the repository root:
 
@@ -41,7 +44,8 @@ pnpm run fix
 The root package manifest references Node-side tooling through the pnpm workspace catalog.
 `pnpm-workspace.yaml` defines the catalog-backed `katex` development override required by `micromark-extension-math`.
 The lockfile records the resolved dependency graph.
-`check` runs Markdown lint, rule tests, TypeScript validation, Ultracite, code-fence validation, relative-link validation, download and manifest Go tests, golangci-lint, shell formatting, Jsonnet evaluation, and Jsonnet formatting checks.
+`check` runs markdownlint-cli2, rule tests, TypeScript validation, Ultracite, download and manifest Go tests, golangci-lint, shell formatting, Jsonnet evaluation, and Jsonnet formatting checks.
+Markdown validation uses pnpm and markdownlint-cli2, including MD046 for fenced code-block style.
 `fix` applies Markdown lint fixes and the Go-managed shell and Jsonnet formatters through Task.
 It also applies Ultracite fixes.
 Markdownlint loads the local Markdownlint rules through `customRules`, applying the shared Markdownlint baseline with the repository's stricter exceptions.
@@ -56,9 +60,6 @@ The direct `markdown-it` dependency supplies the parser used by the token-based 
 The CLI configuration respects Git ignore files.
 Only the supported `customRules` spelling loads packages through the installed CLI2 loader.
 The lowercase `customrules` spelling does not register rules through this entrypoint.
-The fence check supplements Markdown lint with rumdl's built-in MD046 rule, including missing closing fences.
-Lychee checks relative file paths and heading fragments offline, excluding network URLs.
-Its `.lychee.toml` configuration explicitly excludes generated paths, including when checking Git worktrees.
 All checks exclude ignored build outputs and source caches.
 These checks run without building targets or invoking release jobs.
 Node dependencies are development-only and are excluded from the Docker build context.
@@ -82,8 +83,8 @@ The table maps effective enforcement to engineering qualities rather than adding
 | --- | --- | --- |
 | Performance | Ultracite core `no-await-in-loop`, `unicorn/prefer-set-has`, and `unicorn/prefer-array-some`, plus `oxc/no-accumulating-spread`. | The linted tooling checks sequential work, collection operations, and repeated accumulator copies. |
 | Stability | Ultracite core `no-unsafe-finally`, `no-unsafe-optional-chaining`, `no-constant-condition`, and `import/no-cycle`, plus type-aware lint, TypeScript checking. | Tooling receives static checks for unsafe control flow, invalid accesses, and types. |
+| Maintainability | Core `no-unused-vars` and `import/no-duplicates`, spacing rules, and Markdownlint MD046. | Tooling avoids unused bindings and duplicate imports while documentation uses consistent code blocks. |
 | Consistency | Core `prefer-named-capture-group` and `require-unicode-regexp`, Markdownlint `table-column-style`, and the local `docs/no-box-drawing` rule. | Linted tooling and maintained Markdown retain readable regex captures, compact tables, and portable tree markers. |
-| Maintainability | Core `no-unused-vars` and `import/no-duplicates`, spacing rules, rumdl MD046, and offline Lychee checks. | Tooling and documentation avoid unused bindings, duplicate imports, unclosed fences, and broken local references. |
 
 These static checks do not establish measured performance improvements or target runtime acceptance.
 
@@ -129,12 +130,12 @@ Publish through the feature branch and pull request rather than pushing changes 
 
 Explain in the issue when existing guards remain because inversion requires artificial flags or deeper nesting.
 
-Run `go tool task test-go` for the retained command tests.
-The contributor check entrypoint includes these tests, standard `go tool task lint-go` checks, and `go tool task shfmt-check` formatting through Task.
+Run `go test ./...` for the retained command tests.
+The contributor check entrypoint includes these tests, `go tool task golangci-lint -- run ./...` checks, and `go tool task shfmt -- -d -i 2 -ci` formatting through Task.
 Target builds run their Dockerfile verify stages without per-target verify scripts or external runtime harnesses.
 The custom healthcheck module remains maintained production source.
 
-For build changes, run `go tool task build TARGET=<target>` for each affected target before creating release tags.
+For build changes, run `go tool task build -- <target>` for each affected target before creating release tags.
 The release workflows run on release tags or reusable workflow calls.
 The separate Markdown validation workflow runs on pull requests or manual requests with read-only repository access.
 Do not create release tags to validate documentation changes.

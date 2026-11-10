@@ -27,8 +27,12 @@ spec:
     - apk add --no-cache ca-certificates git docker-cli docker-cli-buildx
     - docker buildx create --use --driver docker-container
   script:
-    - go tool task build TARGET="$[[ inputs.target ]]"
-    - go tool task package-release TARGET="$[[ inputs.target ]]" PACKAGE="$[[ inputs.package_name ]]"
+    - go tool task build -- "$[[ inputs.target ]]"
+    - |-
+      files=$(mktemp)
+      trap 'rm -f "$files"' EXIT
+      go tool task manifest -- get-release-files "$[[ inputs.target ]]" > "$files"
+      tar -czvf "$[[ inputs.package_name ]].tar.gz" -C ".out/$[[ inputs.target ]]" -T "$files"
   artifacts:
     paths:
       - ".out/$[[ inputs.target ]]/"

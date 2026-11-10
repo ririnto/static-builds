@@ -40,7 +40,7 @@ curl http://127.0.0.1:18081/njs
 ```
 
 The Dockerfile verifies static linking and njs HTTP and stream execution before exporting the binary and scripting examples.
-Run `go tool task shfmt-check` from the repository root to check maintained shell formatting.
+Run `go tool task shfmt -- -d -i 2 -ci` from the repository root to check maintained shell formatting.
 
 ## How to Verify
 
@@ -72,7 +72,7 @@ Task downloads the inputs before invoking Docker Buildx directly.
 These commands assume the default output directory and must be adjusted if `BUILD_OUTPUT_DEST` is overridden.
 
 ```bash
-go tool task build TARGET=nginx
+go tool task build -- nginx
 ./.out/nginx/sbin/nginx -V 2>&1
 ```
 

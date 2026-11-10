@@ -59,7 +59,7 @@ if [ ! -f "${ROOT_DIR}/${TARGET}/Dockerfile" ]; then
   exit 1
 fi
 cd "${ROOT_DIR}"
-METADATA_ENV=$(go tool task manifest QUERY=get-env "VALUE=${TARGET}")
+METADATA_ENV=$(go tool task manifest -- get-env "${TARGET}")
 BUILDKIT_PLATFORM="${BUILDKIT_PLATFORM:-linux/amd64}"
 BUILDKIT_CACHE_BACKEND="${BUILDKIT_CACHE_BACKEND:-local}"
 BUILDKIT_NETWORK="${BUILDKIT_NETWORK:-default}"
