@@ -19,6 +19,9 @@ changelog:
   disable: true
 
 release:
+  name_template: "{{ .Env.TAG }}"
+  draft: false
+  prerelease: "false"
   extra_files:
     - glob: ".out/release-package/{{ .Env.TAG }}.tar.gz"
   replace_existing_artifacts: true

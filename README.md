@@ -432,4 +432,6 @@ Selected release contents:
 
 GitHub publishing uses GoReleaser with `GITHUB_TOKEN`.
 GoReleaser creates the release or replaces its existing archive asset.
+The configuration uses the tag as the release title and publishes releases with `draft: false` and `prerelease: "false"`.
+Reruns apply this configuration to existing releases.
 The workflow validates the repository tag format before using GoReleaser with `--skip=validate` for target-prefixed tags.
