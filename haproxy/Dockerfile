@@ -371,15 +371,12 @@ ARG TARGET_PREFIX
 RUN --mount=type=cache,target=/var/cache/dnf \
     microdnf -y install file binutils strace
 COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
-RUN set -eu; \
-    readelf -h "${TARGET_PREFIX}/sbin/haproxy" | grep -E 'Type:|Machine:'; \
-    file "${TARGET_PREFIX}/sbin/haproxy" | grep -E 'statically linked|static-pie linked'
+RUN readelf -h "${TARGET_PREFIX}/sbin/haproxy" | grep -E 'Type:|Machine:'
+RUN file "${TARGET_PREFIX}/sbin/haproxy" | grep -E 'statically linked|static-pie linked'
 
-RUN set -eu; \
-    test -x "${TARGET_PREFIX}/sbin/haproxy"
+RUN test -x "${TARGET_PREFIX}/sbin/haproxy"
 
-RUN set -eu; \
-    strace "${TARGET_PREFIX}/sbin/haproxy" -vv
+RUN strace "${TARGET_PREFIX}/sbin/haproxy" -vv
 
 
 FROM scratch

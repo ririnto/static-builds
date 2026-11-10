@@ -40,15 +40,12 @@ ARG TARGET_PREFIX
 RUN --mount=type=cache,target=/var/cache/dnf \
     microdnf -y install file binutils strace
 COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
-RUN set -eu; \
-    readelf -h "${TARGET_PREFIX}/bin/monit" | grep -E 'Type:|Machine:'; \
-    file "${TARGET_PREFIX}/bin/monit" | grep -E 'statically linked|static-pie linked'
+RUN readelf -h "${TARGET_PREFIX}/bin/monit" | grep -E 'Type:|Machine:'
+RUN file "${TARGET_PREFIX}/bin/monit" | grep -E 'statically linked|static-pie linked'
 
-RUN set -eu; \
-    test -x "${TARGET_PREFIX}/bin/monit"
+RUN test -x "${TARGET_PREFIX}/bin/monit"
 
-RUN set -eu; \
-    strace "${TARGET_PREFIX}/bin/monit" -V
+RUN strace "${TARGET_PREFIX}/bin/monit" -V
 
 
 FROM scratch

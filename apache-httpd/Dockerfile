@@ -295,20 +295,15 @@ ARG TARGET_PREFIX
 RUN --mount=type=cache,target=/var/cache/dnf \
     microdnf -y install file binutils strace
 COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
-RUN set -eu; \
-    readelf -h "${TARGET_PREFIX}/bin/httpd" | grep -E 'Type:|Machine:'; \
-    file "${TARGET_PREFIX}/bin/httpd" | grep -E 'statically linked|static-pie linked'
+RUN readelf -h "${TARGET_PREFIX}/bin/httpd" | grep -E 'Type:|Machine:'
+RUN file "${TARGET_PREFIX}/bin/httpd" | grep -E 'statically linked|static-pie linked'
 
-RUN set -eu; \
-    test -x "${TARGET_PREFIX}/bin/httpd"; \
-    test -x "${TARGET_PREFIX}/bin/rotatelogs"
+RUN test -x "${TARGET_PREFIX}/bin/httpd"
+RUN test -x "${TARGET_PREFIX}/bin/rotatelogs"
 
-RUN set -eu; \
-    strace "${TARGET_PREFIX}/bin/httpd" -V; \
-  echo "=== Static Modules (-l) ==="; \
-  "${TARGET_PREFIX}/bin/httpd" -l; \
-  echo "=== Loaded Modules (-M) ==="; \
-  "${TARGET_PREFIX}/bin/httpd" -M
+RUN strace "${TARGET_PREFIX}/bin/httpd" -V
+RUN "${TARGET_PREFIX}/bin/httpd" -l
+RUN "${TARGET_PREFIX}/bin/httpd" -M
 
 
 FROM scratch

@@ -81,21 +81,19 @@ ARG TARGET_PREFIX
 RUN --mount=type=cache,target=/var/cache/dnf \
     microdnf -y install file binutils strace openssl
 COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
-RUN set -eu; \
-    readelf -h "${TARGET_PREFIX}/sbin/nginx" | grep -E 'Type:|Machine:'; \
-    file "${TARGET_PREFIX}/sbin/nginx" | grep -E 'statically linked|static-pie linked'
+RUN readelf -h "${TARGET_PREFIX}/sbin/nginx" | grep -E 'Type:|Machine:'
+RUN file "${TARGET_PREFIX}/sbin/nginx" | grep -E 'statically linked|static-pie linked'
 
-RUN set -eu; \
-    test -x "${TARGET_PREFIX}/sbin/nginx"; \
-    test -r "${TARGET_PREFIX}/conf/scripting.conf"; \
-    test -r "${TARGET_PREFIX}/conf/scripting.js"; \
-    test -r "${TARGET_PREFIX}/conf/upstream-healthcheck.conf"; \
-    test -r "${TARGET_PREFIX}/README.md"
+RUN test -x "${TARGET_PREFIX}/sbin/nginx"
+RUN test -r "${TARGET_PREFIX}/conf/scripting.conf"
+RUN test -r "${TARGET_PREFIX}/conf/scripting.js"
+RUN test -r "${TARGET_PREFIX}/conf/upstream-healthcheck.conf"
+RUN test -r "${TARGET_PREFIX}/README.md"
 
 RUN strace "${TARGET_PREFIX}/sbin/nginx" -V
 RUN "${TARGET_PREFIX}/sbin/nginx" -t -c conf/scripting.conf
 
-RUN set -eu; \
+RUN set -e; \
     nginx_pid=; \
     response_file=$(mktemp /tmp/njs-result.XXXXXX); \
     cleanup() { \
@@ -134,15 +132,15 @@ ENTRYPOINT ["/sbin/nginx", "-p", "/", "-g", "daemon off;"]
 
 FROM verify AS verify-runtime
 COPY --from=runtime / /runtime/
-RUN set -eu; \
-    chroot /runtime /sbin/nginx -p / -t; \
+RUN chroot /runtime /sbin/nginx -p / -t
+RUN set -e; \
     openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj /CN=healthcheck-build-ca \
     -keyout /tmp/healthcheck-build-ca.key -out /runtime/conf/backend-ca.pem; \
     printf '127.0.0.1 maintenance.internal\n' >/runtime/etc/hosts; \
     chroot /runtime /sbin/nginx -p / -t -c conf/upstream-healthcheck.conf; \
     rm -f /tmp/healthcheck-build-ca.key /runtime/conf/backend-ca.pem /runtime/etc/hosts;
 
-RUN set -eu; \
+RUN set -e; \
     server_pid=; \
     response_file=$(mktemp /tmp/healthcheck-startup.XXXXXX); \
     cleanup() { \

@@ -30,17 +30,13 @@ ARG TARGET_PREFIX
 RUN --mount=type=cache,target=/var/cache/dnf \
     microdnf -y install file binutils strace
 COPY --from=build /build/coredns-${COREDNS_VERSION}/coredns ${TARGET_PREFIX}/coredns
-RUN set -eu; \
-    readelf -h "${TARGET_PREFIX}/coredns" | grep -E 'Type:|Machine:'; \
-    file "${TARGET_PREFIX}/coredns" | grep -E 'statically linked|static-pie linked'
+RUN readelf -h "${TARGET_PREFIX}/coredns" | grep -E 'Type:|Machine:'
+RUN file "${TARGET_PREFIX}/coredns" | grep -E 'statically linked|static-pie linked'
 
-RUN set -eu; \
-    test -x "${TARGET_PREFIX}/coredns"
+RUN test -x "${TARGET_PREFIX}/coredns"
 
-RUN set -eu; \
-    strace "${TARGET_PREFIX}/coredns" -version; \
-  echo "=== Installed Plugins ==="; \
-  "${TARGET_PREFIX}/coredns" -plugins
+RUN strace "${TARGET_PREFIX}/coredns" -version
+RUN "${TARGET_PREFIX}/coredns" -plugins
 
 
 FROM scratch

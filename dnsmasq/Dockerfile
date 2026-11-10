@@ -30,16 +30,13 @@ ARG DNSMASQ_VERSION
 RUN --mount=type=cache,target=/var/cache/dnf \
     microdnf -y install file binutils strace
 COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
-RUN set -eu; \
-    readelf -h "${TARGET_PREFIX}/sbin/dnsmasq" | grep -E 'Type:|Machine:'; \
-    file "${TARGET_PREFIX}/sbin/dnsmasq" | grep -E 'statically linked|static-pie linked'
+RUN readelf -h "${TARGET_PREFIX}/sbin/dnsmasq" | grep -E 'Type:|Machine:'
+RUN file "${TARGET_PREFIX}/sbin/dnsmasq" | grep -E 'statically linked|static-pie linked'
 
-RUN set -eu; \
-    test -x "${TARGET_PREFIX}/sbin/dnsmasq"
+RUN test -x "${TARGET_PREFIX}/sbin/dnsmasq"
 
-RUN set -eu; \
-    strace "${TARGET_PREFIX}/sbin/dnsmasq" -v; \
-  "${TARGET_PREFIX}/sbin/dnsmasq" -v | grep -F "Dnsmasq version ${DNSMASQ_VERSION} "
+RUN strace "${TARGET_PREFIX}/sbin/dnsmasq" -v
+RUN "${TARGET_PREFIX}/sbin/dnsmasq" -v | grep -F "Dnsmasq version ${DNSMASQ_VERSION} "
 
 
 FROM scratch
