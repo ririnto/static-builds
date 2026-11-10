@@ -91,7 +91,8 @@ Keep custom Markdownlint rules under `rules/`.
 
 - Keep target build and configure commands inside each target Dockerfile.
 - Keep built-artifact verification inside Dockerfile verify stages rather than external scripts or harnesses.
-- Verify static linking for every metadata-selected release binary and reserve functional verification for `nginx-upstream-healthcheck`.
+- Retain `readelf`, `file`, executable permission checks, and `strace` version execution in every target verify stage.
+- Reserve application functional verification for `nginx-upstream-healthcheck`.
 
 ## Documentation
 

@@ -25,11 +25,12 @@ FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
 ARG COREDNS_VERSION
 ARG TARGET_PREFIX
 RUN --mount=type=cache,target=/var/cache/dnf \
-    microdnf -y install file binutils
+    microdnf -y install file binutils strace
 COPY --from=build /build/coredns-${COREDNS_VERSION}/coredns ${TARGET_PREFIX}/coredns
 RUN readelf -h "${TARGET_PREFIX}/coredns" | grep -E 'Type:|Machine:'
 RUN file "${TARGET_PREFIX}/coredns" | grep -E 'statically linked|static-pie linked'
 RUN test -x "${TARGET_PREFIX}/coredns"
+RUN strace "${TARGET_PREFIX}/coredns" -version
 
 FROM scratch
 

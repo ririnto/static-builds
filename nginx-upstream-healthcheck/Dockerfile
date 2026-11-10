@@ -76,7 +76,7 @@ COPY nginx-upstream-healthcheck/README.md ${TARGET_PREFIX}/README.md
 FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
 ARG TARGET_PREFIX
 RUN --mount=type=cache,target=/var/cache/dnf \
-    microdnf -y install binutils curl-minimal file openssl
+    microdnf -y install binutils curl-minimal file openssl strace
 COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
 RUN readelf -h "${TARGET_PREFIX}/sbin/nginx" | grep -E 'Type:|Machine:'
 RUN file "${TARGET_PREFIX}/sbin/nginx" | grep -E 'statically linked|static-pie linked'
@@ -85,6 +85,7 @@ RUN test -r "${TARGET_PREFIX}/conf/scripting.conf"
 RUN test -r "${TARGET_PREFIX}/conf/scripting.js"
 RUN test -r "${TARGET_PREFIX}/conf/upstream-healthcheck.conf"
 RUN test -r "${TARGET_PREFIX}/README.md"
+RUN strace "${TARGET_PREFIX}/sbin/nginx" -V
 
 FROM scratch AS runtime
 

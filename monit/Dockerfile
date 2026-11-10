@@ -36,11 +36,12 @@ RUN gcc -static -static-pie -o ${TARGET_PREFIX}/bin/monit \
 FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
 ARG TARGET_PREFIX
 RUN --mount=type=cache,target=/var/cache/dnf \
-    microdnf -y install file binutils
+    microdnf -y install file binutils strace
 COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
 RUN readelf -h "${TARGET_PREFIX}/bin/monit" | grep -E 'Type:|Machine:'
 RUN file "${TARGET_PREFIX}/bin/monit" | grep -E 'statically linked|static-pie linked'
 RUN test -x "${TARGET_PREFIX}/bin/monit"
+RUN strace "${TARGET_PREFIX}/bin/monit" -V
 
 FROM scratch
 

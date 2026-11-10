@@ -298,11 +298,12 @@ RUN make install \
 FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
 ARG TARGET_PREFIX
 RUN --mount=type=cache,target=/var/cache/dnf \
-    microdnf -y install file binutils
+    microdnf -y install file binutils strace
 COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
 RUN readelf -h "${TARGET_PREFIX}/sbin/haproxy" | grep -E 'Type:|Machine:'
 RUN file "${TARGET_PREFIX}/sbin/haproxy" | grep -E 'statically linked|static-pie linked'
 RUN test -x "${TARGET_PREFIX}/sbin/haproxy"
+RUN strace "${TARGET_PREFIX}/sbin/haproxy" -vv
 
 FROM scratch
 
