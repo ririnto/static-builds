@@ -137,7 +137,7 @@ func TestDockerRunner(t *testing.T) {
 		t.Fatal(err)
 	}
 	directory := t.TempDir()
-	runner := filepath.Join(directory, "healthcheck-docker")
+	runner := filepath.Join(directory, "run-docker")
 	if output, err := exec.Command("go", "build", "-o", runner, ".").CombinedOutput(); err != nil {
 		t.Fatalf("build: %v\n%s", err, output)
 	}
@@ -168,7 +168,7 @@ func TestDockerRunner(t *testing.T) {
 		name   string
 		status int
 	}{
-		{"success", 0}, {"load_error", 41}, {"create_error", 42}, {"load_signal", 143}, {"create_signal", 143}, {"foreign_image", 41}, {"foreign_container", 42}, {"suite_error", 17},
+		{"success", 0}, {"platform", 0}, {"load_error", 41}, {"create_error", 42}, {"load_signal", 143}, {"create_signal", 143}, {"foreign_image", 41}, {"foreign_container", 42}, {"suite_error", 17},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			statePath := filepath.Join(t.TempDir(), "state.json")
@@ -181,7 +181,11 @@ func TestDockerRunner(t *testing.T) {
 			}
 			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 			defer cancel()
-			command := exec.CommandContext(ctx, runner, input)
+			arguments := []string{input}
+			if test.name == "platform" {
+				arguments = []string{"--platform", "linux/arm64", input}
+			}
+			command := exec.CommandContext(ctx, runner, arguments...)
 			command.Dir = root
 			command.Env = append(os.Environ(), "PATH="+directory+string(os.PathListSeparator)+os.Getenv("PATH"), "HEALTHCHECK_DOCKER_FIXTURE="+statePath, "METADATA_PATH_OVERRIDE="+filepath.Join(root, "metadata.json"))
 			var stdout, stderr strings.Builder
@@ -212,6 +216,17 @@ func TestDockerRunner(t *testing.T) {
 			}
 			var image, owner string
 			for _, args := range state.Calls {
+				if len(args) > 0 && (args[0] == "create" || len(args) >= 2 && args[0] == "buildx" && args[1] == "build") {
+					platform := "linux/amd64"
+					if test.name == "platform" {
+						platform = "linux/arm64"
+					}
+					for i, arg := range args {
+						if arg == "--platform" && (i+1 == len(args) || args[i+1] != platform) {
+							t.Errorf("platform argument changed: %v", args)
+						}
+					}
+				}
 				if len(args) >= 2 && args[0] == "buildx" && args[1] == "build" {
 					for i, arg := range args[:len(args)-1] {
 						if arg == "--tag" {

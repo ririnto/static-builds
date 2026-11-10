@@ -35,7 +35,7 @@ Use a native worker or separately configured emulation when the worker architect
 The Taskfile writes artifacts to `.out/<target>/` and imports and exports local cache in `.cache/<target>/` by default.
 
 Python 3 is needed for `go tool task list-targets`, not for `go tool task build TARGET=<target>`.
-Task, Jsonnet, jsonnetfmt, buildctl, and buildkitd are managed through `go.mod`.
+Task, shfmt, Jsonnet, jsonnetfmt, buildctl, and buildkitd are managed through `go.mod`.
 The pnpm version declared in `package.json` provides equivalent package-script entrypoints.
 Target compilers and verification tools are installed or run in Dockerfile stages, so they are not host prerequisites.
 
@@ -443,7 +443,7 @@ Selected release contents:
 - Contributor validation and pipeline generation use `golang:alpine` with Go's default `GOTOOLCHAIN=auto` behavior honoring the `go.mod` directive.
 - The prepare job exports the rendered child pipeline, and package jobs invoke repository Go commands directly without a separate toolchain download.
 - Generated publisher jobs use plain Alpine with CA certificates and curl, preserving the Package Registry upload interface.
-- GitLab contributor validation runs Go tests, Jsonnet, code-fence, and relative-link checks directly without installing Node or pnpm.
+- GitLab contributor validation runs Go tests, ShellCheck, shell formatting, Jsonnet, code-fence, and relative-link checks directly without installing Node or pnpm.
 - The Node and pnpm contributor suite remains in the existing GitHub workflow and local hooks.
 - The generated publisher jobs install the current Alpine `curl` package before uploading artifacts.
 - The package component installs unpinned rootless runtime packages, provisions subordinate ID ranges for its non-root build user, and confines ownership changes to its job workspace.

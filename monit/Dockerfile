@@ -2,14 +2,6 @@ ARG ALPINE_VERSION
 ARG UBI10_MINIMAL_VERSION
 ARG TARGET_PREFIX=/home/nobody
 
-FROM --platform=$BUILDPLATFORM golang:1.27.3-alpine AS script-tools
-ARG TARGETOS TARGETARCH
-WORKDIR /src
-COPY go.mod go.sum ./
-COPY cmd/verify-monit/ ./cmd/verify-monit/
-RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -trimpath -ldflags='-s -w' -o /script-tools/verify-monit ./cmd/verify-monit
-
-
 FROM alpine:${ALPINE_VERSION} AS build
 ARG MONIT_VERSION
 ARG TARGET_PREFIX
@@ -47,8 +39,8 @@ ARG TARGET_PREFIX
 RUN --mount=type=cache,target=/var/cache/dnf \
     microdnf -y install file binutils strace
 COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
-COPY --from=script-tools /script-tools/verify-monit /usr/local/bin/
-RUN /usr/local/bin/verify-monit
+COPY monit/monit-verify.sh /usr/local/bin/
+RUN /usr/local/bin/monit-verify.sh
 
 
 FROM scratch

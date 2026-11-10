@@ -3,14 +3,6 @@ ARG UBI10_MINIMAL_VERSION
 ARG TARGET_PREFIX=/out
 
 
-FROM --platform=$BUILDPLATFORM golang:1.27.3-alpine AS script-tools
-ARG TARGETOS TARGETARCH
-WORKDIR /src
-COPY go.mod go.sum ./
-COPY cmd/verify-apache-exporter/ ./cmd/verify-apache-exporter/
-RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -trimpath -ldflags='-s -w' -o /script-tools/verify-apache-exporter ./cmd/verify-apache-exporter
-
-
 FROM golang:${GO_VERSION}-alpine AS build
 ARG APACHE_EXPORTER_VERSION
 ARG TARGET_PREFIX
@@ -37,8 +29,8 @@ ARG TARGET_PREFIX
 RUN --mount=type=cache,target=/var/cache/dnf \
     microdnf -y install file binutils strace
 COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
-COPY --from=script-tools /script-tools/verify-apache-exporter /usr/local/bin/
-RUN /usr/local/bin/verify-apache-exporter
+COPY apache-exporter/apache-exporter-verify.sh /usr/local/bin/
+RUN /usr/local/bin/apache-exporter-verify.sh
 
 
 FROM scratch
