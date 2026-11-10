@@ -5,6 +5,7 @@
   "scripts": {
     "build": "go tool task build",
     "check": "run-p check:*",
+    "check:branch-lock": "java -XX:+UseParallelGC -cp node_modules/tla-chaos-loop/tools/tla2tools.jar tlc2.TLC -workers 1 -metadir \"$(mktemp -d)\" -config .claude/skills/branch-download/references/model/BranchLock.cfg .claude/skills/branch-download/references/model/BranchLock.tla",
     "check:go": "go tool task test",
     "check:golangci-lint": "go tool task golangci-lint -- run ./...",
     "check:jsonnet": "run-p check:jsonnet:*",
@@ -25,8 +26,7 @@
     "pre-commit": "run-s check",
     "pre-push": "run-s check",
     "prepare": "husky",
-    "tasks": "go tool task",
-    "verify:branch-lock": "java -XX:+UseParallelGC -cp node_modules/tla-chaos-loop/tools/tla2tools.jar tlc2.TLC -workers 1 -metadir \"$(mktemp -d)\" -config .claude/skills/branch-download/references/model/BranchLock.cfg .claude/skills/branch-download/references/model/BranchLock.tla"
+    "tasks": "go tool task"
   },
   "devDependencies": {
     "@oxc-project/types": "catalog:",

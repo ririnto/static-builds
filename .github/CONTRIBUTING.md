@@ -19,10 +19,11 @@ The package component invokes the same direct Docker Buildx Taskfile entrypoint 
 Node and pnpm validation remains in the GitHub workflow and local contributor hooks.
 It also supports manual runs.
 Every pull request is checked because deleting a linked file can break documentation without changing Markdown.
-The Markdown job also runs rule tests, TypeScript validation, Ultracite, Go tests, golangci-lint, shell formatting, and Jsonnet checks.
+The Markdown job also runs rule tests, TypeScript validation, Ultracite, Go tests, golangci-lint, shell formatting, Jsonnet checks, and the branch-lock model.
 
 Install the Node.js version supported by `package.json` and the pnpm version declared there for Node-side tooling.
 Install the Go version declared in `go.mod` for repository tasks and Go-managed contributor tools.
+Install Java 25 or a compatible Java runtime for `pnpm run check:branch-lock`, which also runs through `pnpm check` and Git hooks.
 Use `go tool task test`, `go tool task fmt`, and `go tool task tidy`.
 Invoke managed tools through tool-named Task tasks with arguments after `--`.
 On macOS, Go-managed tools may compile dependencies that require system SDK headers through CGO.

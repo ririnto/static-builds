@@ -17,7 +17,7 @@ The `tla-chaos-loop` dependency supplies the TLC executable JAR.
 Run TLC from the repository root:
 
 ```sh
-pnpm run verify:branch-lock
+pnpm run check:branch-lock
 ```
 
 Check the command's exit status and invariant report.

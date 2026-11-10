@@ -33,6 +33,15 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Set up Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "25"
+
+      - name: Check branch lock model
+        run: pnpm run check:branch-lock
+
       - name: Check Markdown rules
         run: pnpm run check:markdownlint-cli2
 
