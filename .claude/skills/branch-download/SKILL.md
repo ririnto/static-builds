@@ -6,7 +6,8 @@ description: Check branch-download lock interruption and downloader deadline cle
 # Verify branch download cleanup
 
 Use this skill when changing branch lock ownership, signal handling, or wget deadlines in `cmd/download`.
-The model describes lock ownership and context cancellation in `cmd/download/main.go` at commit `97a39c220afb3338ef63583e0a7c31a22ad20fa3`.
+The model describes lock ownership and context cancellation in `cmd/download/main.go`.
+Compare its transitions with the current source before relying on a model result.
 
 ## Check the lock model
 
