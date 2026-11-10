@@ -251,8 +251,8 @@ For this target, `verify-runtime` also starts nginx inside a chroot of the scrat
 It checks the default configuration, fetches the default HTTP page, confirms a live master PID, and waits for graceful shutdown under a timeout.
 It also checks the packaged healthcheck configuration with a temporary CA at `/conf/backend-ca.pem` and removes that CA before export.
 The final stage exports that checked filesystem.
-Go build commands and fixture configurations live in separate source files rather than embedded Dockerfile or documentation scripts.
-The source-checkout verification commands below use Go commands and fixtures that are not included in release packages.
+Build and verification scripts and fixture configurations live in separate source files rather than embedded Dockerfile or documentation scripts.
+The source-checkout verification commands below use shell and Python harnesses and fixtures that are not included in release packages.
 The shared [nginx verification script](../nginx/nginx-verify.sh) and its [stream probe](../nginx/nginx-stream-read.sh) preserve the static-build verification contract.
 The [startup verifier](verify-startup.sh) checks the packaged runtime.
 Each HTTP probe has a 15-second GNU `timeout` deadline, with curl request limits of two seconds for the retrying probe and five seconds for the second probe.
@@ -262,17 +262,17 @@ The verifier reaps both supervisors and removes its temporary response file.
 The nginx supervisor also imposes a 40-second server lifetime bound.
 Run `go tool task lint` and `go tool task shfmt-check` from the repository root to check the maintained verification scripts.
 A full target build executes verification against the actual binary and packaged runtime without running the separate functional suite.
-The standalone suite lives under `cmd/run`, with configuration fixtures under `proxy/tests/fixtures/`.
-The `proxy/tests/fixtures/nginx.conf.template` file provides the functional configuration, and the Go runner generates certificate fixtures.
+The standalone suite lives under `proxy/tests/run.sh`, with configuration fixtures under `proxy/tests/fixtures/`.
+The `proxy/tests/fixtures/nginx.conf.template` file provides the functional configuration, and the shell runner generates certificate fixtures.
 
-Validate runner cleanup offline with `go tool task test-go`.
+Validate runner cleanup with `python3 proxy/tests/verify-runner.py` on non-root Linux.
 
-The Go check uses a local Docker CLI fixture to exercise partial creation, signal cleanup, ownership guards, and exit-status retention.
+The Python check uses a local Docker CLI fixture to exercise partial creation, signal cleanup, ownership guards, and exit-status retention.
 It runs offline without a Docker daemon.
 
 Run `go tool task test-healthcheck BINARY=.out/nginx-upstream-healthcheck/sbin/nginx` against an already-built Linux binary.
 
-The local runner needs Go, dnsmasq, OpenSSL, socat, and sleep.
+The local runner needs Bash, curl, date, dnsmasq, grep, mktemp, OpenSSL, sed, setsid, sleep, socat, tr, and wc.
 It creates loopback fixtures and certificate files under a temporary directory, then removes the fixture process groups and files on exit or signal.
 The fixtures cover HTTP and stream L4 connection results, verified TLS-only checks with no client application bytes, HTTPS status and timeout results, TLS protocol and certificate failures, stream TLS payload expectations, dynamic DNS replacement, fall/rise and recovery, IPv6, metrics visibility across workers, and VTS metrics.
 The suite also checks that HTTP and stream TLS configurations fail when either the TLS name or trusted CA is missing.

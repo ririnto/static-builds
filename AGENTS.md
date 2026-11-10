@@ -46,8 +46,9 @@ Keep custom Markdownlint rules under `rules/`.
 - Use Docker Buildx for native macOS builds.
 - Use `golang:alpine` for GitLab Go jobs and invoke repository commands directly with Go's default toolchain selection.
 - Follow EditorConfig with four-space indentation, except two spaces for shell and YAML files.
-- Keep target build helpers and proxy test orchestration in Go, with command directory names matching the original script basenames and unchanged argument forwarding.
-- Keep target verification in the maintained shell scripts and include those scripts in ShellCheck and shfmt coverage.
+- Keep public Go commands at the original function-level entrypoints and keep platform build adapters inside `cmd/build`.
+- Keep image build helpers, target verification, and proxy test orchestration in their maintained shell and Python files.
+- Include all maintained shell scripts in ShellCheck and shfmt coverage.
 - Use pnpm catalogs with `^x.y.z` caret ranges for Node dependencies and required overrides.
 - Reference catalog entries from `package.json` and overrides instead of duplicating versions.
 - Remove overrides when upstream dependencies select supported patched versions themselves.

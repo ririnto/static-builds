@@ -8,11 +8,9 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"os/signal"
 	"path/filepath"
 	"strconv"
 	"strings"
-	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -86,7 +84,7 @@ func wait(ctx context.Context, s *session) error {
 	}
 }
 
-func run(ctx context.Context, args []string) (err error) {
+func runDaemonless(ctx context.Context, args []string) (err error) {
 	if len(args) == 0 {
 		return fmt.Errorf("usage: build-daemonless <target> [buildctl build arguments...]")
 	}
@@ -323,37 +321,4 @@ func run(ctx context.Context, args []string) (err error) {
 		return err
 	}
 	return wait(ctx, client)
-}
-
-func main() {
-	ctx, cancel := context.WithCancel(context.Background())
-	signals := make(chan os.Signal, 1)
-	signal.Notify(signals, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM)
-	defer signal.Stop(signals)
-	done := make(chan struct{})
-	var signalStatus atomic.Int32
-	go func() {
-		select {
-		case received := <-signals:
-			signalStatus.Store(int32(128 + received.(syscall.Signal)))
-			cancel()
-		case <-done:
-		}
-	}()
-	err := run(ctx, os.Args[1:])
-	close(done)
-	status := 0
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "Error:", err)
-		status = 1
-		var exit *exec.ExitError
-		if errors.As(err, &exit) {
-			status = exit.ExitCode()
-		}
-	}
-	if errors.Is(err, context.Canceled) && signalStatus.Load() != 0 {
-		status = int(signalStatus.Load())
-	}
-	cancel()
-	os.Exit(status)
 }

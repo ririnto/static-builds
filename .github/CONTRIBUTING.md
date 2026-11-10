@@ -129,8 +129,10 @@ Publish through the feature branch and pull request rather than pushing changes 
 
 Explain in the issue when existing guards remain because inversion requires artificial flags or deeper nesting.
 
-Run `go tool task test-go` or `go test ./...` for metadata, download, release, build runner, and functional runner regressions.
-The tests build actual command executables and exercise process lifetimes, signals, cleanup, output contracts, and fake publisher API behavior.
+Run `python3 proxy/tests/verify-metadata.py`, `python3 proxy/tests/verify-download.py`, `python3 proxy/tests/verify-nginx.py`, `python3 proxy/tests/verify-release.py`, and `python3 proxy/tests/verify-runner.py` for the restored verification matrices.
+These harnesses exercise actual commands and scripts, process lifetimes, signals, cleanup, output contracts, and fake publisher API behavior.
+Run the runner matrix on non-root Linux so its daemonless path exercises the function-level build command.
+Run `go tool task test-go` or `go test ./...` for the retained direct build lifecycle, Buildx dispatch, deterministic packaging, metadata environment, and publisher API tests.
 Run `go tool task test-healthcheck` against an already-built healthcheck binary on Linux.
 Run `go tool task test-healthcheck-docker` for the Docker-backed functional suite on macOS.
 Both functional tasks accept `BINARY`, and the Docker task also accepts `PLATFORM`.

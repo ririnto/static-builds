@@ -3,17 +3,6 @@ ARG UBI10_MINIMAL_VERSION
 ARG TARGET_PREFIX=/home/nobody
 
 
-FROM --platform=$BUILDPLATFORM golang:1.27.3-alpine AS script-tools
-ARG TARGETOS TARGETARCH
-WORKDIR /src
-COPY go.mod go.sum ./
-COPY cmd/nginx-build-quickjs/ ./cmd/nginx-build-quickjs/
-COPY cmd/nginx-configure/ ./cmd/nginx-configure/
-COPY cmd/nginx-build/ ./cmd/nginx-build/
-RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -trimpath -ldflags='-s -w' -o /script-tools/nginx-build-quickjs ./cmd/nginx-build-quickjs \
-    && CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -trimpath -ldflags='-s -w' -o /script-tools/nginx-configure ./cmd/nginx-configure \
-    && CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -trimpath -ldflags='-s -w' -o /script-tools/nginx-build ./cmd/nginx-build
-
 FROM alpine:${ALPINE_VERSION} AS build
 ARG NGINX_VERSION
 ARG NGINX_VTS_MODULE_VERSION
@@ -40,16 +29,16 @@ ADD ".tmp/nginx-${NGINX_VERSION}.tar.gz" /build/
 ADD ".tmp/nginx-module-vts-${NGINX_VTS_MODULE_VERSION}.tar.gz" "/build/nginx-${NGINX_VERSION}/"
 ADD ".tmp/njs-${NJS_VERSION}.tar.gz" /build/
 ADD ".tmp/quickjs-${QUICKJS_VERSION}.tar.gz" /build/
-COPY --from=script-tools /script-tools/nginx-build /script-tools/nginx-build-quickjs /script-tools/nginx-configure /usr/local/bin/
-RUN /usr/local/bin/nginx-build-quickjs
+COPY nginx/nginx-build.sh nginx/nginx-build-quickjs.sh nginx/nginx-configure.sh /usr/local/bin/
+RUN /usr/local/bin/nginx-build-quickjs.sh
 ENV NJS_QUICKJS=YES NJS_LIBXSLT=NO
 COPY nginx-upstream-healthcheck/ngx_http_upstream_healthcheck_module "/build/nginx-${NGINX_VERSION}/ngx_http_upstream_healthcheck_module"
 WORKDIR "/build/nginx-${NGINX_VERSION}"
-RUN /usr/local/bin/nginx-configure \
+RUN /usr/local/bin/nginx-configure.sh \
     "--add-module=nginx-module-vts-${NGINX_VTS_MODULE_VERSION}" \
     "--add-module=ngx_http_upstream_healthcheck_module" \
     "--add-module=/build/njs-${NJS_VERSION}/nginx"
-RUN /usr/local/bin/nginx-build
+RUN /usr/local/bin/nginx-build.sh
 COPY nginx/scripting.conf nginx/scripting.js ${TARGET_PREFIX}/conf/
 COPY nginx-upstream-healthcheck/conf/upstream-healthcheck.conf ${TARGET_PREFIX}/conf/
 COPY nginx-upstream-healthcheck/README.md ${TARGET_PREFIX}/README.md

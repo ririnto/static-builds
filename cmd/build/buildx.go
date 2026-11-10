@@ -10,7 +10,7 @@ import (
 	"github.com/ririnto/static-builds/internal/metadata"
 )
 
-func run(args []string) error {
+func runBuildx(args []string) error {
 	if len(args) == 0 {
 		return fmt.Errorf("usage: build-buildx <target> [buildx args...]")
 	}
@@ -63,15 +63,4 @@ func run(args []string) error {
 	command.Dir = config.Root
 	command.Stdin, command.Stdout, command.Stderr = os.Stdin, os.Stdout, os.Stderr
 	return command.Run()
-}
-
-func main() {
-	if err := run(os.Args[1:]); err != nil {
-		fmt.Fprintln(os.Stderr, "Error:", err)
-		status := 1
-		if exit, ok := err.(*exec.ExitError); ok {
-			status = exit.ExitCode()
-		}
-		os.Exit(status)
-	}
 }

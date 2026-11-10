@@ -47,13 +47,13 @@ A model result establishes only the stated bounded model and requires replay aga
 
 ## Check real downloader behavior
 
-Run these production-interface tests from the repository root:
+Run this production-interface verifier from the repository root:
 
 ```sh
-go test ./cmd/download
+python3 proxy/tests/verify-download.py
 ```
 
-They need Go, OpenSSL, wget, and GNU Coreutils or BusyBox `timeout`, or GNU `gtimeout`.
+It needs Python 3, Go, OpenSSL, wget, and GNU Coreutils or BusyBox `timeout`, or GNU `gtimeout`.
 All eight scenarios must pass.
 It exercises wget success, deadlines, resistant children, cancellation after wget starts, HTTP failure, missing deadline commands, and fixture cleanup using local HTTPS fixtures.
 It uses one attempt and forces the wget path.

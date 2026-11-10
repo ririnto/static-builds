@@ -82,8 +82,7 @@ Native macOS builds use the configured Docker Buildx builder.
 GitLab package builds retain their existing rootless network restrictions.
 The build does not automatically configure a Linux VM or cross-platform emulation.
 The Linux launcher ignores inherited `BUILDKIT_HOST`, `BUILDKITD_FLAGS`, `BUILDKITD`, `BUILDCTL`, and `ROOTLESSKIT` overrides so each invocation owns its daemon and state.
-Additional arguments to `go run ./cmd/build-daemonless` are buildctl build arguments.
-Use `go run ./cmd/build-buildx` for the existing Buildx argument interface.
+Additional arguments to `go run ./cmd/build` pass unchanged to buildctl build on Linux and Docker Buildx on macOS.
 
 ### Running haproxy binary image
 
@@ -104,8 +103,6 @@ docker run --rm \
 +-- .gitlab-ci.yaml         # GitLab CI configuration
 +-- cmd/                    # Individual Go command entrypoints
 |   +-- build/              # Platform-selecting build dispatcher
-|   +-- build-buildx/       # Native macOS Buildx adapter
-|   +-- build-daemonless/   # Native Linux rootless lifecycle
 |   +-- download/           # Source download command
 |   +-- metadata/           # Metadata query command
 |   +-- package-release/    # Release archive command
@@ -307,7 +304,7 @@ Both nginx profiles passed their njs 1.0.1 HTTP and stream checks with QuickJS 0
 The newly exported healthcheck binary also passed the Docker-backed functional suite, now invoked with `go tool task test-healthcheck-docker`.
 That standalone suite covers the L4/L6/L7 classifications, verified TLS-only and HTTPS checks, stream payload expectations, configuration rejection, DNS replacement, recovery, IPv6, multiple workers, and VTS described in the [healthcheck profile](nginx-upstream-healthcheck/README.md#build-verification).
 The historical verifier, downloader, and Docker-runner lifecycle regressions passed all 24 standalone fixture cases.
-Their maintained Go replacements run through `go tool task test-go`.
+The maintained shell and Python harnesses live under `proxy/tests/`.
 Shell lint and formatting also passed.
 
 REUSED: available release-source archives and shared layers within the task builder followed the normal cache behavior.

@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"testing"
 )
@@ -27,11 +28,14 @@ func TestMain(m *testing.M) {
 }
 
 func TestBuildxRunner(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		t.Skip("Buildx dispatch requires macOS")
+	}
 	repository, err := filepath.Abs("../..")
 	if err != nil {
 		t.Fatal(err)
 	}
-	binary := filepath.Join(t.TempDir(), "build-buildx")
+	binary := filepath.Join(t.TempDir(), "build")
 	if output, err := exec.Command("go", "build", "-o", binary, ".").CombinedOutput(); err != nil {
 		t.Fatalf("%v\n%s", err, output)
 	}
