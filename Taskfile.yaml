@@ -97,7 +97,7 @@ tasks:
   shfmt:
     desc: Format maintained shell scripts
     cmds:
-      - git ls-files -z -- '**/*.sh' | xargs -0 go tool shfmt {{.CLI_ARGS}}
+      - go tool shfmt {{.CLI_ARGS}} **/*.sh
 
   golangci-lint:
     desc: Lint Go source

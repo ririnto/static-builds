@@ -37,7 +37,7 @@ The following tools are managed through `go.mod`:
 - gorelease
 - buildctl
 
-The Taskfile selects every tracked shell script with `git ls-files -z -- '**/*.sh'` for shfmt.
+The Taskfile passes the shell glob `**/*.sh` directly to shfmt.
 Use `go tool task jsonnetfmt -- -i` to format the package pipeline and `go tool task jsonnetfmt -- --test` to check it.
 Use `go tool task release -- <gorelease flags>` for Go module compatibility checks.
 `go tool task buildctl -- --help` exposes the BuildKit client without changing the Docker Buildx build driver.
