@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/DavidAnson/markdownlint-cli2/refs/tags/v0.22.1/schema/markdownlint-cli2-config-schema.json",
   "config": {
-    "MD046": {
+    "code-block-style": {
       "style": "fenced"
     },
     "docs/no-box-drawing": true,

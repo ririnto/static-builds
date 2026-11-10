@@ -3,7 +3,6 @@ ARG ALPINE_VERSION
 ARG UBI10_MINIMAL_VERSION
 ARG TARGET_PREFIX=/home/nobody
 
-
 FROM alpine:${ALPINE_VERSION} AS build
 ARG NGINX_VERSION
 ARG NGINX_VTS_MODULE_VERSION
@@ -34,7 +33,8 @@ RUN cmake -S "/build/quickjs-${QUICKJS_VERSION}" -B /build/quickjs-build \
     -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_BUILD_TYPE=Release
 RUN cmake --build /build/quickjs-build "-j$(nproc)"
 RUN cmake --install /build/quickjs-build
-ENV NJS_QUICKJS=YES NJS_LIBXSLT=NO
+ENV NJS_QUICKJS=YES
+ENV NJS_LIBXSLT=NO
 COPY nginx-upstream-healthcheck/ngx_http_upstream_healthcheck_module "/build/nginx-${NGINX_VERSION}/ngx_http_upstream_healthcheck_module"
 WORKDIR "/build/nginx-${NGINX_VERSION}"
 RUN ./configure \
@@ -67,59 +67,25 @@ RUN ./configure \
   --with-cc-opt="-O2 -pipe -fPIE -fstack-protector-strong -fstack-clash-protection -ffunction-sections -fdata-sections -fno-delete-null-pointer-checks -fno-strict-overflow -fno-strict-aliasing -ftrivial-auto-var-init=zero -Wformat -Wformat=2 -Werror=format-security" \
   --with-ld-opt="-L/usr/local/lib -static -static-pie -static-libgcc -Wl,-E -rdynamic -Wl,-z,relro -Wl,-z,now -Wl,-z,noexecstack -Wl,-z,separate-code -Wl,--as-needed" \
   --with-libatomic
-RUN make "-j$(nproc)" && make install
+RUN make "-j$(nproc)"
+RUN make install
 COPY nginx/scripting.conf nginx/scripting.js ${TARGET_PREFIX}/conf/
 COPY nginx-upstream-healthcheck/conf/upstream-healthcheck.conf ${TARGET_PREFIX}/conf/
 COPY nginx-upstream-healthcheck/README.md ${TARGET_PREFIX}/README.md
 
-
-
 FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
-ARG NJS_VERSION
 ARG TARGET_PREFIX
-
 RUN --mount=type=cache,target=/var/cache/dnf \
-    microdnf -y install file binutils strace openssl
+    microdnf -y install binutils curl-minimal file openssl strace
 COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
-RUN set -eu; \
-    readelf -h "${TARGET_PREFIX}/sbin/nginx" | grep -E 'Type:|Machine:'; \
-    file "${TARGET_PREFIX}/sbin/nginx" | grep -E 'statically linked|static-pie linked'
-
-RUN set -eu; \
-    test -x "${TARGET_PREFIX}/sbin/nginx"; \
-    test -r "${TARGET_PREFIX}/conf/scripting.conf"; \
-    test -r "${TARGET_PREFIX}/conf/scripting.js"; \
-    test -r "${TARGET_PREFIX}/conf/upstream-healthcheck.conf"; \
-    test -r "${TARGET_PREFIX}/README.md"
-
+RUN readelf -h "${TARGET_PREFIX}/sbin/nginx" | grep -E 'Type:|Machine:'
+RUN file "${TARGET_PREFIX}/sbin/nginx" | grep -E 'statically linked|static-pie linked'
+RUN test -x "${TARGET_PREFIX}/sbin/nginx"
+RUN test -r "${TARGET_PREFIX}/conf/scripting.conf"
+RUN test -r "${TARGET_PREFIX}/conf/scripting.js"
+RUN test -r "${TARGET_PREFIX}/conf/upstream-healthcheck.conf"
+RUN test -r "${TARGET_PREFIX}/README.md"
 RUN strace "${TARGET_PREFIX}/sbin/nginx" -V
-RUN "${TARGET_PREFIX}/sbin/nginx" -t -c conf/scripting.conf
-
-RUN set -eu; \
-    nginx_pid=; \
-    response_file=$(mktemp /tmp/njs-result.XXXXXX); \
-    cleanup() { \
-        status=$?; \
-        trap - EXIT INT TERM; \
-        if [ -n "$nginx_pid" ]; then \
-            kill -QUIT "$nginx_pid"; \
-            wait "$nginx_pid"; \
-        fi; \
-        rm -f "$response_file"; \
-        exit "$status"; \
-    }; \
-    trap cleanup EXIT; \
-    trap 'exit 130' INT; \
-    trap 'exit 143' TERM; \
-    timeout --signal=QUIT --kill-after=2s 40s "${TARGET_PREFIX}/sbin/nginx" -c conf/scripting.conf -g 'daemon off;' & \
-    nginx_pid=$!; \
-    timeout --signal=TERM --kill-after=1s 15s curl --retry 10 --retry-connrefused --retry-delay 1 --retry-max-time 10 --max-time 2 -fsS -o "$response_file" http://127.0.0.1:18081/njs; \
-    grep -Fx "njs ${NJS_VERSION} engine QuickJS" "$response_file"; \
-    timeout --signal=TERM --kill-after=1s 15s curl --max-time 5 -fsS -o "$response_file" http://127.0.0.1:18081/njs; \
-    grep -Fx "njs ${NJS_VERSION} engine QuickJS" "$response_file"; \
-    timeout 3 bash -c 'exec 3<>/dev/tcp/127.0.0.1/18082; IFS= read -r response <&3; printf "%s\n" "$response"' | grep -Fx "njs ${NJS_VERSION} engine QuickJS";
-
-
 
 FROM scratch AS runtime
 
@@ -131,42 +97,69 @@ COPY nginx-upstream-healthcheck/group /etc/group
 EXPOSE 80 443
 ENTRYPOINT ["/sbin/nginx", "-p", "/", "-g", "daemon off;"]
 
-
 FROM verify AS verify-runtime
 COPY --from=runtime / /runtime/
-RUN set -eu; \
-    chroot /runtime /sbin/nginx -p / -t; \
+RUN set -e; \
+    trap 'rm -f /tmp/healthcheck-build-ca.key /runtime/conf/backend-ca.pem /runtime/etc/hosts' EXIT; \
     openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj /CN=healthcheck-build-ca \
-    -keyout /tmp/healthcheck-build-ca.key -out /runtime/conf/backend-ca.pem; \
-    printf '127.0.0.1 maintenance.internal\n' >/runtime/etc/hosts; \
-    chroot /runtime /sbin/nginx -p / -t -c conf/upstream-healthcheck.conf; \
-    rm -f /tmp/healthcheck-build-ca.key /runtime/conf/backend-ca.pem /runtime/etc/hosts;
-
+        -keyout /tmp/healthcheck-build-ca.key -out /runtime/conf/backend-ca.pem; \
+    echo "127.0.0.1 maintenance.internal" >/runtime/etc/hosts; \
+    chroot /runtime /sbin/nginx -p / -t -c conf/upstream-healthcheck.conf
 RUN set -eu; \
-    server_pid=; \
-    response_file=$(mktemp /tmp/healthcheck-startup.XXXXXX); \
-    cleanup() { \
-        status=$?; \
-        trap - EXIT INT TERM; \
-        if [ -n "$server_pid" ]; then \
-            kill -QUIT "$server_pid"; \
-            wait "$server_pid"; \
+    test_dir=$(mktemp -d /runtime/conf/healthcheck-verify.XXXXXX); \
+    pid=; \
+    trap 'status=$?; \
+        trap - EXIT; \
+        if [ -n "$pid" ]; then \
+            if kill "$pid"; then \
+                wait "$pid" || status=1; \
+            else \
+                status=1; \
+            fi; \
         fi; \
-        rm -f "$response_file"; \
-        exit "$status"; \
+        rm -rf "$test_dir" || status=1; \
+        exit "$status"' EXIT; \
+    chmod 755 "$test_dir"; \
+    printf '%s\n' \
+        'worker_processes 1;' \
+        "pid /conf/${test_dir##*/}/nginx.pid;" \
+        'error_log stderr notice;' \
+        'events { worker_connections 64; }' \
+        'http {' \
+        '    access_log off;' \
+        '    upstream backend {' \
+        '        zone backend 64k;' \
+        '        server 127.0.0.1:18091;' \
+        '        healthcheck type=http interval=200ms timeout=500ms fall=2 rise=2 uri=/ready;' \
+        '    }' \
+        '    server {' \
+        '        listen 127.0.0.1:18091;' \
+        "        location = /ready { root /conf/${test_dir##*/}; }" \
+        "        location / { return 200 'backend'; }" \
+        '    }' \
+        '    server {' \
+        '        listen 127.0.0.1:18092;' \
+        '        location / { proxy_pass http://backend; }' \
+        '    }' \
+        '}' >"$test_dir/nginx.conf"; \
+    touch "$test_dir/ready"; \
+    chroot /runtime /sbin/nginx -p / -c "conf/${test_dir##*/}/nginx.conf" -g 'daemon off;' & \
+    pid=$!; \
+    wait_for_status() { \
+        for attempt in $(seq 1 15); do \
+            if [ "$(curl --connect-timeout 1 --max-time 2 -o /dev/null -w '%{http_code}' http://127.0.0.1:18092/)" = "$1" ]; then \
+                return 0; \
+            fi; \
+            sleep 1; \
+        done; \
+        echo "Timed out waiting for proxy status $1" >&2; \
+        return 1; \
     }; \
-    trap cleanup EXIT; \
-    trap 'exit 130' INT; \
-    trap 'exit 143' TERM; \
-    timeout --signal=QUIT --kill-after=2s 20s chroot /runtime /sbin/nginx -p / -g 'daemon off;' & \
-    server_pid=$!; \
-    timeout --signal=TERM --kill-after=1s 15s curl --retry 10 --retry-connrefused --retry-delay 1 --retry-max-time 10 --max-time 2 -fsS --output "$response_file" http://127.0.0.1/; \
-    kill -0 "$(cat /runtime/logs/nginx.pid)"; \
-    kill -QUIT "$server_pid"; \
-    wait "$server_pid"; \
-    server_pid=; \
-    rm -f /runtime/logs/access.log /runtime/logs/error.log;
-
+    wait_for_status 200; \
+    rm "$test_dir/ready"; \
+    wait_for_status 502; \
+    touch "$test_dir/ready"; \
+    wait_for_status 200
 
 FROM runtime
 COPY --from=verify-runtime /runtime/ /

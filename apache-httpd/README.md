@@ -20,7 +20,7 @@ This target builds Apache HTTPd as static PIE with selected modules compiled in.
 
 - This target MAY release both `bin/httpd` and `bin/rotatelogs` as one approved packaging profile.
 - The target directory name remains `apache-httpd`, but release tags use the `httpd-` prefix.
-- Verify output from `httpd -M` MAY contain only the expected FQDN warning in some environments.
+- Running `httpd -M` may report an FQDN warning in some environments.
   Treat `httpd -l` as the authoritative compiled-module inventory for this target.
 
 ## How to Verify

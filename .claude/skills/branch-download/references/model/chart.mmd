@@ -1,0 +1,14 @@
+---
+title: "Branch download lock cleanup"
+---
+stateDiagram-v2
+  s0: Waiting to create the lock
+  s1: Lock created, cleanup not yet registered
+  s2: Download owns its lock
+  s3: Download is returning
+  s4: Download has stopped
+  [*] --> s0
+  s0 --> s1: Lock is created
+  s1 --> s2: Lock cleanup is registered
+  s2 --> s3: Download returns
+  s3 --> s4: Lock is removed

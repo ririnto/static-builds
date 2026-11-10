@@ -25,31 +25,23 @@ RUN ./configure \
     --without-pam \
     --with-largefiles
 RUN make "-j$(nproc)"
-RUN mkdir -p ${TARGET_PREFIX}/bin && \
-    find src -name '*.o' -not -path '*/.*' | xargs ar rcs libsrc.a && \
-    find libmonit/src -name '*.o' -not -path '*/.*' | xargs ar rcs liblibmonit.a && \
-    gcc -static -static-pie -o ${TARGET_PREFIX}/bin/monit \
+RUN mkdir -p ${TARGET_PREFIX}/bin
+RUN find src -name '*.o' -not -path '*/.*' -exec ar rcs libsrc.a {} +
+RUN find libmonit/src -name '*.o' -not -path '*/.*' -exec ar rcs liblibmonit.a {} +
+RUN gcc -static -static-pie -o ${TARGET_PREFIX}/bin/monit \
         -Wl,--whole-archive libsrc.a liblibmonit.a -Wl,--no-whole-archive \
         /usr/lib/libssl.a /usr/lib/libcrypto.a /usr/lib/libz.a \
         -lpthread -lresolv -ldl -lm
 
-
 FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
 ARG TARGET_PREFIX
-
 RUN --mount=type=cache,target=/var/cache/dnf \
     microdnf -y install file binutils strace
 COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
-RUN set -eu; \
-    readelf -h "${TARGET_PREFIX}/bin/monit" | grep -E 'Type:|Machine:'; \
-    file "${TARGET_PREFIX}/bin/monit" | grep -E 'statically linked|static-pie linked'
-
-RUN set -eu; \
-    test -x "${TARGET_PREFIX}/bin/monit"
-
-RUN set -eu; \
-    strace "${TARGET_PREFIX}/bin/monit" -V
-
+RUN readelf -h "${TARGET_PREFIX}/bin/monit" | grep -E 'Type:|Machine:'
+RUN file "${TARGET_PREFIX}/bin/monit" | grep -E 'statically linked|static-pie linked'
+RUN test -x "${TARGET_PREFIX}/bin/monit"
+RUN strace "${TARGET_PREFIX}/bin/monit" -V
 
 FROM scratch
 

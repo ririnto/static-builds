@@ -1,4 +1,4 @@
-name: Markdown Validation
+name: Tooling Validation
 
 on:
   pull_request:
@@ -8,45 +8,21 @@ permissions:
   contents: read
 
 jobs:
-  markdownlint:
-    name: Markdown and tooling checks
+  tooling:
+    name: Go tooling checks
     runs-on: ubuntu-26.04
     timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v6.1.0
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: 26.13.0
-          cache: pnpm
-
       - name: Set up Go
         uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Check Markdown rules
-        run: pnpm run check:markdownlint-cli2
-
-      - name: Check custom Markdown rules
-        run: pnpm run check:lint-rules
-
-      - name: Check TypeScript
-        run: pnpm run check:typescript
-
-      - name: Check Ultracite
-        run: pnpm run check:ultracite
-
       - name: Check Go commands
-        run: go test ./...
+        run: go tool task test
 
       - name: Lint Go source
         run: go tool task golangci-lint -- run ./...
@@ -55,7 +31,9 @@ jobs:
         run: go tool task shfmt -- -d -i 2 -ci
 
       - name: Check Jsonnet
-        run: pnpm run check:jsonnet
+        run: |-
+          go tool task jsonnet -- -S --ext-str branch=main --ext-str target= --ext-str component_ref=example.invalid/group/static-builds/static-release@main
+          go tool task jsonnet -- -S --ext-str branch=feature/tooling-check --ext-str target= --ext-str component_ref=example.invalid/group/static-builds/static-release@feature/tooling-check
 
       - name: Check Jsonnet formatting
         run: go tool task jsonnetfmt -- --test

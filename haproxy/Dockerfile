@@ -4,7 +4,6 @@ ARG UBI10_MINIMAL_VERSION
 ARG TARGET_PREFIX=/home/nobody
 ARG HARDENING_CFLAGS="-O2 -pipe -fPIC -fstack-protector-strong -fstack-clash-protection -ffunction-sections -fdata-sections -ftrivial-auto-var-init=zero"
 
-
 FROM alpine:${ALPINE_VERSION} AS otel-base
 RUN --mount=type=cache,target=/var/cache/apk \
     apk add \
@@ -22,7 +21,6 @@ RUN --mount=type=cache,target=/var/cache/apk \
         zlib-dev \
         zlib-static
 
-
 FROM otel-base AS otel-abseil
 ARG ABSEIL_CPP_VERSION
 ARG HARDENING_CFLAGS
@@ -35,10 +33,9 @@ RUN cmake -S "/tmp/abseil-cpp-${ABSEIL_CPP_VERSION}" -B /tmp/abseil-build \
         -DCMAKE_BUILD_TYPE=Release \
         -DBUILD_SHARED_LIBS=OFF \
         -DABSL_ENABLE_INSTALL=ON \
-        -DABSL_PROPAGATE_CXX_STD=ON \
-    && cmake --build /tmp/abseil-build --parallel "$(nproc)" \
-    && cmake --install /tmp/abseil-build
-
+        -DABSL_PROPAGATE_CXX_STD=ON
+RUN cmake --build /tmp/abseil-build --parallel "$(nproc)"
+RUN cmake --install /tmp/abseil-build
 
 FROM otel-base AS otel-protobuf
 ARG PROTOBUF_VERSION
@@ -55,10 +52,9 @@ RUN cmake -S "/tmp/protobuf-${PROTOBUF_VERSION}" -B /tmp/protobuf-build \
         -Dprotobuf_BUILD_TESTS=OFF \
         -Dprotobuf_ABSL_PROVIDER=package \
         -DZLIB_LIBRARY=/usr/lib/libz.a \
-        -DZLIB_INCLUDE_DIR=/usr/include \
-    && cmake --build /tmp/protobuf-build --parallel "$(nproc)" \
-    && cmake --install /tmp/protobuf-build
-
+        -DZLIB_INCLUDE_DIR=/usr/include
+RUN cmake --build /tmp/protobuf-build --parallel "$(nproc)"
+RUN cmake --install /tmp/protobuf-build
 
 FROM otel-base AS otel-rapidyaml
 ARG RAPIDYAML_VERSION
@@ -77,10 +73,9 @@ RUN cmake -S "/tmp/rapidyaml.v${RAPIDYAML_VERSION}" -B /tmp/rapidyaml-build \
         -DRYML_BUILD_BENCHMARKS=OFF \
         -DRYML_BUILD_EXAMPLES=OFF \
         -DRYML_BUILD_C4C_TESTING=OFF \
-        -DGIT=/bin/true \
-    && cmake --build /tmp/rapidyaml-build --parallel "$(nproc)" \
-    && cmake --install /tmp/rapidyaml-build
-
+        -DGIT=/bin/true
+RUN cmake --build /tmp/rapidyaml-build --parallel "$(nproc)"
+RUN cmake --install /tmp/rapidyaml-build
 
 FROM otel-base AS otel-re2
 ARG RE2_VERSION
@@ -95,10 +90,9 @@ RUN cmake -S "/tmp/re2-${RE2_VERSION}" -B /tmp/re2-build \
         -DCMAKE_INSTALL_LIBDIR=lib \
         -DCMAKE_BUILD_TYPE=Release \
         -DBUILD_SHARED_LIBS=OFF \
-        -DRE2_BUILD_TESTING=OFF \
-    && cmake --build /tmp/re2-build --parallel "$(nproc)" \
-    && cmake --install /tmp/re2-build
-
+        -DRE2_BUILD_TESTING=OFF
+RUN cmake --build /tmp/re2-build --parallel "$(nproc)"
+RUN cmake --install /tmp/re2-build
 
 FROM otel-base AS otel-grpc
 ARG GRPC_VERSION
@@ -110,9 +104,9 @@ COPY --from=otel-abseil /opt /opt
 COPY --from=otel-protobuf /opt /opt
 COPY --from=otel-re2 /opt /opt
 RUN rmdir "/tmp/grpc-${GRPC_VERSION}/third_party/grpc-proto" \
-    && mv "/tmp/grpc-proto-${GRPC_PROTO_REF}" "/tmp/grpc-${GRPC_VERSION}/third_party/grpc-proto" \
-    && apk add c-ares-dev curl-dev curl-static brotli-static libidn2-static libpsl-static libunistring-static nghttp2-static zstd-static \
-    && cmake -S "/tmp/grpc-${GRPC_VERSION}" -B /tmp/grpc-build \
+    && mv "/tmp/grpc-proto-${GRPC_PROTO_REF}" "/tmp/grpc-${GRPC_VERSION}/third_party/grpc-proto"
+RUN apk add c-ares-dev curl-dev curl-static brotli-static libidn2-static libpsl-static libunistring-static nghttp2-static zstd-static
+RUN cmake -S "/tmp/grpc-${GRPC_VERSION}" -B /tmp/grpc-build \
         -DCMAKE_INSTALL_PREFIX=/opt \
         -DCMAKE_C_FLAGS="${HARDENING_CFLAGS}" \
         -DCMAKE_CXX_FLAGS="${HARDENING_CFLAGS}" \
@@ -142,10 +136,9 @@ RUN rmdir "/tmp/grpc-${GRPC_VERSION}/third_party/grpc-proto" \
         -DOPENSSL_CRYPTO_LIBRARY=/usr/lib/libcrypto.a \
         -DZLIB_LIBRARY=/usr/lib/libz.a \
         -DZLIB_INCLUDE_DIR=/usr/include \
-        -DCMAKE_PREFIX_PATH=/opt:/usr \
-    && cmake --build /tmp/grpc-build --parallel "$(nproc)" \
-    && cmake --install /tmp/grpc-build
-
+        -DCMAKE_PREFIX_PATH=/opt:/usr
+RUN cmake --build /tmp/grpc-build --parallel "$(nproc)"
+RUN cmake --install /tmp/grpc-build
 
 FROM otel-base AS otel-cpp
 ARG HAPROXY_OTEL_C_WRAPPER_VERSION
@@ -161,11 +154,14 @@ COPY --from=otel-abseil /opt /opt
 COPY --from=otel-protobuf /opt /opt
 COPY --from=otel-rapidyaml /opt /opt
 COPY --from=otel-grpc /opt /opt
-RUN apk add c-ares-dev curl-dev curl-static brotli-static libidn2-static libpsl-static libunistring-static nghttp2-static zstd-static \
-    && mv "/build/opentelemetry-c-wrapper-${HAPROXY_OTEL_C_WRAPPER_VERSION}" /build/opentelemetry-c-wrapper \
-    && cd "/tmp/opentelemetry-cpp-${OPENTELEMETRY_CPP_VERSION}" \
-    && for patch_file in /build/opentelemetry-c-wrapper/scripts/build/000*-opentelemetry-cpp-*.patch; do patch -p1 <"$patch_file" || exit "$?"; done \
-    && PKG_CONFIG_PATH=/opt/lib/pkgconfig cmake -S "/tmp/opentelemetry-cpp-${OPENTELEMETRY_CPP_VERSION}" -B build \
+RUN apk add c-ares-dev curl-dev curl-static brotli-static libidn2-static libpsl-static libunistring-static nghttp2-static zstd-static
+RUN mv "/build/opentelemetry-c-wrapper-${HAPROXY_OTEL_C_WRAPPER_VERSION}" /build/opentelemetry-c-wrapper
+RUN set -e; \
+    cd "/tmp/opentelemetry-cpp-${OPENTELEMETRY_CPP_VERSION}"; \
+    for patch_file in /build/opentelemetry-c-wrapper/scripts/build/000*-opentelemetry-cpp-*.patch; do \
+        patch -p1 <"$patch_file"; \
+    done
+RUN PKG_CONFIG_PATH=/opt/lib/pkgconfig cmake -S "/tmp/opentelemetry-cpp-${OPENTELEMETRY_CPP_VERSION}" -B /tmp/opentelemetry-cpp-${OPENTELEMETRY_CPP_VERSION}/build \
         -DCMAKE_INSTALL_PREFIX=/opt \
         -DCMAKE_C_FLAGS="${HARDENING_CFLAGS}" \
         -DCMAKE_CXX_FLAGS="${HARDENING_CFLAGS}" \
@@ -206,21 +202,19 @@ RUN apk add c-ares-dev curl-dev curl-static brotli-static libidn2-static libpsl-
         -DOTELCPP_WITH_BENCHMARK=OFF \
         -DOTELCPP_WITH_EXAMPLES=OFF \
         -DOTELCPP_WITH_FUNC_TESTS=OFF \
-        -DBUILD_TESTING=OFF \
-    && cmake --build build --parallel "$(nproc)" \
-    && cmake --install build
-RUN apk add gawk \
-    && cd /build/opentelemetry-c-wrapper \
-    && PKG_CONFIG_PATH=/opt/lib/pkgconfig:/usr/lib/pkgconfig cmake -S . -B build \
+        -DBUILD_TESTING=OFF
+RUN cmake --build /tmp/opentelemetry-cpp-${OPENTELEMETRY_CPP_VERSION}/build --parallel "$(nproc)"
+RUN cmake --install /tmp/opentelemetry-cpp-${OPENTELEMETRY_CPP_VERSION}/build
+RUN apk add gawk
+RUN PKG_CONFIG_PATH=/opt/lib/pkgconfig:/usr/lib/pkgconfig cmake -S /build/opentelemetry-c-wrapper -B /build/opentelemetry-c-wrapper/build \
         -DCMAKE_INSTALL_PREFIX=/opt \
         -DOPENTELEMETRY_DIR=/opt \
         -DBUILD_STATIC=ON \
         -DENABLE_THREADS=OFF \
         -DWITH_RAPIDYAML=ON \
-        -DWITH_LIBFYAML=OFF \
-    && cmake --build build --parallel "$(nproc)" \
-    && cmake --install build
-
+        -DWITH_LIBFYAML=OFF
+RUN cmake --build /build/opentelemetry-c-wrapper/build --parallel "$(nproc)"
+RUN cmake --install /build/opentelemetry-c-wrapper/build
 
 FROM alpine:${ALPINE_VERSION} AS build
 ARG HAPROXY_VERSION
@@ -256,17 +250,11 @@ RUN PKG_CONFIG_PATH=/opt/lib/pkgconfig make "-j$(nproc)" \
     TARGET=linux-musl \
     EXTRA_MAKE="/build/haproxy-opentelemetry-${HAPROXY_OTEL_ADDON_VERSION}" \
     USE_EPOLL=1 \
-    # USE_KQUEUE \
-    # USE_EVPORTS \
     USE_NETFILTER=1 \
-    # USE_PCRE \
-    # USE_PCRE_JIT \
     USE_PCRE2=1 \
     USE_PCRE2_JIT=1 \
     USE_POLL=1 \
     USE_THREAD=0 \
-    # USE_STATIC_PCRE \
-    # USE_STATIC_PCRE2 \
     USE_TPROXY=1 \
     USE_LINUX_TPROXY=1 \
     USE_LINUX_SPLICE=1 \
@@ -276,111 +264,44 @@ RUN PKG_CONFIG_PATH=/opt/lib/pkgconfig make "-j$(nproc)" \
     USE_CRYPT_H=1 \
     USE_GETADDRINFO=1 \
     USE_OPENSSL=1 \
-    # USE_OPENSSL_AWSLC \
-    # USE_OPENSSL_WOLFSSL \
     USE_KTLS=1 \
-    # USE_ECH \
     USE_QUIC=1 \
     USE_QUIC_OPENSSL_COMPAT=1 \
     USE_ENGINE=1 \
     USE_LUA=1 \
     USE_ACCEPT4=1 \
-    # USE_CLOSEFROM \
     USE_PRCTL=1 \
-    # USE_PROCCTL \
-    # USE_ZLIB \
-    # USE_SLZ \
     USE_CPU_AFFINITY=1 \
     USE_TFO=1 \
     USE_NS=1 \
     USE_DL=1 \
     USE_MATH=1 \
     USE_RT=1 \
-    # USE_BACKTRACE \
     USE_PROMEX=1 \
-    # USE_DEVICEATLAS \
-    # USE_51DEGREES \
-    # USE_WURFL \
-    # USE_OBSOLETE_LINKER \
-    # USE_THREAD_DUMP \
-    # USE_TRACE \
-    # USE_MEMORY_PROFILING \
     USE_LIBATOMIC=1 \
     USE_PTHREAD_EMULATION=1 \
-    # CC \
-    # LD \
     OPT_CFLAGS="-O2 -pipe -fPIE -fstack-protector-strong -fstack-clash-protection -ffunction-sections -fdata-sections -fno-delete-null-pointer-checks -fno-strict-overflow -fno-strict-aliasing -ftrivial-auto-var-init=zero -Wformat -Wformat=2 -Werror=format-security" \
-    # CFLAGS \
     LDFLAGS="-static -static-pie -static-libgcc -Wl,-z,relro -Wl,-z,now -Wl,-z,noexecstack -Wl,-z,separate-code -Wl,--as-needed -Wl,--gc-sections" \
-    # ARCH_FLAGS \
-    # DEP \
-    # DEBUG \
-    # ERR \
-    # FAILFAST \
-    # WARN_CFLAGS \
-    # NOWARN_CFLAGS \
-    # ADDINC \
     ADDLIB="$(pkg-config --libs --static libcurl)" \
-    # ADDLIB \
-    # DEFINE \
-    # SILENT_DEFINE \
-    # EXTRA \
-    # INSTALL \
-    # HLUA_PREPEND_PATH \
-    # HLUA_PREPEND_CPATH \
-    # OTEL_DEBUG \
-    # OTEL_INC \
-    # OTEL_LIB \
-    # OTEL_RUNPATH \
     OTEL_LDFLAGS="-Wl,--start-group $(PKG_CONFIG_PATH=/opt/lib/pkgconfig pkg-config --libs --static opentelemetry-c-wrapper opentelemetry_instrumentation_scope opentelemetry_otlp_common) -Wl,--end-group" \
     OTEL_STATIC=1 \
     OTEL_USE_VARS=1 \
-    # PCRE_CONFIG \
-    # PCREDIR \
-    # PCRE_LIB \
-    # PCRE_INC \
-    # PCRE2_CONFIG \
     SSL_LIB=/usr/lib \
     SSL_INC=/usr/include/openssl \
     LUA_LIB=/usr/lib/lua5.4 \
-    LUA_INC=/usr/include/lua5.4 \
-    # LUA_LIB_NAME \
-    # IGNOREGIT \
-    # VERSION \
-    # SUBVERS \
-    # EXTRAVERSION \
-    # VERDATE \
-    # VTEST_PROGRAM \
-    # DEBUG_USE_ABORT \
-    # PCRE2DIR=/usr \
-    # ZLIB_LIB=/lib \
-    # ZLIB_INC=/usr/include \
-    ;
+    LUA_INC=/usr/include/lua5.4
 RUN make install \
-    # DESTDIR \
-    PREFIX=${TARGET_PREFIX} \
-    # SBINDIR \
-    # MANDIR \
-    # DOCDIR \
-    ;
-
+    PREFIX=${TARGET_PREFIX}
 
 FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
 ARG TARGET_PREFIX
-
 RUN --mount=type=cache,target=/var/cache/dnf \
     microdnf -y install file binutils strace
 COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
-RUN set -eu; \
-    readelf -h "${TARGET_PREFIX}/sbin/haproxy" | grep -E 'Type:|Machine:'; \
-    file "${TARGET_PREFIX}/sbin/haproxy" | grep -E 'statically linked|static-pie linked'
-
-RUN set -eu; \
-    test -x "${TARGET_PREFIX}/sbin/haproxy"
-
-RUN set -eu; \
-    strace "${TARGET_PREFIX}/sbin/haproxy" -vv
-
+RUN readelf -h "${TARGET_PREFIX}/sbin/haproxy" | grep -E 'Type:|Machine:'
+RUN file "${TARGET_PREFIX}/sbin/haproxy" | grep -E 'statically linked|static-pie linked'
+RUN test -x "${TARGET_PREFIX}/sbin/haproxy"
+RUN strace "${TARGET_PREFIX}/sbin/haproxy" -vv
 
 FROM scratch
 

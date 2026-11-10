@@ -26,6 +26,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Set up Go
         uses: actions/setup-go@v7
@@ -36,19 +38,18 @@ jobs:
         env:
           TARGET: ${{ inputs.target }}
           TAG: ${{ inputs.tag }}
-        shell: bash
-        run: |
+        run: |-
+          test "$(git rev-parse "refs/tags/$TAG^{commit}")" = "$(git rev-parse HEAD)"
           prefix=$(go tool task manifest -- get-tag-prefix "$TARGET")
           official=$(go tool task manifest -- get-official-version "$TARGET")
           test "${TAG#"$prefix"-}" != "$TAG"
           version_revision=${TAG#"$prefix"-}
           test "${version_revision%.*}" != "$version_revision"
           version=${version_revision%.*}
-          revision=${version_revision##*.}
-          printf '%s\n' "$revision" | grep -E '^[0-9]+$'
+          echo "${version_revision##*.}" | grep -E '^[0-9]+$'
           if [ "$version" != "$official" ]; then
             test "${version#"$official"-}" != "$version"
-            printf '%s\n' "${version#"$official"-}" | grep -E '^[A-Za-z0-9]+([.-][A-Za-z0-9]+)*$'
+            echo "${version#"$official"-}" | grep -E '^[A-Za-z0-9]+([.-][A-Za-z0-9]+)*$'
           fi
 
       - name: Set up Docker Buildx
@@ -58,10 +59,8 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ${{ github.workspace }}/.tmp
-          key: >-
-            tmp-${{ inputs.target }}-${{ hashFiles('metadata.json', 'cmd/**/*.go', 'internal/**/*.go', 'go.mod', 'go.sum') }}
-          restore-keys: >-
-            tmp-${{ inputs.target }}-
+          key: tmp-${{ inputs.target }}-${{ hashFiles('metadata.json', 'cmd/**/*.go', 'internal/**/*.go', 'go.mod', 'go.sum') }}
+          restore-keys: tmp-${{ inputs.target }}-
 
       - name: Expose GitHub cache runtime
         uses: crazy-max/ghaction-github-runtime@v4
@@ -91,12 +90,14 @@ jobs:
         env:
           TARGET: ${{ inputs.target }}
           TAG: ${{ inputs.tag }}
-        shell: bash
-        run: |
-          files=$(mktemp)
-          trap 'rm -f "$files"' EXIT
-          go tool task manifest -- get-release-files "$TARGET" > "$files"
-          tar -czvf "$TAG.tar.gz" -C ".out/$TARGET" -T "$files"
+          GORELEASER_CURRENT_TAG: ${{ inputs.tag }}
+        run: |-
+          set -o pipefail
+          RELEASE_FILES=$(mktemp -d "${RUNNER_TEMP}/release.XXXXXXXX")
+          export RELEASE_FILES
+          trap 'rm -rf "$RELEASE_FILES"' EXIT
+          go tool task manifest -- get-release-files "$TARGET" | rsync -ar --files-from=- ".out/$TARGET/" "$RELEASE_FILES/"
+          go tool task goreleaser -- release --clean --skip=publish,validate
 
       - name: Upload release artifacts
         uses: actions/upload-artifact@v7
@@ -109,7 +110,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: ${{ inputs.target }}-release-package
-          path: ${{ inputs.tag }}.tar.gz
+          path: .out/goreleaser/${{ inputs.tag }}.tar.gz
           if-no-files-found: error
 
   publish:
@@ -122,23 +123,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
       - name: Download release package
         uses: actions/download-artifact@v8
         with:
           name: ${{ inputs.target }}-release-package
+          path: .out/release-package
 
       - name: Publish assets to release
         env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ github.token }}
+          GORELEASER_CURRENT_TAG: ${{ inputs.tag }}
           TAG: ${{ inputs.tag }}
-        shell: bash
-        run: |
-          if response=$(gh api --include "repos/$GH_REPO/releases/tags/$TAG" 2>&1); then
-            printf '%s\n' "$response"
-            gh release upload "$TAG" "$TAG.tar.gz" --clobber
-          else
-            printf '%s\n' "$response"
-            printf '%s\n' "$response" | grep -E '^HTTP/[0-9.]+ 404 '
-            gh release create "$TAG" "$TAG.tar.gz" --verify-tag --title "$TAG" --notes "Release $TAG"
-          fi
+        run: go tool task goreleaser -- release --clean --skip=archive,validate

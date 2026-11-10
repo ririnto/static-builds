@@ -13,8 +13,9 @@ Build statically-linked binaries using Docker multi-stage builds for portable, m
 ## Prerequisites
 
 Local builds require the Go version declared in `go.mod` and Docker CLI access to a running Linux daemon and the Docker Buildx plugin.
-Release packaging uses the host `tar` with metadata-selected paths.
-See the [Taskfile](Taskfile.yaml), [download command](cmd/download/main.go), and [metadata command](cmd/metadata/main.go).
+GitHub release packaging uses GoReleaser with metadata-selected paths.
+GitLab package jobs use `tar`.
+See the [state machine inventory](.github/state-machines.md), [Taskfile](Taskfile.yaml), [download command](cmd/download/main.go), and [metadata command](cmd/metadata/main.go).
 
 Install `curl` or `wget` to download target sources, and allow network access to their upstream hosts.
 The `wget` fallback also requires GNU Coreutils or BusyBox `timeout`, or GNU Coreutils `gtimeout` on macOS, to enforce the per-attempt wall-clock deadline.
@@ -29,7 +30,16 @@ The selected worker must support local filesystem export, cache import/export, a
 Use a native worker or separately configured emulation when the worker architecture differs from the selected platform.
 The Taskfile writes artifacts to `.out/<target>/` and imports and exports local cache in `.cache/<target>/` by default.
 
-Task, shfmt, Jsonnet, jsonnetfmt, golangci-lint, gorelease, and buildctl are managed through `go.mod`.
+The following tools are managed through `go.mod`:
+
+- Task
+- shfmt
+- Jsonnet
+- jsonnetfmt
+- golangci-lint
+- GoReleaser
+- buildctl
+
 The pnpm version declared in `package.json` provides equivalent package-script entrypoints.
 Target compilers are installed in Dockerfile stages, so they are not host prerequisites.
 
@@ -53,14 +63,25 @@ pnpm run build -- nginx
 
 Build artifacts are written to `.out/<target>/` by default for both local and CI builds.
 You can override this with `BUILD_OUTPUT_DEST`.
-Build configuration accepts inherited environment values.
-`BUILDKIT_PLATFORM`, `BUILDKIT_NETWORK`, and `BUILDKIT_CACHE_BACKEND` default to `linux/amd64`, `default`, and `local`.
-`BUILD_OUTPUT_DEST` and `CACHE_DIR` default to `.out/<target>/` and `.cache/<target>/` under the repository root.
 
-```sh
-BUILDKIT_PLATFORM=linux/arm64 go tool task build -- nginx
-BUILD_OUTPUT_DEST=.out/custom/nginx CACHE_DIR=.cache/custom/nginx go tool task build -- nginx
-```
+### Build configuration
+
+Build configuration accepts inherited environment values.
+
+| Variable | Default | Values and purpose |
+| --- | --- | --- |
+| `BUILDKIT_PLATFORM` | `linux/amd64` | Select a target platform supported by the builder, such as `linux/arm64`. |
+| `BUILDKIT_NETWORK` | `default` | Select `default`, `host`, or `none` for RUN-step networking. |
+| `BUILDKIT_CACHE_BACKEND` | `local` | Select `local` or `gha` for cache import and export. |
+| `BUILD_OUTPUT_DEST` | `.out/<target>/` | Select an artifact output directory relative to the repository root or an absolute path. |
+| `CACHE_DIR` | `.cache/<target>/` | Select a local cache directory relative to the repository root or an absolute path when using the `local` backend. |
+
+Build invocation examples:
+
+- `go tool task build -- nginx`
+- `go tool task build -- haproxy --progress=plain`
+- `BUILDKIT_PLATFORM=linux/arm64 go tool task build -- nginx`
+- `BUILD_OUTPUT_DEST=.out/custom/nginx CACHE_DIR=.cache/custom/nginx go tool task build -- nginx`
 
 ### Network and platform behavior
 
@@ -74,7 +95,7 @@ The nginx commands in this document are examples, not defaults.
 For example, run `go tool task build -- haproxy` or `go tool task build -- apache-exporter --builder my-builder`.
 Tool tasks also pass arguments through: `go tool task jsonnetfmt -- -i` formats the built-in pipeline file.
 `go tool task buildctl -- --help` exposes the Go-managed BuildKit client while builds continue to use Docker Buildx.
-`go tool task release` runs gorelease for Go module compatibility checks, not binary asset publication.
+`go tool task goreleaser -- <arguments>` packages and publishes release artifacts through [.goreleaser.yaml](.goreleaser.yaml).
 
 ### Running haproxy binary image
 
@@ -121,7 +142,7 @@ Follow the [contribution guide](.github/CONTRIBUTING.md) for documentation style
 
 `metadata.json` defines source versions and build image versions for every target.
 Each target's `env` declares `"UBI10_MINIMAL_VERSION": "10.2"`.
-`.github/build.sh` reads it with `go tool task manifest -- get-env <target>` and passes it to Docker Buildx as `--build-arg=UBI10_MINIMAL_VERSION=10.2`.
+The Taskfile `build` task reads it with `go tool task manifest -- get-env <target>` and passes it to Docker Buildx as `--build-arg=UBI10_MINIMAL_VERSION=10.2`.
 Each Dockerfile declares `ARG UBI10_MINIMAL_VERSION` and consumes the value in `FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify`.
 The registry-implicit `redhat/ubi10-minimal` reference resolves through Docker Hub.
 Use the latest supported LTS release when upstream provides an LTS series.
@@ -263,7 +284,7 @@ Targets share the same root contract, but some targets vary in builder image, re
 
 ### Contributor checks
 
-Run `go test ./...` and `pnpm check` for the surviving Go commands and contributor tools.
+Run `go tool task test` and `pnpm check` for the surviving Go commands and contributor tools.
 Go lint uses `go tool task golangci-lint -- run ./...` checks, and shell formatting uses `go tool task shfmt -- -d -i 2 -ci` through Task.
 Builds verify artifacts in Dockerfile stages without per-target verify scripts or separate runtime harnesses.
 Contributor checks do not establish runtime acceptance of the custom healthcheck module.
@@ -349,7 +370,7 @@ Invalid examples:
 ## How It Works
 
 1. Task runs `go tool task download -- <target>` to resolve the target's download resources from `metadata.json` before starting the build.
-2. The shell build entrypoint invokes Docker Buildx directly to execute the multi-stage Dockerfile.
+2. The Taskfile build task invokes Docker Buildx directly to execute the multi-stage Dockerfile.
 3. Built artifacts go to `.out/<target>/` for both local builds and CI.
 4. Each target verifies built artifacts in its Dockerfile before exporting its `scratch` stage.
 
@@ -388,22 +409,27 @@ Selected release contents:
 
 - Configure the GitLab project to use `.gitlab-ci.yaml` as its custom CI/CD configuration path after merge.
 - The GitLab check job runs Go-managed contributor checks before package generation and retains the manual parent trigger.
-- GitLab pipelines on `main` and `feature/*` generate a child configuration with `.gitlab/ci/package-pipeline.jsonnet`.
+- GitLab pipelines on `main` and `feature/*` generate a child configuration with `.gitlab/ci/package-pipeline.gitlab-ci.jsonnet`.
 - One manual parent trigger starts the child pipeline, which builds and publishes its selected targets automatically.
-- The package component uses `golang:alpine` and invokes the Buildx shell entrypoint through Task with a TLS-enabled Docker service.
+- The package component uses `golang:alpine` and invokes the Taskfile build task with a TLS-enabled Docker service.
 - When `curl` is absent, `go tool task download -- <target>` uses the image's BusyBox `wget` and `timeout` fallback.
 - Contributor validation and pipeline generation use `golang:alpine` with Go's default `GOTOOLCHAIN=auto` behavior honoring the `go.mod` directive.
 - The prepare job exports the rendered child pipeline, and package jobs invoke named Taskfile tasks without a separate toolchain download.
 - GitLab package builds retain artifacts without custom publisher jobs.
-- GitLab contributor validation runs Go tests, golangci-lint, shell formatting, and Jsonnet checks directly without installing Node or pnpm.
-- The Node and pnpm contributor suite remains in the existing GitHub workflow and local hooks.
+- GitLab contributor validation invokes Go tests, golangci-lint, shell formatting, and Jsonnet checks through `go tool task`.
+- The Node, pnpm, and Java contributor checks run in local hooks only.
 - The package component installs Docker CLI and Buildx from Alpine packages.
 - The runner must provide the Docker service and its shared TLS certificate directory without disabling TLS or build sandbox protections.
 - `feature/*` branches append `-beta` to the package version.
-- Release publication uses the GitHub CLI in the GitHub release workflow.
+- Release packaging and publication use GoReleaser in the GitHub release workflow.
 - The generated child pipeline includes the local component at `templates/static-release.yml`.
 - GitLab component discovery requires the conventional `templates/*.yml` filename, so `templates/static-release.yml` remains the supported exception to the `.yaml` filename rule.
 - The parent configuration uses the supported custom configuration path documented by [GitLab](https://docs.gitlab.com/ci/pipelines/settings/#specify-a-custom-cicd-configuration-file), while the local component follows [GitLab's component discovery convention](https://docs.gitlab.com/ci/components/).
-- GitHub release packaging and GitLab package generation query `go tool task manifest -- get-release-files <target>` and archive those paths with `tar`.
-GitHub publishing uses `gh` with `GH_TOKEN` and `GH_REPO`.
-A missing release is created only after HTTP 404, and an existing archive asset is replaced with `gh release upload --clobber`.
+- GitHub release packaging and GitLab package generation query `go tool task manifest -- get-release-files <target>` for selected paths.
+- GitHub uses GoReleaser to archive staged files, while GitLab uses `tar`.
+
+GitHub publishing uses GoReleaser with `GITHUB_TOKEN`.
+GoReleaser creates the release or replaces its existing archive asset.
+The configuration uses the tag as the release title and publishes releases with `draft: false` and `prerelease: "false"`.
+Reruns apply this configuration to existing releases.
+The workflow validates the repository tag format before using GoReleaser with `--skip=validate` for target-prefixed tags.

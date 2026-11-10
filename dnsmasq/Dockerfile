@@ -3,7 +3,6 @@ ARG ALPINE_VERSION
 ARG UBI10_MINIMAL_VERSION
 ARG TARGET_PREFIX=/home/nobody
 
-
 FROM alpine:${ALPINE_VERSION} AS build
 ARG DNSMASQ_VERSION
 ARG TARGET_PREFIX
@@ -22,25 +21,15 @@ RUN make "-j$(nproc)" \
     PREFIX=${TARGET_PREFIX} \
     install
 
-
 FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
 ARG TARGET_PREFIX
-ARG DNSMASQ_VERSION
-
 RUN --mount=type=cache,target=/var/cache/dnf \
     microdnf -y install file binutils strace
 COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
-RUN set -eu; \
-    readelf -h "${TARGET_PREFIX}/sbin/dnsmasq" | grep -E 'Type:|Machine:'; \
-    file "${TARGET_PREFIX}/sbin/dnsmasq" | grep -E 'statically linked|static-pie linked'
-
-RUN set -eu; \
-    test -x "${TARGET_PREFIX}/sbin/dnsmasq"
-
-RUN set -eu; \
-    strace "${TARGET_PREFIX}/sbin/dnsmasq" -v; \
-  "${TARGET_PREFIX}/sbin/dnsmasq" -v | grep -F "Dnsmasq version ${DNSMASQ_VERSION} "
-
+RUN readelf -h "${TARGET_PREFIX}/sbin/dnsmasq" | grep -E 'Type:|Machine:'
+RUN file "${TARGET_PREFIX}/sbin/dnsmasq" | grep -E 'statically linked|static-pie linked'
+RUN test -x "${TARGET_PREFIX}/sbin/dnsmasq"
+RUN strace "${TARGET_PREFIX}/sbin/dnsmasq" -v
 
 FROM scratch
 

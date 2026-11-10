@@ -40,14 +40,14 @@ Keep custom Markdownlint rules under `rules/`.
 ### Configure dependencies and contributor checks
 
 - Define tool-named Taskfile tasks with argument pass-through after `--`.
-- Manage Task, shfmt, Jsonnet, jsonnetfmt, golangci-lint, gorelease, and buildctl through the root Go module.
-- Run Go tests, gofmt, and go mod tidy directly.
-- Invoke Docker Buildx directly from the maintained shell build entrypoint on every host.
+- Manage Task, shfmt, Jsonnet, jsonnetfmt, golangci-lint, GoReleaser, and buildctl through the root Go module.
+- Invoke Go tests, formatting, and module maintenance through `go tool task test`, `go tool task fmt`, and `go tool task tidy`.
+- Invoke Docker Buildx directly from the Taskfile build task on every host.
 - Require an explicit build target and never select a default target.
 - Use `golang:alpine` for GitLab Go jobs and invoke named Taskfile tasks with Go's default toolchain selection.
 - Follow EditorConfig with four-space indentation, except two spaces for shell and YAML files.
 - Keep custom Go commands only for source download and manifest queries.
-- Keep direct Buildx invocation in the maintained CI shell entrypoint without platform adapters.
+- Keep direct Buildx invocation in the Taskfile build task without platform adapters.
 - Include all maintained shell scripts in shfmt coverage.
 - Use pnpm catalogs with `^x.y.z` caret ranges for Node dependencies and required overrides.
 - Reference catalog entries from `package.json` and overrides instead of duplicating versions.
@@ -91,6 +91,8 @@ Keep custom Markdownlint rules under `rules/`.
 
 - Keep target build and configure commands inside each target Dockerfile.
 - Keep built-artifact verification inside Dockerfile verify stages rather than external scripts or harnesses.
+- Retain `readelf`, `file`, executable permission checks, and `strace` version execution in every target verify stage.
+- Reserve application functional verification for `nginx-upstream-healthcheck`.
 
 ## Documentation
 
@@ -142,8 +144,8 @@ Keep custom Markdownlint rules under `rules/`.
 - Use Docker Hub `redhat/ubi10-minimal` with the manifest-selected UBI tag for verify stages.
 - Verify static binaries inside Dockerfiles without per-target verify shell scripts or proxy harnesses.
 - Keep push and pull-request validation CI limited to contributor checks, without target builds or releases.
-- Run Go tests, golangci-lint, shfmt, and Jsonnet evaluation and formatting directly in GitLab validation jobs.
-- Keep Node and pnpm validation in the GitHub workflow and local contributor hooks.
+- Invoke Go tests, golangci-lint, shfmt, and Jsonnet tools through named `go tool task` tasks in GitLab validation jobs.
+- Keep Node, pnpm, and Java validation in local contributor hooks only.
 - Use existing verification entrypoints rather than introducing a test framework.
 
 ### Name release tags
@@ -154,9 +156,9 @@ Keep custom Markdownlint rules under `rules/`.
 ### Publish GitLab packages
 
 - For GitLab package pipelines on `main` and `feature/*`, prefer one manual parent job generating a child pipeline.
-- Generate that pipeline through `.gitlab/ci/package-pipeline.jsonnet` and reuse `templates/static-release.yml`.
+- Generate that pipeline through `.gitlab/ci/package-pipeline.gitlab-ci.jsonnet` and reuse `templates/static-release.yml`.
 - Keep GitLab package builds as artifact-only jobs without custom publisher jobs.
-- Use the GitHub CLI for GitHub release publication and gorelease for Go module compatibility checks.
+- Use GoReleaser for release packaging and GitHub publication.
 - Append `-beta` to package versions on `feature/*` branches.
 
 ## YAML filenames

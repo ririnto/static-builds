@@ -21,7 +21,7 @@ This target builds a static CoreDNS binary from source using Go.
 
 - This target uses a Go builder image and a pure-Go build path instead of the Alpine C toolchain pattern used by many other targets.
 - The packaged artifact is emitted as `coredns` instead of a `bin/` or `sbin/` path.
-- Plugin inventory and version reporting can be inspected manually after a build.
+- The verify stage reports the plugin inventory and binary version.
 
 ## How to Verify
 

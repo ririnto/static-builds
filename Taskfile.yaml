@@ -2,10 +2,6 @@ version: "3"
 
 silent: true
 
-vars:
-  SHELL_PATHS: >-
-    .github .gitlab
-
 tasks:
   default:
     desc: List available tasks
@@ -16,10 +12,50 @@ tasks:
     desc: Download sources and build a target (-- <target> [buildx args...])
     cmds:
       - |-
-        set -eu
+        set -e
         set -- {{.CLI_ARGS}}
-        go run ./cmd/download "${1:-}"
-        sh .github/build.sh "$@"
+        go tool task download -- "${1:-}"
+        ROOT_DIR=$(pwd)
+        TARGET="$1"
+        shift
+        METADATA_ENV=$(go tool task manifest -- get-env "${TARGET}")
+        case "${BUILDKIT_CACHE_BACKEND:-local}" in
+          local)
+            CACHE_DIR="${CACHE_DIR:-${ROOT_DIR}/.cache/${TARGET}}"
+            mkdir -p "${CACHE_DIR}"
+            set -- "--cache-from=type=local,src=${CACHE_DIR}" "--cache-to=type=local,dest=${CACHE_DIR},mode=max" "$@"
+            ;;
+          gha)
+            set -- "--cache-from=type=gha,scope=${TARGET}" "--cache-to=type=gha,mode=max,scope=${TARGET}" "$@"
+            ;;
+          *)
+            echo "Error: Invalid BUILDKIT_CACHE_BACKEND '${BUILDKIT_CACHE_BACKEND}' (allowed: local, gha)" >&2
+            exit 1
+            ;;
+        esac
+        BUILD_OUTPUT_DEST="${BUILD_OUTPUT_DEST:-${ROOT_DIR}/.out/${TARGET}}"
+        mkdir -p "${BUILD_OUTPUT_DEST}"
+        while IFS='=' read -r key value || [ -n "${key}" ]; do
+          case "$key" in
+            '' | \#* | *[!A-Z0-9_]*) ;;
+            *)
+              if [ -n "$value" ]; then
+                value=$(printf '%s' "$value" | tr -d '\r')
+                set -- "--build-arg=${key}=${value}" "$@"
+              fi
+              ;;
+          esac
+        done <<EOF
+        ${METADATA_ENV}
+        EOF
+        cd "${ROOT_DIR}"
+        docker buildx build \
+          "--platform=${BUILDKIT_PLATFORM:-linux/amd64}" \
+          "--network=${BUILDKIT_NETWORK:-default}" \
+          "--output=type=local,dest=${BUILD_OUTPUT_DEST}" \
+          "$@" \
+          "--file=${ROOT_DIR}/${TARGET}/Dockerfile" \
+          "${ROOT_DIR}"
 
   buildctl:
     desc: Run the BuildKit client
@@ -36,25 +72,46 @@ tasks:
     cmds:
       - go run ./cmd/metadata {{.CLI_ARGS}}
 
-  release:
-    desc: Check Go module release compatibility
+  goreleaser:
+    desc: Package and publish release artifacts
     cmds:
-      - go tool gorelease {{.CLI_ARGS}}
+      - go tool goreleaser {{.CLI_ARGS}}
 
   jsonnet:
     desc: Render the GitLab package pipeline
     cmds:
-      - go tool jsonnet {{.CLI_ARGS}} .gitlab/ci/package-pipeline.jsonnet
+      - go tool jsonnet {{.CLI_ARGS}} .gitlab/ci/package-pipeline.gitlab-ci.jsonnet
 
   jsonnetfmt:
     desc: Format the GitLab package pipeline
     cmds:
-      - go tool jsonnetfmt {{.CLI_ARGS}} .gitlab/ci/package-pipeline.jsonnet
+      - go tool jsonnetfmt {{.CLI_ARGS}} .gitlab/ci/package-pipeline.gitlab-ci.jsonnet
+
+  test:
+    desc: Test Go commands
+    cmds:
+      - go test ./... {{.CLI_ARGS}}
+
+  fmt:
+    desc: Format Go source
+    cmds:
+      - go fmt ./... {{.CLI_ARGS}}
+
+  tidy:
+    desc: Tidy Go module dependencies
+    cmds:
+      - go mod tidy {{.CLI_ARGS}}
 
   shfmt:
     desc: Format maintained shell scripts
+    vars:
+      SHELL_FILES:
+        sh: git ls-files '*.sh' '.husky/pre-*'
     cmds:
-      - find {{.SHELL_PATHS}} -type f -name '*.sh' -print0 | xargs -0 go tool shfmt {{.CLI_ARGS}}
+      - for:
+          var: SHELL_FILES
+          split: "\n"
+        cmd: go tool shfmt {{.CLI_ARGS}} {{.ITEM | shellQuote}}
 
   golangci-lint:
     desc: Lint Go source

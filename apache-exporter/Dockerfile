@@ -3,7 +3,6 @@ ARG GO_VERSION
 ARG UBI10_MINIMAL_VERSION
 ARG TARGET_PREFIX=/out
 
-
 FROM golang:${GO_VERSION}-alpine AS build
 ARG APACHE_EXPORTER_VERSION
 ARG TARGET_PREFIX
@@ -15,31 +14,23 @@ RUN --mount=type=cache,target=/var/cache/apk \
         git
 ADD ".tmp/apache-exporter-${APACHE_EXPORTER_VERSION}.tar.gz" /build/
 WORKDIR "/build/apache_exporter-${APACHE_EXPORTER_VERSION}"
+RUN mkdir -p ${TARGET_PREFIX}/bin
 RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg/mod \
-    mkdir -p ${TARGET_PREFIX}/bin && \
     CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} \
     go build -a -tags netgo -trimpath \
         -ldflags "-X github.com/prometheus/common/version.Version=${APACHE_EXPORTER_VERSION}" \
         -o ${TARGET_PREFIX}/bin/apache-exporter .
 
-
 FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
 ARG TARGET_PREFIX
-
 RUN --mount=type=cache,target=/var/cache/dnf \
     microdnf -y install file binutils strace
 COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
-RUN set -eu; \
-    readelf -h "${TARGET_PREFIX}/bin/apache-exporter" | grep -E 'Type:|Machine:'; \
-    file "${TARGET_PREFIX}/bin/apache-exporter" | grep -E 'statically linked|static-pie linked'
-
-RUN set -eu; \
-    test -x "${TARGET_PREFIX}/bin/apache-exporter"
-
-RUN set -eu; \
-    strace "${TARGET_PREFIX}/bin/apache-exporter" --version
-
+RUN readelf -h "${TARGET_PREFIX}/bin/apache-exporter" | grep -E 'Type:|Machine:'
+RUN file "${TARGET_PREFIX}/bin/apache-exporter" | grep -E 'statically linked|static-pie linked'
+RUN test -x "${TARGET_PREFIX}/bin/apache-exporter"
+RUN strace "${TARGET_PREFIX}/bin/apache-exporter" --version
 
 FROM scratch
 
