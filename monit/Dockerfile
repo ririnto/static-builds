@@ -25,10 +25,10 @@ RUN ./configure \
     --without-pam \
     --with-largefiles
 RUN make "-j$(nproc)"
-RUN mkdir -p ${TARGET_PREFIX}/bin && \
-    find src -name '*.o' -not -path '*/.*' | xargs ar rcs libsrc.a && \
-    find libmonit/src -name '*.o' -not -path '*/.*' | xargs ar rcs liblibmonit.a && \
-    gcc -static -static-pie -o ${TARGET_PREFIX}/bin/monit \
+RUN mkdir -p ${TARGET_PREFIX}/bin
+RUN find src -name '*.o' -not -path '*/.*' | xargs ar rcs libsrc.a
+RUN find libmonit/src -name '*.o' -not -path '*/.*' | xargs ar rcs liblibmonit.a
+RUN gcc -static -static-pie -o ${TARGET_PREFIX}/bin/monit \
         -Wl,--whole-archive libsrc.a liblibmonit.a -Wl,--no-whole-archive \
         /usr/lib/libssl.a /usr/lib/libcrypto.a /usr/lib/libz.a \
         -lpthread -lresolv -ldl -lm

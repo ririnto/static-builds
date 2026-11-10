@@ -15,9 +15,9 @@ RUN --mount=type=cache,target=/var/cache/apk \
         git
 ADD ".tmp/apache-exporter-${APACHE_EXPORTER_VERSION}.tar.gz" /build/
 WORKDIR "/build/apache_exporter-${APACHE_EXPORTER_VERSION}"
+RUN mkdir -p ${TARGET_PREFIX}/bin
 RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg/mod \
-    mkdir -p ${TARGET_PREFIX}/bin && \
     CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} \
     go build -a -tags netgo -trimpath \
         -ldflags "-X github.com/prometheus/common/version.Version=${APACHE_EXPORTER_VERSION}" \

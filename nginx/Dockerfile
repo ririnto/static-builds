@@ -34,7 +34,8 @@ RUN cmake -S "/build/quickjs-${QUICKJS_VERSION}" -B /build/quickjs-build \
     -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_BUILD_TYPE=Release
 RUN cmake --build /build/quickjs-build "-j$(nproc)"
 RUN cmake --install /build/quickjs-build
-ENV NJS_QUICKJS=YES NJS_LIBXSLT=NO
+ENV NJS_QUICKJS=YES
+ENV NJS_LIBXSLT=NO
 WORKDIR "/build/nginx-${NGINX_VERSION}"
 RUN ./configure \
   --prefix="${TARGET_PREFIX}" \
@@ -65,7 +66,8 @@ RUN ./configure \
   --with-cc-opt="-O2 -pipe -fPIE -fstack-protector-strong -fstack-clash-protection -ffunction-sections -fdata-sections -fno-delete-null-pointer-checks -fno-strict-overflow -fno-strict-aliasing -ftrivial-auto-var-init=zero -Wformat -Wformat=2 -Werror=format-security" \
   --with-ld-opt="-L/usr/local/lib -static -static-pie -static-libgcc -Wl,-E -rdynamic -Wl,-z,relro -Wl,-z,now -Wl,-z,noexecstack -Wl,-z,separate-code -Wl,--as-needed" \
   --with-libatomic
-RUN make "-j$(nproc)" && make install
+RUN make "-j$(nproc)"
+RUN make install
 COPY nginx/scripting.conf nginx/scripting.js ${TARGET_PREFIX}/conf/
 
 
@@ -87,17 +89,16 @@ RUN test -r "${TARGET_PREFIX}/conf/scripting.js"
 RUN strace "${TARGET_PREFIX}/sbin/nginx" -V
 RUN "${TARGET_PREFIX}/sbin/nginx" -t -c conf/scripting.conf
 
-RUN set -e; \
-    nginx_pid=; \
-    response_file=$(mktemp /tmp/njs-result.XXXXXX); \
+RUN nginx_pid=; \
+    response_file=$(mktemp /tmp/njs-result.XXXXXX) || exit $?; \
     cleanup() { \
         status=$?; \
         trap - EXIT INT TERM; \
         if [ -n "$nginx_pid" ]; then \
-            kill -QUIT "$nginx_pid"; \
-            wait "$nginx_pid"; \
+            kill -QUIT "$nginx_pid" || exit $?; \
+            wait "$nginx_pid" || exit $?; \
         fi; \
-        rm -f "$response_file"; \
+        rm -f "$response_file" || exit $?; \
         exit "$status"; \
     }; \
     trap cleanup EXIT; \
@@ -105,10 +106,10 @@ RUN set -e; \
     trap 'exit 143' TERM; \
     timeout --signal=QUIT --kill-after=2s 40s "${TARGET_PREFIX}/sbin/nginx" -c conf/scripting.conf -g 'daemon off;' & \
     nginx_pid=$!; \
-    timeout --signal=TERM --kill-after=1s 15s curl --retry 10 --retry-connrefused --retry-delay 1 --retry-max-time 10 --max-time 2 -fsS -o "$response_file" http://127.0.0.1:18081/njs; \
-    grep -Fx "njs ${NJS_VERSION} engine QuickJS" "$response_file"; \
-    timeout --signal=TERM --kill-after=1s 15s curl --max-time 5 -fsS -o "$response_file" http://127.0.0.1:18081/njs; \
-    grep -Fx "njs ${NJS_VERSION} engine QuickJS" "$response_file"; \
+    timeout --signal=TERM --kill-after=1s 15s curl --retry 10 --retry-connrefused --retry-delay 1 --retry-max-time 10 --max-time 2 -fsS -o "$response_file" http://127.0.0.1:18081/njs && \
+    grep -Fx "njs ${NJS_VERSION} engine QuickJS" "$response_file" && \
+    timeout --signal=TERM --kill-after=1s 15s curl --max-time 5 -fsS -o "$response_file" http://127.0.0.1:18081/njs && \
+    grep -Fx "njs ${NJS_VERSION} engine QuickJS" "$response_file" && \
     timeout 3 bash -c 'exec 3<>/dev/tcp/127.0.0.1/18082; IFS= read -r response <&3; printf "%s\n" "$response"' | grep -Fx "njs ${NJS_VERSION} engine QuickJS";
 
 
