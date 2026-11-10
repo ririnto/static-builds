@@ -50,17 +50,29 @@ ARG NJS_VERSION
 ARG TARGET_PREFIX
 
 RUN --mount=type=cache,target=/var/cache/dnf \
-    microdnf -y install file binutils strace
+    microdnf -y install file binutils strace openssl
 COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
 COPY nginx/nginx-stream-read.sh nginx/nginx-verify.sh /usr/local/bin/
 RUN /usr/local/bin/nginx-verify.sh
 
 
 
-FROM scratch
+FROM scratch AS runtime
 
 ARG TARGET_PREFIX
 
-COPY --from=verify ${TARGET_PREFIX} .
+COPY --from=verify ${TARGET_PREFIX} /
+COPY nginx-upstream-healthcheck/passwd /etc/passwd
+COPY nginx-upstream-healthcheck/group /etc/group
 EXPOSE 80 443
-ENTRYPOINT ["./sbin/nginx"]
+ENTRYPOINT ["/sbin/nginx", "-p", "/", "-g", "daemon off;"]
+
+
+FROM verify AS verify-runtime
+COPY --from=runtime / /runtime/
+COPY nginx-upstream-healthcheck/verify-startup.sh /usr/local/bin/
+RUN /usr/local/bin/verify-startup.sh
+
+
+FROM runtime
+COPY --from=verify-runtime /runtime/ /

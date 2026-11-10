@@ -13,7 +13,7 @@ Build metadata selects the NGINX, njs, QuickJS-NG, and VTS release versions.
 | --- | --- | --- |
 | NGINX Open Source | 1.30.6 | Provides the HTTP and stream servers. |
 | njs | 1.0.2 | Provides JavaScript scripting in HTTP and stream. |
-| QuickJS-NG | 0.17.0 | Provides the recommended JavaScript engine for njs. |
+| QuickJS-NG | 0.18.0 | Provides the recommended JavaScript engine for njs. |
 | nginx-module-vts | 0.2.7 | Provides NGINX traffic metrics. |
 
 The build statically compiles the official njs NGINX module and selects the supported `qjs` engine explicitly.
@@ -36,6 +36,41 @@ Replace its resolver and backend names for your environment before using it.
 Canonical `metadata.json` selects the configuration and this README for release packaging.
 The healthcheck profile needs no additional runtime library.
 
+## Start the image or release archive
+
+The binary has a compiled prefix of `/home/nobody` and a default configuration path of `conf/nginx.conf` beneath that prefix.
+The scratch image places the installed files at `/` and starts `/sbin/nginx -p / -g 'daemon off;'`.
+It includes the upstream default `conf/nginx.conf`, runtime directories, and minimal `nobody` user and group records with ID 65534 for the workers.
+The master starts as root and drops worker privileges to that account.
+Mount your own configuration at `/conf/nginx.conf` to replace the upstream default.
+Keep `/logs` and any configured temporary directories writable.
+The default image writes its PID to `/logs/nginx.pid` and logs beneath `/logs`.
+
+The release archive contains only the five files listed above, without a default `nginx.conf`, account databases, or runtime directories.
+Extract it into a directory of your choice and pass an absolute prefix with `-p` to override `/home/nobody`.
+Pass `-c conf/upstream-healthcheck.conf` to use the healthcheck example after replacing its resolver, backends, and listener addresses.
+Provide your backend CA at `<prefix>/conf/backend-ca.pem`.
+The example uses `backend-ca.pem` because NGINX resolves trusted certificate paths relative to the configuration directory.
+Keep the checker and proxy trust directives pointed at the same bundle.
+
+For an unprivileged local smoke test, use the packaged scripting configuration:
+
+```sh
+cd /path/to/extracted/archive
+mkdir -p logs client_body_temp proxy_temp
+./sbin/nginx -p "$PWD/" -c conf/scripting.conf -e stderr -g 'pid logs/nginx.pid; daemon off;'
+```
+
+Run this command as a non-root user so workers inherit your account without looking up `nobody`.
+For a root master, supply a system `nobody` user and group or choose an existing worker account with the `user` directive.
+The scripting example listens on loopback ports 18081 and 18082 and needs no backend CA.
+Create writable `logs`, `client_body_temp`, and `proxy_temp` directories under the selected prefix before startup.
+The `-e stderr` flag redirects startup error logging, and the scripting and healthcheck examples also set `error_log stderr`.
+Their HTTP access log defaults to `logs/access.log` beneath the prefix.
+The command writes the PID beneath `logs` and keeps nginx in the foreground with `daemon off;`.
+For another layout, set absolute writable `pid`, `access_log`, `client_body_temp_path`, and `proxy_temp_path` locations in your configuration.
+Do not add a second `pid` directive through `-g` when your configuration already defines one.
+
 ## njs scripting
 
 Both NGINX targets include njs 1.0.2 for HTTP and stream scripting.
@@ -57,7 +92,7 @@ The target already compiles njs with QuickJS-NG, but the available JavaScript AP
 | Resolved peer and routing APIs | NGINX exposes upstream peer storage to native modules. | njs has no API for the actual resolved peer address or the peer used by client routing. |
 | Native module loading | [`js_load_http_native_module`](https://nginx.org/en/docs/http/ngx_http_js_module.html#js_load_http_native_module) and [`js_load_stream_native_module`](https://nginx.org/en/docs/stream/ngx_stream_js_module.html#js_load_stream_native_module) load native modules. | A custom C module would still be required to add peer and socket APIs, so this does not reduce maintenance. |
 
-The target uses QuickJS-NG 0.17.0 with njs 1.0.2 and links both into the static NGINX binary.
+The target uses QuickJS-NG 0.18.0 with njs 1.0.2 and links both into the static NGINX binary.
 Using njs for the current probe contract would still require custom C integration for upstream peer selection and event-driven socket work.
 The existing C implementation therefore remains the smaller maintained path for dynamic multi-address peers and arbitrary stream protocols.
 
@@ -100,6 +135,12 @@ HTTP `type=tls` succeeds after a verified handshake and does not synthesize an H
 The HTTP check interval defaults to five seconds and the timeout defaults to one second.
 The default failure threshold is three checks and the recovery threshold is two checks.
 The default concurrency is 16 probes and the health state zone defaults to one mebibyte.
+
+For HTTP and stream checks with `interval=N`, worker zero scans for due probes on scheduling ticks spaced N apart.
+A probe that completes after its scheduling tick re-arms its next due time from completion time, plus N.
+The next tick can arrive before that due time, so checks commonly run at up to about twice the configured interval even when probes finish before the next tick.
+Long probes and concurrency limits can extend that delay.
+Size failure detection and recovery windows for the observed cadence, probe duration, and `fall` or `rise` counts rather than assuming one result per N.
 
 ## Stream TCP and TLS checks
 
@@ -206,6 +247,10 @@ The NGINX results classify the point where each probe succeeded or failed while 
 ## Build verification
 
 Both NGINX Docker verify stages reference shared scripts for common static-binary checks and njs HTTP and stream checks.
+For this target, `verify-runtime` also starts nginx inside a chroot of the scratch filesystem with the image's prefix and foreground flags.
+It checks the default configuration, fetches the default HTTP page, confirms a live master PID, and waits for graceful shutdown under a timeout.
+It also checks the packaged healthcheck configuration with a temporary CA at `/conf/backend-ca.pem` and removes that CA before export.
+The final stage exports that checked filesystem.
 Build scripts and fixture configurations live in separate source files rather than embedded Dockerfile or documentation scripts.
 The source-checkout verification commands below use scripts and fixtures that are not included in release packages.
 The shared `nginx/nginx-verify.sh` script preserves the existing static-build verification contract.
