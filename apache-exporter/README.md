@@ -25,5 +25,5 @@ This target builds the upstream Apache Exporter source into a statically linked 
 
 ```bash
 make build apache-exporter
-./.out/apache-exporter/bin/apache-exporter --version 2>&1 | grep -F '1.1.1'
+./.out/apache-exporter/bin/apache-exporter --version 2>&1 | grep -F '1.1.3'
 ```
