@@ -253,16 +253,16 @@ It also checks the packaged healthcheck configuration with a temporary CA at `/c
 The final stage exports that checked filesystem.
 Go build commands and fixture configurations live in separate source files rather than embedded Dockerfile or documentation scripts.
 The source-checkout verification commands below use Go commands and fixtures that are not included in release packages.
-The shared `cmd/verify-nginx` command preserves the existing static-build verification contract.
+The shared [nginx verification script](../nginx/nginx-verify.sh) and its [stream probe](../nginx/nginx-stream-read.sh) preserve the static-build verification contract.
+The [startup verifier](verify-startup.sh) checks the packaged runtime.
 Each HTTP probe has a 15-second GNU `timeout` deadline, with curl request limits of two seconds for the retrying probe and five seconds for the second probe.
 On success, failure, `INT`, or `TERM`, it cancels active probes and forwards `QUIT` to the supervised nginx process group.
 GNU `timeout` escalates resistant probes to `KILL` after one second and resistant nginx processes after two seconds.
 The verifier reaps both supervisors and removes its temporary response file.
 The nginx supervisor also imposes a 40-second server lifetime bound.
-Run `go test ./cmd/verify-nginx` from the repository root to check cancellation, failed probes, deadlines, and shutdown with local process fixtures.
-This standalone regression requires Go and GNU Coreutils `timeout` or `gtimeout` and does not invoke Docker.
-It does not run healthcheck functional scenarios.
-The standalone suite lives under `cmd/healthcheck-integration`, with configuration fixtures under `proxy/tests/fixtures/`.
+Run `go tool task lint` and `go tool task shfmt-check` from the repository root to check the maintained verification scripts.
+A full target build executes verification against the actual binary and packaged runtime without running the separate functional suite.
+The standalone suite lives under `cmd/run`, with configuration fixtures under `proxy/tests/fixtures/`.
 The `proxy/tests/fixtures/nginx.conf.template` file provides the functional configuration, and the Go runner generates certificate fixtures.
 
 Validate runner cleanup offline with `go tool task test-go`.

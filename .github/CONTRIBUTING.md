@@ -13,7 +13,7 @@ Use the repository's `.markdownlint-cli2.jsonc` when running Markdown lint.
 ### Markdown validation
 
 The [GitHub validation workflow](workflows/markdown-validation.yaml) reports documentation and tooling checks on every pull request without building targets or publishing releases.
-GitLab runs Go tests, Jsonnet, code-fence, and relative-link checks directly before its manual package trigger.
+GitLab runs Go tests, ShellCheck, shell formatting, Jsonnet, code-fence, and relative-link checks directly before its manual package trigger.
 Its Go jobs use `golang:alpine` with Go's default `GOTOOLCHAIN=auto` behavior honoring the `go.mod` directive.
 The package component invokes the same daemonless rootless Go build command as native Linux under a non-root user with subordinate ID ranges.
 Rust-based rumdl and Lychee remain provisioned by the repository validation-tool command.
@@ -26,7 +26,8 @@ The Markdown job also runs the rule tests, TypeScript validation, and Ultracite 
 Install the Node.js version supported by `package.json` and the pnpm version declared there for Node-side tooling.
 Install the Go version declared in `go.mod` for repository tasks and Go-managed contributor tools.
 Use rumdl 0.3.1 and Lychee 0.24.2, matching the workflow's tool versions.
-Task, Jsonnet, jsonnetfmt, buildctl, and buildkitd are managed through `go.mod`.
+Task, shfmt, Jsonnet, jsonnetfmt, buildctl, and buildkitd are managed through `go.mod`.
+Install ShellCheck for the maintained target verification scripts.
 Linux target builds additionally require the rootless runtime prerequisites documented in the root README.
 Native macOS target builds retain the Docker Buildx prerequisites documented there.
 Run the checks from the repository root:
@@ -40,8 +41,8 @@ pnpm run fix
 The root package manifest references Node-side tooling through the pnpm workspace catalog.
 `pnpm-workspace.yaml` defines the catalog-backed `katex` development override required by `micromark-extension-math`.
 The lockfile records the resolved dependency graph.
-`check` runs Markdown lint, rule tests, TypeScript validation, Ultracite, code-fence validation, relative-link validation, Go command and process tests, Jsonnet evaluation, and Jsonnet formatting checks.
-`fix` applies Markdown lint fixes and the Go-managed Jsonnet formatter through Task.
+`check` runs Markdown lint, rule tests, TypeScript validation, Ultracite, code-fence validation, relative-link validation, Go command and process tests, ShellCheck, shell formatting, Jsonnet evaluation, and Jsonnet formatting checks.
+`fix` applies Markdown lint fixes and the Go-managed shell and Jsonnet formatters through Task.
 It also applies Ultracite fixes.
 Markdownlint loads the local Markdownlint rules through `customRules`, applying the shared Markdownlint baseline with the repository's stricter exceptions.
 The `docs/no-box-drawing` rule reports the first Unicode box-drawing character per line, including fenced code, without automatic replacements.
@@ -128,7 +129,7 @@ Publish through the feature branch and pull request rather than pushing changes 
 
 Explain in the issue when existing guards remain because inversion requires artificial flags or deeper nesting.
 
-Run `go tool task test-go` or `go test ./...` for metadata, download, release, build runner, and target verifier regressions.
+Run `go tool task test-go` or `go test ./...` for metadata, download, release, build runner, and functional runner regressions.
 The tests build actual command executables and exercise process lifetimes, signals, cleanup, output contracts, and fake publisher API behavior.
 Run `go tool task test-healthcheck` against an already-built healthcheck binary on Linux.
 Run `go tool task test-healthcheck-docker` for the Docker-backed functional suite on macOS.

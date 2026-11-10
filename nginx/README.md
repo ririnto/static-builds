@@ -39,17 +39,16 @@ curl http://127.0.0.1:18081/njs
 ./.out/nginx/sbin/nginx -p "$PWD/.out/nginx/" -c conf/scripting.conf -s quit
 ```
 
-Both NGINX Docker verification stages invoke the same Go command for static linking, configuration parsing, and HTTP/stream execution.
-The [verification command](../cmd/verify-nginx/main.go) preserves their existing verification contract.
+Both NGINX Docker verification stages invoke the same shell script for static linking, configuration parsing, and HTTP/stream execution.
+The [verification script](nginx-verify.sh) uses [the stream probe](nginx-stream-read.sh) for the TCP response check.
 The scripting checks require the reported `QuickJS` engine and selected njs version.
 Each HTTP probe has a 15-second GNU `timeout` deadline, with curl request limits of two seconds for the retrying probe and five seconds for the second probe.
 On success, failure, `INT`, or `TERM`, it cancels active probes and forwards `QUIT` to the supervised nginx process group.
 GNU `timeout` escalates resistant probes to `KILL` after one second and resistant nginx processes after two seconds.
 The verifier reaps both supervisors and removes its temporary response file.
 The nginx supervisor also imposes a 40-second server lifetime bound.
-Run `go test ./cmd/verify-nginx` from the repository root to check cancellation, failed probes, deadlines, and shutdown with local process fixtures.
-This standalone regression requires Go and GNU Coreutils `timeout` or `gtimeout` and does not invoke Docker.
-It does not introduce a separate verification framework.
+Run `go tool task lint` and `go tool task shfmt-check` from the repository root to check the maintained verification scripts.
+A full nginx build executes these checks against the actual binary in its verification stage.
 
 ## How to Verify
 

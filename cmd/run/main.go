@@ -520,7 +520,7 @@ func (s *suite) route(peer string) error {
 
 func run(ctx context.Context, args []string) error {
 	if len(args) != 1 {
-		return prerequisiteError("usage: healthcheck-integration /path/to/linux/nginx")
+		return prerequisiteError("usage: run /path/to/linux/nginx")
 	}
 	if runtime.GOOS != "linux" {
 		return prerequisiteError("the functional suite requires Linux, use test-healthcheck-docker on macOS")

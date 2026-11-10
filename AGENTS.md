@@ -40,19 +40,20 @@ Keep custom Markdownlint rules under `rules/`.
 ### Configure dependencies and contributor checks
 
 - Define repository task entrypoints in `Taskfile.yaml` and delegate package scripts to `go tool task`.
-- Manage Task, Jsonnet, jsonnetfmt, buildctl, and buildkitd through the root Go module.
+- Manage Task, shfmt, Jsonnet, jsonnetfmt, buildctl, and buildkitd through the root Go module.
 - Use the repository's ephemeral daemonless rootless path with `go tool buildkitd` and `go tool buildctl` for native Linux and GitLab package builds.
 - Run rootless builds as a non-root user with subordinate ID ranges and the normal sandbox protections.
 - Use Docker Buildx for native macOS builds.
 - Use `golang:alpine` for GitLab Go jobs and invoke repository commands directly with Go's default toolchain selection.
-- Follow EditorConfig with four-space indentation, except two spaces for YAML files.
-- Keep target build and verification compositions and proxy test orchestration in Go rather than maintained shell or Python files.
+- Follow EditorConfig with four-space indentation, except two spaces for shell and YAML files.
+- Keep target build helpers and proxy test orchestration in Go, with command directory names matching the original script basenames and unchanged argument forwarding.
+- Keep target verification in the maintained shell scripts and include those scripts in ShellCheck and shfmt coverage.
 - Use pnpm catalogs with `^x.y.z` caret ranges for Node dependencies and required overrides.
 - Reference catalog entries from `package.json` and overrides instead of duplicating versions.
 - Remove overrides when upstream dependencies select supported patched versions themselves.
 - Keep the package manager version free of hash suffixes.
 - Keep Husky's `prepare` script and tracked pre-commit and pre-push hooks connected to the full `pnpm check` entrypoint.
-- Include Go command and process tests, Markdown lint, rule tests, TypeScript, Ultracite, code-fence checks, relative-link checks, and Jsonnet evaluation and formatting in contributor checks.
+- Include Go command and process tests, ShellCheck, shfmt, Markdown lint, rule tests, TypeScript, Ultracite, code-fence checks, relative-link checks, and Jsonnet evaluation and formatting in contributor checks.
 - Keep the Linux and Docker-backed healthcheck functional tasks separate from offline contributor checks because they require a built target and runtime dependencies.
 - Verify successful Git operations and failure propagation through those hooks.
 - Use Ultracite as the only direct caller of Oxlint and Oxfmt.
@@ -139,7 +140,7 @@ Keep custom Markdownlint rules under `rules/`.
 - Update every affected Dockerfile verify block together when changing duplicated static verification.
 - Update documentation describing the changed shared verification contract.
 - Keep push and pull-request validation CI limited to contributor checks, without target builds or releases.
-- Run Go tests, Jsonnet evaluation and formatting, code-fence checks, and relative-link checks directly in GitLab validation jobs.
+- Run Go tests, ShellCheck, shfmt, Jsonnet evaluation and formatting, code-fence checks, and relative-link checks directly in GitLab validation jobs.
 - Keep Node and pnpm validation in the GitHub workflow and local contributor hooks.
 - Use existing verification entrypoints rather than introducing a test framework.
 

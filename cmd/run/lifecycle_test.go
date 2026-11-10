@@ -89,7 +89,7 @@ func TestIntegrationLifecycle(t *testing.T) {
 		t.Fatal(err)
 	}
 	directory := t.TempDir()
-	runner := filepath.Join(directory, "healthcheck-integration")
+	runner := filepath.Join(directory, "run")
 	if output, err := exec.Command("go", "build", "-o", runner, ".").CombinedOutput(); err != nil {
 		t.Fatalf("build: %v\n%s", err, output)
 	}
