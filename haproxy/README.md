@@ -34,7 +34,9 @@ This target builds a static PIE `haproxy` binary for musl-based deployments.
 - The wrapper's bundled SDK patches also apply to the SDK version selected in `metadata.json`.
 - rapidyaml's source archive extracts into `rapidyaml.v<version>`.
 - `HAPROXY_OTEL_ADDON_VERSION` selects the addon's release tag.
-- `GRPC_PROTO_REF` selects `grpc-proto`'s maintained `master` branch because upstream provides no release tags.
+- OTLP network export uses HTTP with `OTELCPP_WITH_OTLP_HTTP=ON` and `OTELCPP_WITH_OTLP_GRPC=OFF`.
+- The target does not download or build gRPC, grpc-proto, or RE2.
+- Protobuf, Abseil, and opentelemetry-proto remain required for OTLP/HTTP serialization.
 - The SDK uses the prefetched nlohmann JSON archive through CMake's `FETCHCONTENT_SOURCE_DIR_NLOHMANN_JSON` option.
 - The selected SDK release includes upstream's [`<cstdint>` fix](https://github.com/open-telemetry/opentelemetry-cpp/pull/4574), so no local header patch is needed.
 - The wrapper requires GNU awk to generate its semantic convention headers.
@@ -47,6 +49,30 @@ This target builds a static PIE `haproxy` binary for musl-based deployments.
 - OpenTelemetry support is provided by `haproxytech/haproxy-opentelemetry` plus `opentelemetry-c-wrapper` and `opentelemetry-cpp` static libraries.
 - Lua support, the Prometheus exporter, QUIC, KTLS, and shared-memory runtime support are approved parts of this target's runtime profile.
 - The release artifact for this target is limited to the static `sbin/haproxy` binary.
+- OTLP network export supports HTTP only.
+  Existing local-file and other HTTP-based exporters remain available.
+
+## OTLP over HTTP
+
+Use `otlp_http` in the OpenTelemetry YAML configuration referenced by the HAProxy filter.
+The collector must enable its OTLP/HTTP receiver.
+For trace export, set the endpoint to the collector's `/v1/traces` URL, normally on port 4318.
+For example:
+
+```yaml
+exporters:
+  traces_http:
+    type: otlp_http
+    endpoint: "http://localhost:4318/v1/traces"
+```
+
+Reference `traces_http` from `signals.traces.<name>.exporters` in the same YAML file.
+The [upstream configuration guide](https://github.com/haproxytech/haproxy-opentelemetry/blob/v2.3.0/README.md#configuration) describes the filter, scopes, processors, and providers required for a complete configuration.
+Replace `localhost` with the collector's reachable hostname when it runs outside the HAProxy container.
+Existing `otlp_grpc` configurations must be migrated to `otlp_http`.
+Use the collector's HTTP receiver address instead of its gRPC endpoint, normally on port 4317.
+Metrics and logs use `/v1/metrics` and `/v1/logs` respectively when configured.
+This build-profile change does not change HAProxy's HTTP/2 proxying of application gRPC traffic.
 
 ## How to Verify
 

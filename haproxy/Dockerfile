@@ -77,69 +77,6 @@ RUN cmake -S "/tmp/rapidyaml.v${RAPIDYAML_VERSION}" -B /tmp/rapidyaml-build \
 RUN cmake --build /tmp/rapidyaml-build --parallel "$(nproc)"
 RUN cmake --install /tmp/rapidyaml-build
 
-FROM otel-base AS otel-re2
-ARG RE2_VERSION
-ARG HARDENING_CFLAGS
-ADD ".tmp/re2-${RE2_VERSION}.tar.gz" /tmp/
-COPY --from=otel-abseil /opt /opt
-RUN cmake -S "/tmp/re2-${RE2_VERSION}" -B /tmp/re2-build \
-        -DCMAKE_INSTALL_PREFIX=/opt \
-        -DCMAKE_C_FLAGS="${HARDENING_CFLAGS}" \
-        -DCMAKE_CXX_FLAGS="${HARDENING_CFLAGS}" \
-        -DCMAKE_CXX_STANDARD=17 \
-        -DCMAKE_INSTALL_LIBDIR=lib \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DBUILD_SHARED_LIBS=OFF \
-        -DRE2_BUILD_TESTING=OFF
-RUN cmake --build /tmp/re2-build --parallel "$(nproc)"
-RUN cmake --install /tmp/re2-build
-
-FROM otel-base AS otel-grpc
-ARG GRPC_VERSION
-ARG GRPC_PROTO_REF
-ARG HARDENING_CFLAGS
-ADD ".tmp/grpc-${GRPC_VERSION}.tar.gz" /tmp/
-ADD ".tmp/grpc-proto-${GRPC_PROTO_REF}.tar.gz" /tmp/
-COPY --from=otel-abseil /opt /opt
-COPY --from=otel-protobuf /opt /opt
-COPY --from=otel-re2 /opt /opt
-RUN rmdir "/tmp/grpc-${GRPC_VERSION}/third_party/grpc-proto" \
-    && mv "/tmp/grpc-proto-${GRPC_PROTO_REF}" "/tmp/grpc-${GRPC_VERSION}/third_party/grpc-proto"
-RUN apk add c-ares-dev curl-dev curl-static brotli-static libidn2-static libpsl-static libunistring-static nghttp2-static zstd-static
-RUN cmake -S "/tmp/grpc-${GRPC_VERSION}" -B /tmp/grpc-build \
-        -DCMAKE_INSTALL_PREFIX=/opt \
-        -DCMAKE_C_FLAGS="${HARDENING_CFLAGS}" \
-        -DCMAKE_CXX_FLAGS="${HARDENING_CFLAGS}" \
-        -DCMAKE_CXX_STANDARD=17 \
-        -DCMAKE_INSTALL_LIBDIR=lib \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DBUILD_SHARED_LIBS=OFF \
-        -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
-        -DgRPC_BUILD_TESTS=OFF \
-        -DgRPC_INSTALL=ON \
-        -DgRPC_ZLIB_PROVIDER=package \
-        -DgRPC_CARES_PROVIDER=package \
-        -DgRPC_SSL_PROVIDER=package \
-        -DgRPC_PROTOBUF_PROVIDER=package \
-        -DgRPC_ABSL_PROVIDER=package \
-        -DgRPC_RE2_PROVIDER=package \
-        -DgRPC_BUILD_GRPC_CPP_PLUGIN=ON \
-        -DgRPC_BUILD_GRPC_CSHARP_PLUGIN=OFF \
-        -DgRPC_BUILD_GRPC_OBJECTIVE_C_PLUGIN=OFF \
-        -DgRPC_BUILD_GRPC_PHP_PLUGIN=OFF \
-        -DgRPC_BUILD_GRPC_NODE_PLUGIN=OFF \
-        -DgRPC_BUILD_GRPC_PYTHON_PLUGIN=OFF \
-        -DgRPC_BUILD_GRPC_RUBY_PLUGIN=OFF \
-        -DgRPC_BUILD_GRPCPP_OTEL_PLUGIN=OFF \
-        -DOPENSSL_ROOT_DIR=/usr \
-        -DOPENSSL_SSL_LIBRARY=/usr/lib/libssl.a \
-        -DOPENSSL_CRYPTO_LIBRARY=/usr/lib/libcrypto.a \
-        -DZLIB_LIBRARY=/usr/lib/libz.a \
-        -DZLIB_INCLUDE_DIR=/usr/include \
-        -DCMAKE_PREFIX_PATH=/opt:/usr
-RUN cmake --build /tmp/grpc-build --parallel "$(nproc)"
-RUN cmake --install /tmp/grpc-build
-
 FROM otel-base AS otel-cpp
 ARG HAPROXY_OTEL_C_WRAPPER_VERSION
 ARG OPENTELEMETRY_CPP_VERSION
@@ -153,7 +90,6 @@ ADD ".tmp/opentelemetry-c-wrapper-${HAPROXY_OTEL_C_WRAPPER_VERSION}.tar.gz" /bui
 COPY --from=otel-abseil /opt /opt
 COPY --from=otel-protobuf /opt /opt
 COPY --from=otel-rapidyaml /opt /opt
-COPY --from=otel-grpc /opt /opt
 RUN apk add c-ares-dev curl-dev curl-static brotli-static libidn2-static libpsl-static libunistring-static nghttp2-static zstd-static
 RUN mv "/build/opentelemetry-c-wrapper-${HAPROXY_OTEL_C_WRAPPER_VERSION}" /build/opentelemetry-c-wrapper
 RUN set -e; \
@@ -188,7 +124,7 @@ RUN PKG_CONFIG_PATH=/opt/lib/pkgconfig cmake -S "/tmp/opentelemetry-cpp-${OPENTE
         -DOTELCPP_WITH_CONFIGURATION=ON \
         -DOTELCPP_INSTALL=ON \
         -DOTELCPP_WITH_NO_DEPRECATED_CODE=ON \
-        -DOTELCPP_WITH_OTLP_GRPC=ON \
+        -DOTELCPP_WITH_OTLP_GRPC=OFF \
         -DOTELCPP_WITH_OTLP_HTTP=ON \
         -DOTELCPP_WITH_OTLP_FILE=ON \
         -DOTELCPP_WITH_OTLP_HTTP_COMPRESSION=ON \
