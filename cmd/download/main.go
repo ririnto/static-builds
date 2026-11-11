@@ -1,3 +1,4 @@
+// Command download retrieves the sources required by one build target.
 package main
 
 import (
@@ -8,6 +9,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"syscall"
@@ -197,7 +199,7 @@ func run(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	for _, record := range downloads {
+	for record := range slices.Values(downloads) {
 		if record.URL != "" && record.Name != "" {
 			if err := download(ctx, record.URL, filepath.Join(root, ".tmp", record.Name)); err != nil {
 				return err

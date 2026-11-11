@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 )
 
@@ -112,7 +113,7 @@ func Load(path string) (*Metadata, error) {
 func parse(data []byte) (*Metadata, error) {
 	// The former parser rejects Unicode escapes, including in ignored fields.
 	inString, escaped := false, false
-	for _, character := range data {
+	for character := range slices.Values(data) {
 		if escaped {
 			if character == 'u' {
 				return nil, fmt.Errorf("unsupported unicode escape")
@@ -137,12 +138,12 @@ func parse(data []byte) (*Metadata, error) {
 		return nil, fmt.Errorf("metadata must be a non-empty object")
 	}
 	result := &Metadata{}
-	for _, item := range root.object {
+	for item := range slices.Values(root.object) {
 		if item.value.token != json.Delim('{') {
 			return nil, fmt.Errorf("metadata entries must be objects keyed by target name")
 		}
 		target := Target{Name: item.key}
-		for _, field := range item.value.object {
+		for field := range slices.Values(item.value.object) {
 			switch field.key {
 			case "tag_prefix", "version_env_var":
 				text, err := stringValue(field.value)
@@ -158,7 +159,7 @@ func parse(data []byte) (*Metadata, error) {
 				if field.value.token != json.Delim('{') {
 					return nil, fmt.Errorf("target '%s' has malformed env object", item.key)
 				}
-				for _, entry := range field.value.object {
+				for entry := range slices.Values(field.value.object) {
 					text, err := stringValue(entry.value)
 					if err != nil {
 						return nil, err
@@ -169,7 +170,7 @@ func parse(data []byte) (*Metadata, error) {
 				if field.value.token != json.Delim('[') {
 					return nil, fmt.Errorf("target '%s' has malformed release_files array", item.key)
 				}
-				for _, entry := range field.value.array {
+				for entry := range slices.Values(field.value.array) {
 					text, err := stringValue(entry)
 					if err != nil {
 						return nil, err
@@ -186,7 +187,7 @@ func parse(data []byte) (*Metadata, error) {
 					if entry.token != json.Delim('{') {
 						return nil, fmt.Errorf("target '%s' has invalid download entry #%d", item.key, index+1)
 					}
-					for _, downloadField := range entry.object {
+					for downloadField := range slices.Values(entry.object) {
 						if downloadField.key == "url" || downloadField.key == "name" {
 							text, err := stringValue(downloadField.value)
 							if err != nil {
@@ -226,10 +227,8 @@ func LoadDefault() (*Metadata, error) {
 
 // Target selects a target without changing input ordering.
 func (m *Metadata) Target(name string) (*Target, error) {
-	for index := range m.Targets {
-		if m.Targets[index].Name == name {
-			return &m.Targets[index], nil
-		}
+	if index := slices.IndexFunc(m.Targets, func(target Target) bool { return target.Name == name }); index >= 0 {
+		return &m.Targets[index], nil
 	}
 	return nil, fmt.Errorf("unknown target '%s'", name)
 }
@@ -278,13 +277,8 @@ func (t *Target) OfficialVersion() (string, error) {
 	if t.VersionEnvVar == "" {
 		return "", fmt.Errorf("target '%s' is missing version_env_var", t.Name)
 	}
-	for _, entry := range t.Env {
-		if entry.Key == t.VersionEnvVar {
-			if entry.Value == "" {
-				return "", fmt.Errorf("target '%s' is missing official version value", t.Name)
-			}
-			return entry.Value, nil
-		}
+	if index := slices.IndexFunc(t.Env, func(entry Entry) bool { return entry.Key == t.VersionEnvVar }); index >= 0 && t.Env[index].Value != "" {
+		return t.Env[index].Value, nil
 	}
 	return "", fmt.Errorf("target '%s' is missing official version value", t.Name)
 }
@@ -304,14 +298,9 @@ func (t *Target) render(template string, index int, field string) (string, error
 		prefix, tail, _ := strings.Cut(remainder, "{")
 		placeholder, rest, _ := strings.Cut(tail, "}")
 		output.WriteString(prefix)
-		found := false
-		for _, entry := range t.Env {
-			if !found && entry.Key == placeholder {
-				output.WriteString(entry.Value)
-				found = true
-			}
-		}
-		if !found {
+		if entry := slices.IndexFunc(t.Env, func(entry Entry) bool { return entry.Key == placeholder }); entry >= 0 {
+			output.WriteString(t.Env[entry].Value)
+		} else {
 			return "", fmt.Errorf("target '%s' references unknown placeholder '%s' in downloads[%d].%s", t.Name, placeholder, index, field)
 		}
 		remainder = rest
