@@ -1,3 +1,9 @@
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      when: never
+    - when: always
+
 stages:
   - checks
   - prepare
@@ -20,7 +26,6 @@ validate-contributor-checks:
     - go tool task jsonnet -- -S --ext-str branch= --ext-str target=dnsmasq --ext-str component_ref=example.invalid/group/static-builds/static-release@release-check --tla-str "release_tag=dnsmasq-$(go tool task manifest -- get-official-version dnsmasq).0"
     - go tool task jsonnetfmt -- --test
   rules:
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     - if: "$CI_COMMIT_BRANCH"
     - if: "$CI_COMMIT_TAG"
     - when: never
