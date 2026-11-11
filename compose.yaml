@@ -1,0 +1,56 @@
+services:
+  build:
+    build:
+      context: .
+      args:
+        BUILDER_UID: ${BUILDER_UID:-1000}
+      dockerfile_inline: |
+        FROM golang:alpine
+        ARG BUILDER_UID=1000
+        RUN apk add --no-cache ca-certificates git buildkit runc rootlesskit shadow-uidmap \
+            && adduser -D -u "$$BUILDER_UID" user \
+            && echo user:100000:65536 > /etc/subuid \
+            && echo user:100000:65536 > /etc/subgid \
+            && mkdir -p /run/user/$$BUILDER_UID /home/user/.local/tmp /home/user/.local/share/buildkit /home/user/.cache/go-build /home/user/go/pkg/mod \
+            && chown -R user:user /run/user/$$BUILDER_UID /home/user \
+            && chmod 700 /run/user/$$BUILDER_UID
+        ENV HOME=/home/user USER=user GOPATH=/home/user/go
+        ENV XDG_RUNTIME_DIR=/run/user/$$BUILDER_UID TMPDIR=/home/user/.local/tmp
+        USER user
+        WORKDIR /workspace
+    environment:
+      BUILDKITD_FLAGS: --oci-worker-snapshotter=native
+      BUILDKIT_PLATFORM: ${BUILDKIT_PLATFORM:-linux/amd64}
+      GOFLAGS: -buildvcs=false
+    security_opt:
+      - seccomp=unconfined
+      - systempaths=unconfined
+    entrypoint: [go, tool, task, build-rootless, --]
+    volumes:
+      - type: bind
+        source: .
+        target: /workspace
+        read_only: true
+      - type: bind
+        source: .tmp
+        target: /workspace/.tmp
+        bind:
+          create_host_path: false
+      - type: bind
+        source: .cache
+        target: /workspace/.cache
+        bind:
+          create_host_path: false
+      - type: bind
+        source: .out
+        target: /workspace/.out
+        bind:
+          create_host_path: false
+      - buildkit-state:/home/user/.local/share/buildkit
+      - go-modules:/home/user/go/pkg/mod
+      - go-build:/home/user/.cache/go-build
+
+volumes:
+  buildkit-state:
+  go-modules:
+  go-build:

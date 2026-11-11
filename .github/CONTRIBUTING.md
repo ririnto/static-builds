@@ -1,9 +1,9 @@
 # Contributing
 
 Read the affected target's README before changing the repository.
-Document the problem, affected targets, and acceptance criteria in an issue.
-Use the bug report template for failures and the change request template for improvements.
-Link related issues instead of expanding a completed issue's scope.
+Document the problem, affected targets, and acceptance criteria in the task context or pull request.
+Create an issue when it helps coordination or tracking, using the bug report template for failures or the change request template for improvements.
+When related issues exist, link them instead of expanding a completed issue's scope.
 
 ## Documentation
 
@@ -40,10 +40,16 @@ The following tools are managed through `go.mod`:
 The Taskfile selects tracked shell scripts and contributor hooks with Git and invokes shfmt through Task iteration.
 Use `go tool task jsonnetfmt -- -i` to format the package pipeline and `go tool task jsonnetfmt -- --test` to check it.
 `go tool task buildctl -- --help` exposes the BuildKit client without changing the Docker Buildx build driver.
-Local target builds require Docker Buildx and a running Linux Docker daemon.
+Local container builds use compose.yaml with a golang-based non-root image and the upstream daemonless BuildKit script.
+Run `mkdir -p .tmp .cache .out`, `docker compose build build`, and `docker compose run --rm build <target>` from the repository root.
+The dedicated container relaxes seccomp and masked system paths as described in the [official rootless Docker guidance](https://github.com/moby/buildkit/blob/v0.34.2/docs/rootless.md#docker).
+It keeps BuildKit's process sandbox, uses the native snapshotter without a FUSE device, and never mounts the Docker socket.
+Direct local builds require Docker Buildx and a running Linux Docker daemon.
 GitLab builds use a non-root user with subordinate UID and GID ranges of `100000:65536`.
 The runner must permit unprivileged user namespaces and rootless mounts.
 The job uses `--oci-worker-no-process-sandbox` because the container masks `/proc`, so build processes share the daemon process namespace.
+This runner-specific compromise differs from Compose, which keeps the process sandbox enabled.
+Self-managed GitLab runners should follow [GitLab's tailored seccomp guidance](https://docs.gitlab.com/ci/docker/using_buildkit/#rootless-build-fails-with-permission-errors) rather than changing security settings from job scripts.
 See the root README for [build configuration and invocation examples](../README.md#build-configuration).
 Run the checks from the repository root:
 
@@ -140,14 +146,14 @@ Explain the reason, main changes, verification results, and material limitations
 Use one sentence per source line in commit bodies, issues, and pull requests.
 
 Open an ordinary pull request against `main` using the repository's pull request template.
-Link the issue and report the commands and results that cover the change.
+Link a related issue when one exists and report the commands and results that cover the change.
 Mark failed and unrun checks as such.
 Review the complete posted change and confirm its current head before normal server-side integration.
 Publish through the feature branch and pull request rather than pushing changes directly to `main`.
 
 ## Verification
 
-Explain in the issue when existing guards remain because inversion requires artificial flags or deeper nesting.
+Explain in the task context, pull request, or related issue when existing guards remain because inversion requires artificial flags or deeper nesting.
 
 Run `go tool task test` for the retained command tests.
 The contributor check entrypoint includes these tests, `go tool task golangci-lint -- run ./...` checks, and `go tool task shfmt -- -d -i 2 -ci` formatting through Task.

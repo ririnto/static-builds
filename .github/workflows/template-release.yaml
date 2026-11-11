@@ -90,14 +90,7 @@ jobs:
         env:
           TARGET: ${{ inputs.target }}
           TAG: ${{ inputs.tag }}
-          GORELEASER_CURRENT_TAG: ${{ inputs.tag }}
-        run: |-
-          set -o pipefail
-          RELEASE_FILES=$(mktemp -d "${RUNNER_TEMP}/release.XXXXXXXX")
-          export RELEASE_FILES
-          trap 'rm -rf "$RELEASE_FILES"' EXIT
-          go tool task manifest -- get-release-files "$TARGET" | rsync -ar --files-from=- ".out/$TARGET/" "$RELEASE_FILES/"
-          go tool task goreleaser -- release --clean --skip=publish,validate
+        run: go tool task package -- "$TARGET" "$TAG"
 
       - name: Upload release artifacts
         uses: actions/upload-artifact@v7
@@ -110,7 +103,10 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: ${{ inputs.target }}-release-package
-          path: .out/goreleaser/${{ inputs.tag }}.tar.gz
+          path: |-
+            .out/goreleaser/${{ inputs.tag }}.tar.gz
+            .out/goreleaser/${{ inputs.tag }}_checksums.txt
+          include-hidden-files: true
           if-no-files-found: error
 
   publish:
@@ -138,5 +134,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
           GORELEASER_CURRENT_TAG: ${{ inputs.tag }}
+          RELEASE_ARCHIVE: .out/release-package/${{ inputs.tag }}.tar.gz
           TAG: ${{ inputs.tag }}
         run: go tool task goreleaser -- release --clean --skip=archive,validate

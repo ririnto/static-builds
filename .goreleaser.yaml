@@ -13,7 +13,10 @@ archives:
         dst: .
 
 checksum:
-  disable: true
+  name_template: "{{ .Env.TAG }}_checksums.txt"
+  algorithm: sha256
+  extra_files:
+    - glob: '{{ if isEnvSet "RELEASE_ARCHIVE" }}{{ .Env.RELEASE_ARCHIVE }}{{ end }}'
 
 changelog:
   disable: true

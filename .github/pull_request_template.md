@@ -2,7 +2,7 @@
 
 ## Problem
 
-Explain the problem and link the issue this change resolves.
+Explain the problem and link a related issue when one exists.
 
 ## Changes
 

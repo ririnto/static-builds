@@ -42,7 +42,8 @@ Keep custom Markdownlint rules under `rules/`.
 - Define tool-named Taskfile tasks with argument pass-through after `--`.
 - Manage Task, shfmt, Jsonnet, jsonnetfmt, golangci-lint, GoReleaser, and buildctl through the root Go module.
 - Invoke Go tests, formatting, and module maintenance through `go tool task test`, `go tool task fmt`, and `go tool task tidy`.
-- Use the Taskfile build task for local and GitHub Docker Buildx builds.
+- Use the Taskfile build task for direct local and GitHub Docker Buildx builds.
+- Use compose.yaml with the Taskfile build-rootless task for local container builds.
 - Use the Taskfile build-rootless task for daemonless rootless GitLab builds without Docker-in-Docker.
 - Require an explicit build target and never select a default target.
 - Use `golang:alpine` for GitLab Go jobs and invoke named Taskfile tasks with Go's default toolchain selection.
@@ -159,7 +160,8 @@ Keep custom Markdownlint rules under `rules/`.
 - For GitLab package pipelines on `main` and `feature/*`, prefer one manual parent job generating a child pipeline.
 - Generate that pipeline through `.gitlab/ci/package-pipeline.gitlab-ci.jsonnet` and reuse `templates/static-release.yml`.
 - Keep GitLab package builds as artifact-only jobs without custom publisher jobs.
-- Use GoReleaser for release packaging and GitHub publication.
+- Use GoReleaser for release packaging and generated archive checksums on GitHub and GitLab.
+- Keep GitHub publication separate from build jobs and GitLab package jobs artifact-only.
 - Append `-beta` to package versions on `feature/*` branches.
 
 ## YAML filenames
@@ -189,6 +191,6 @@ Keep custom Markdownlint rules under `rules/`.
 
 ### Complete delivery and cleanup
 
-- Confirm named `main` contains the merge and the issue closes before declaring delivery complete.
+- Confirm named `main` contains the merge and any linked issue reflects the acceptance outcome before declaring delivery complete.
 - Stop task-owned processes and descendants before removing unused temporary resources.
 - Preserve shared resources, unique uncommitted work, and artifacts needed for recovery.
