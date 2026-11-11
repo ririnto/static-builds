@@ -37,7 +37,9 @@ The following tools are managed through `go.mod`:
 - GoReleaser
 - buildctl
 
-The Taskfile selects tracked shell scripts and contributor hooks with Git and invokes shfmt through Task iteration.
+The Taskfile selects tracked shell scripts and contributor hooks with NUL-delimited Git output and invokes shfmt through typed-list Task iteration.
+The shfmt task owns the shared two-space indentation and case indentation flags, while callers select check or write mode.
+Tool tasks quote each CLI_ARGS_LIST element separately so argument boundaries remain explicit.
 Use `go tool task jsonnetfmt -- -i` to format the package pipeline and `go tool task jsonnetfmt -- --test` to check it.
 `go tool task buildctl -- --help` exposes the BuildKit client without changing the Docker Buildx build driver.
 Local container builds use compose.yaml with a golang-based non-root image and the upstream daemonless BuildKit script.
@@ -156,7 +158,7 @@ Publish through the feature branch and pull request rather than pushing changes 
 Explain in the task context, pull request, or related issue when existing guards remain because inversion requires artificial flags or deeper nesting.
 
 Run `go tool task test` for the retained command tests.
-The contributor check entrypoint includes these tests, `go tool task golangci-lint -- run ./...` checks, and `go tool task shfmt -- -d -i 2 -ci` formatting through Task.
+The contributor check entrypoint includes these tests, `go tool task golangci-lint -- run ./...` checks, and `go tool task shfmt -- -d` formatting through Task.
 Target builds run their Dockerfile verify stages without per-target verify scripts or external runtime harnesses.
 The custom healthcheck module remains maintained production source.
 

@@ -11,7 +11,7 @@ validate-contributor-checks:
   script:
     - go tool task test
     - go tool task golangci-lint -- run ./...
-    - go tool task shfmt -- -d -i 2 -ci
+    - go tool task shfmt -- -d
     - go tool task jsonnet -- -S --ext-str branch=main --ext-str target= --ext-str component_ref=example.invalid/group/static-builds/static-release@main
     - go tool task jsonnetfmt -- --test
   rules:
