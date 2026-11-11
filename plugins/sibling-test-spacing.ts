@@ -114,41 +114,41 @@ const siblingGaps = (node: ESTree.Node, context: Context): SourceRange[] => {
   return gaps;
 };
 
-const siblingTestSpacingRule = {
-  create(context: Context) {
-    const inspect = (node: ESTree.Node): void => {
-      for (const gap of siblingGaps(node, context)) {
-        if (
-          /^\s*$/u.test(context.sourceCode.text.slice(gap.start, gap.end)) &&
-          context.sourceCode.text
-            .slice(gap.start, gap.end)
-            .split(/\r\n|[\n\r\u2028\u2029]/u).length !== 3
-        ) {
-          context.report({ messageId: "siblingSpacing", node });
-        }
-      }
-    };
-    return { BlockStatement: inspect, Program: inspect };
-  },
-  meta: {
-    docs: {
-      description:
-        "Require one blank line between proven sibling test registrations."
-    },
-    messages: {
-      siblingSpacing:
-        "Separate sibling tests and lifecycle registrations with one blank line."
-    },
-    type: "problem"
-  } as const
-};
-
-const plugin = {
-  meta: { name: "style" },
-  rules: { "sibling-test-spacing": siblingTestSpacingRule }
-};
-
 /**
  * Provide the native Oxlint plugin for test-registration spacing checks.
  */
-export default plugin;
+export default {
+  meta: { name: "style" },
+  rules: {
+    "sibling-test-spacing": {
+      create(context: Context) {
+        const inspect = (node: ESTree.Node): void => {
+          for (const gap of siblingGaps(node, context)) {
+            if (
+              /^\s*$/u.test(
+                context.sourceCode.text.slice(gap.start, gap.end)
+              ) &&
+              context.sourceCode.text
+                .slice(gap.start, gap.end)
+                .split(/\r\n|[\n\r\u2028\u2029]/u).length !== 3
+            ) {
+              context.report({ messageId: "siblingSpacing", node });
+            }
+          }
+        };
+        return { BlockStatement: inspect, Program: inspect };
+      },
+      meta: {
+        docs: {
+          description:
+            "Require one blank line between proven sibling test registrations."
+        },
+        messages: {
+          siblingSpacing:
+            "Separate sibling tests and lifecycle registrations with one blank line."
+        },
+        type: "problem"
+      } as const
+    }
+  }
+};

@@ -14,9 +14,12 @@ const check = (input: string) =>
   }).input ?? [];
 
 void test("accepts three hyphens and all table alignment markers", () => {
-  const input =
-    "| A | B | C | D |\n| --- | :--- | ---: | :---: |\n| 1 | 2 | 3 | 4 |\n";
-  assert.deepEqual(check(input), []);
+  assert.deepEqual(
+    check(
+      "| A | B | C | D |\n| --- | :--- | ---: | :---: |\n| 1 | 2 | 3 | 4 |\n"
+    ),
+    []
+  );
 });
 
 void test("reports and fixes short and long delimiters while preserving alignment", () => {
@@ -40,18 +43,22 @@ void test("reports and fixes short and long delimiters while preserving alignmen
 });
 
 void test("ignores data rows and fenced table examples", () => {
-  const input =
-    "| A | B |\n| --- | --- |\n| - | - |\n| -- | ---- |\n\n```markdown\n| A |\n| - |\n```\n";
-  assert.deepEqual(check(input), []);
+  assert.deepEqual(
+    check(
+      "| A | B |\n| --- | --- |\n| - | - |\n| -- | ---- |\n\n```markdown\n| A |\n| - |\n```\n"
+    ),
+    []
+  );
 });
 
 void test("checks pipeless and blockquoted tables", () => {
-  const input = "A | B\n-- | ---\n1 | 2\n\n> | A |\n> | - |\n> | 1 |\n";
   assert.deepEqual(
-    check(input).map(({ lineNumber, errorRange }) => ({
-      errorRange,
-      lineNumber
-    })),
+    check("A | B\n-- | ---\n1 | 2\n\n> | A |\n> | - |\n> | 1 |\n").map(
+      ({ lineNumber, errorRange }) => ({
+        errorRange,
+        lineNumber
+      })
+    ),
     [
       { errorRange: [1, 2], lineNumber: 2 },
       { errorRange: [5, 1], lineNumber: 6 }

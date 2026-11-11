@@ -8,30 +8,21 @@ function(release_tag='')
     then '-beta'
     else '';
 
-  local officialVersion(target) =
-    metadata[target].env[metadata[target].version_env_var];
-
-  local packageName(target) =
-    if release_tag != '' then release_tag
-    else '%s-%s%s' % [target, officialVersion(target), versionSuffix];
-
   local targets =
     if targetFilter != ''
     then [targetFilter]
     else std.objectFields(metadata);
 
-  local includes = [
-    {
-      component: std.extVar('component_ref'),
-      inputs:
-        { stage: 'build', target: t, package_name: packageName(t), release_tag: release_tag },
-    }
-    for t in targets
-  ];
-
   assert release_tag == '' || targetFilter != '' : 'release tags require one target';
   std.manifestYamlDoc(
-    { stages: ['build', 'release'], include: includes },
+    { stages: ['build', 'release'], include: [
+      {
+        component: std.extVar('component_ref'),
+        inputs:
+          { stage: 'build', target: t, package_name: if release_tag != '' then release_tag else '%s-%s%s' % [t, metadata[t].env[metadata[t].version_env_var], versionSuffix], release_tag: release_tag },
+      }
+      for t in targets
+    ] },
     indent_array_in_object=true,
     quote_keys=false,
   )

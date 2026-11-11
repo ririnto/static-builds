@@ -24,14 +24,13 @@ const collect = (
  * Only the delimiter row that directly follows a table header is a separator.
  * Alignment colons are allowed around the hyphens.
  */
-const rule: Rule = {
+export default {
   description: "Markdown table separators must use exactly three hyphens",
   function: (params, onError) => {
-    const delimiterRows = collect(
+    for (const row of collect(
       params.parsers.micromark?.tokens ?? [],
       "tableDelimiterRow"
-    );
-    for (const row of delimiterRows) {
+    )) {
       for (const [index, cell] of collect(
         row.children,
         "tableDelimiter"
@@ -56,9 +55,4 @@ const rule: Rule = {
   names: ["docs/table-separators"],
   parser: "micromark",
   tags: ["docs", "tables"]
-};
-
-/**
- * Provide the table separator Markdownlint rule.
- */
-export default rule;
+} satisfies Rule;
