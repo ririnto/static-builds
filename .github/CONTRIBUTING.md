@@ -83,7 +83,9 @@ Static Builds retains the default `single-title` front matter check, which is st
 Static Builds keeps the stricter table HTML exception by allowing only `br` inside table markup while the shared baseline also allows `code`.
 The local `docs/table-separators` rule requires exactly three hyphens in each table delimiter cell.
 It preserves alignment colons and fixes only the delimiter hyphens.
-The existing rule tests exercise the actual configuration through Markdownlint's public API.
+The Markdownlint rule tests exercise owned behavior through Markdownlint's public API.
+`check:test` runs the Go command tests followed by Node's native `**/*.test.ts` discovery.
+Focused Oxlint tests use its official RuleTester API without retesting the upstream preset or formatter.
 The direct `markdown-it` dependency supplies the parser used by the token-based rules.
 The CLI configuration respects Git ignore files.
 Only the supported `customRules` spelling loads packages through the installed CLI2 loader.
@@ -105,7 +107,7 @@ Dockerfiles copy explicit target inputs and release packaging selects only metad
 The JavaScript and TypeScript lint, formatter, and compiler configurations form one contributor-tooling group.
 `oxlint.config.ts` extends `ultracite/oxlint/core` and preserves its environment, ignore patterns, rules, and test overrides.
 The preset supplies native ESLint, TypeScript, Unicorn, Oxc, import, JSDoc, Node, and Promise plugins.
-The same configuration checks function-body spacing and adjacent test registrations without replacing the base rules.
+The same configuration loads repository-owned plugins from `plugins/` to check function-body spacing and adjacent test registrations without replacing the base rules.
 The test spacing rule recognizes registrations imported from Vitest, Jest globals, and Bun, but does not recognize `node:test` registrations.
 `check:ultracite` runs Ultracite with type-aware lint across its discovered files.
 `check:typescript` checks those TypeScript files through `tsconfig.json` and the Node LTS compiler preset.
@@ -113,6 +115,7 @@ Ultracite checks the optional njs example in `nginx/examples/njs/scripting.js` f
 The njs example is not copied into runtime images or release archives.
 The custom healthcheck target checks its health transitions through a local proxy.
 The njs example uses upstream `njs-types` declarations through its own TypeScript configuration.
+That separate configuration preserves the njs runtime globals, which differ from Node's Buffer and module types.
 
 The table maps effective enforcement to engineering qualities rather than adding another prose rule set.
 
@@ -134,7 +137,7 @@ Automatic JavaScript and TypeScript fixes can remove module side effects and req
 
 Formatter acceptance requires unchanged parsed values, meaningful member order, literal contents, and comments, followed by an idempotent second pass.
 Conditional package exports and YAML command scalars require fresh safety verification when their contents change.
-Ultracite remains the only direct caller of Oxlint and Oxfmt.
+Ultracite remains the only CLI caller of Oxlint and Oxfmt.
 
 Run `pnpm audit --prod --audit-level low` for production dependency scope.
 Report `pnpm audit --audit-level low` findings separately, including upstream findings without available patches.
