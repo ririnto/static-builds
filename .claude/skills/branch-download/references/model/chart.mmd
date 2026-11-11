@@ -1,14 +1,13 @@
 ---
-title: "Branch download lock cleanup"
+title: "Download descriptor ownership"
 ---
 stateDiagram-v2
-  s0: Waiting to create the lock
-  s1: Lock created, cleanup not yet registered
-  s2: Download owns its lock
-  s3: Download is returning
-  s4: Download has stopped
-  [*] --> s0
-  s0 --> s1: Lock is created
-  s1 --> s2: Lock cleanup is registered
-  s2 --> s3: Download returns
-  s3 --> s4: Lock is removed
+  [*] --> waiting
+  waiting --> owned: Acquire flock
+  owned --> downloading: Start transport with inherited descriptor
+  downloading --> ready: Transport closes its descriptor
+  ready --> done: Parent closes its descriptor
+  owned --> done: Cache hit or failure closes descriptor
+  downloading --> orphaned: Parent is killed
+  orphaned --> done: Transport exits and releases final descriptor
+  waiting --> done: Cancel or timeout

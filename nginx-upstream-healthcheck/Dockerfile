@@ -25,10 +25,10 @@ RUN --mount=type=cache,target=/var/cache/apk \
         pcre2-static \
         zlib-dev \
         zlib-static
-ADD ".tmp/nginx-${NGINX_VERSION}.tar.gz" /build/
-ADD ".tmp/nginx-module-vts-${NGINX_VTS_MODULE_VERSION}.tar.gz" "/build/nginx-${NGINX_VERSION}/"
-ADD ".tmp/njs-${NJS_VERSION}.tar.gz" /build/
-ADD ".tmp/quickjs-${QUICKJS_VERSION}.tar.gz" /build/
+ADD ".cache/downloads/nginx-${NGINX_VERSION}.tar.gz" /build/
+ADD ".cache/downloads/nginx-module-vts-${NGINX_VTS_MODULE_VERSION}.tar.gz" "/build/nginx-${NGINX_VERSION}/"
+ADD ".cache/downloads/njs-${NJS_VERSION}.tar.gz" /build/
+ADD ".cache/downloads/quickjs-${QUICKJS_VERSION}.tar.gz" /build/
 RUN cmake -S "/build/quickjs-${QUICKJS_VERSION}" -B /build/quickjs-build \
     -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_BUILD_TYPE=Release
 RUN cmake --build /build/quickjs-build "-j$(nproc)"
@@ -39,6 +39,7 @@ COPY nginx-upstream-healthcheck/ngx_http_upstream_healthcheck_module "/build/ngi
 WORKDIR "/build/nginx-${NGINX_VERSION}"
 RUN ./configure \
   --prefix="${TARGET_PREFIX}" \
+  --conf-path=config/nginx.conf \
   --with-threads \
   --with-file-aio \
   --with-http_ssl_module \
@@ -69,23 +70,46 @@ RUN ./configure \
   --with-libatomic
 RUN make "-j$(nproc)"
 RUN make install
-COPY nginx/scripting.conf nginx/scripting.js ${TARGET_PREFIX}/conf/
-COPY nginx-upstream-healthcheck/conf/upstream-healthcheck.conf ${TARGET_PREFIX}/conf/
-COPY nginx-upstream-healthcheck/README.md ${TARGET_PREFIX}/README.md
+RUN mkdir -p "${TARGET_PREFIX}/config/conf.d"
+COPY nginx/config/nginx.conf ${TARGET_PREFIX}/config/nginx.conf
 
 FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
 ARG TARGET_PREFIX
 RUN --mount=type=cache,target=/var/cache/dnf \
     microdnf -y install binutils curl-minimal file openssl strace
 COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
-RUN readelf -h "${TARGET_PREFIX}/sbin/nginx" | grep -E 'Type:|Machine:'
-RUN file "${TARGET_PREFIX}/sbin/nginx" | grep -E 'statically linked|static-pie linked'
-RUN test -x "${TARGET_PREFIX}/sbin/nginx"
-RUN test -r "${TARGET_PREFIX}/conf/scripting.conf"
-RUN test -r "${TARGET_PREFIX}/conf/scripting.js"
-RUN test -r "${TARGET_PREFIX}/conf/upstream-healthcheck.conf"
-RUN test -r "${TARGET_PREFIX}/README.md"
-RUN strace "${TARGET_PREFIX}/sbin/nginx" -V
+ARG TARGETARCH
+RUN set -eu; \
+    case "$TARGETARCH" in \
+        amd64) machine='Advanced Micro Devices X86-64' ;; \
+        arm64) machine='AArch64' ;; \
+        arm) machine='ARM' ;; \
+        386) machine='Intel 80386' ;; \
+        ppc64le) machine='PowerPC64' ;; \
+        s390x) machine='IBM S/390' ;; \
+        riscv64) machine='RISC-V' ;; \
+        *) machine= ;; \
+    esac; \
+    for binary in "${TARGET_PREFIX}/sbin/nginx"; do \
+        test -f "$binary"; \
+        test -x "$binary"; \
+        header=$(LC_ALL=C readelf -h "$binary"); \
+        printf '%s\n' "$header" | grep -E 'Type: +((EXEC)|(DYN)) '; \
+        if [ -n "$machine" ]; then \
+            printf '%s\n' "$header" | grep -E "Machine: +$machine$"; \
+        fi; \
+        description=$(LC_ALL=C file -b "$binary"); \
+        printf '%s\n' "$description" | grep -E '^ELF .* (statically linked|static-pie linked)(,|$)'; \
+        segments=$(LC_ALL=C readelf -l "$binary"); \
+        dynamic=$(LC_ALL=C readelf -d "$binary"); \
+        if printf '%s\n' "$segments" | grep -w INTERP; then \
+            echo "Unexpected ELF interpreter: $binary" >&2; exit 1; \
+        fi; \
+        if printf '%s\n' "$dynamic" | grep -F '(NEEDED)'; then \
+            echo "Unexpected shared library dependency: $binary" >&2; exit 1; \
+        fi; \
+    done
+RUN timeout --kill-after=5s 30s strace "${TARGET_PREFIX}/sbin/nginx" -V
 
 FROM scratch AS runtime
 
@@ -99,14 +123,16 @@ ENTRYPOINT ["/sbin/nginx", "-p", "/", "-g", "daemon off;"]
 
 FROM verify AS verify-runtime
 COPY --from=runtime / /runtime/
+COPY nginx-upstream-healthcheck/examples/config/nginx.conf /verification/nginx.conf
 RUN set -e; \
-    trap 'rm -f /tmp/healthcheck-build-ca.key /runtime/conf/backend-ca.pem /runtime/etc/hosts' EXIT; \
+    trap 'rm -f /tmp/healthcheck-build-ca.key /runtime/config/backend-ca.pem /runtime/config/healthcheck-verify.conf /runtime/etc/hosts' EXIT; \
+    cp /verification/nginx.conf /runtime/config/healthcheck-verify.conf; \
     openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj /CN=healthcheck-build-ca \
-        -keyout /tmp/healthcheck-build-ca.key -out /runtime/conf/backend-ca.pem; \
+        -keyout /tmp/healthcheck-build-ca.key -out /runtime/config/backend-ca.pem; \
     echo "127.0.0.1 maintenance.internal" >/runtime/etc/hosts; \
-    chroot /runtime /sbin/nginx -p / -t -c conf/upstream-healthcheck.conf
+    chroot /runtime /sbin/nginx -p / -t -c config/healthcheck-verify.conf
 RUN set -eu; \
-    test_dir=$(mktemp -d /runtime/conf/healthcheck-verify.XXXXXX); \
+    test_dir=$(mktemp -d /runtime/config/healthcheck-verify.XXXXXX); \
     pid=; \
     trap 'status=$?; \
         trap - EXIT; \
@@ -122,7 +148,7 @@ RUN set -eu; \
     chmod 755 "$test_dir"; \
     printf '%s\n' \
         'worker_processes 1;' \
-        "pid /conf/${test_dir##*/}/nginx.pid;" \
+        "pid /config/${test_dir##*/}/nginx.pid;" \
         'error_log stderr notice;' \
         'events { worker_connections 64; }' \
         'http {' \
@@ -134,7 +160,7 @@ RUN set -eu; \
         '    }' \
         '    server {' \
         '        listen 127.0.0.1:18091;' \
-        "        location = /ready { root /conf/${test_dir##*/}; }" \
+        "        location = /ready { root /config/${test_dir##*/}; }" \
         "        location / { return 200 'backend'; }" \
         '    }' \
         '    server {' \
@@ -143,7 +169,7 @@ RUN set -eu; \
         '    }' \
         '}' >"$test_dir/nginx.conf"; \
     touch "$test_dir/ready"; \
-    chroot /runtime /sbin/nginx -p / -c "conf/${test_dir##*/}/nginx.conf" -g 'daemon off;' & \
+    chroot /runtime /sbin/nginx -p / -c "config/${test_dir##*/}/nginx.conf" -g 'daemon off;' & \
     pid=$!; \
     wait_for_status() { \
         for attempt in $(seq 1 15); do \

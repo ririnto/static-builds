@@ -49,34 +49,51 @@ func download(ctx context.Context, url, destination string) (err error) {
 		return err
 	}
 	fmt.Fprintf(os.Stderr, "Downloading %s -> %s\n", url, destination)
-	if strings.Contains(url, "/archive/refs/heads/") {
-		lock := destination + ".lock"
-		for attempts := 0; ; attempts++ {
-			err := os.Mkdir(lock, 0755)
-			if err == nil {
-				break
-			}
-			if !os.IsExist(err) {
-				return err
-			}
-			if attempts >= 60 {
-				return fmt.Errorf("timed out waiting for branch download lock: %s", lock)
-			}
-			if err := pause(ctx, time.Second); err != nil {
+	lock, err := os.OpenFile(destination+".lock", os.O_CREATE|os.O_RDWR, 0600)
+	if err != nil {
+		return err
+	}
+	// Keep the lock file: removing it lets waiters lock a different inode.
+	defer func() {
+		if closeErr := lock.Close(); closeErr != nil {
+			err = errors.Join(err, closeErr)
+		}
+	}()
+	for attempts := 0; ; attempts++ {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		err := syscall.Flock(int(lock.Fd()), syscall.LOCK_EX|syscall.LOCK_NB)
+		if err == nil {
+			break
+		}
+		if !errors.Is(err, syscall.EWOULDBLOCK) {
+			return err
+		}
+		if attempts >= 60 {
+			return fmt.Errorf("timed out waiting for download lock: %s", lock.Name())
+		}
+		if err := pause(ctx, time.Second); err != nil {
+			return err
+		}
+	}
+	// Only this archive's lock owner may remove interrupted download files.
+	entries, err := os.ReadDir(filepath.Dir(destination))
+	if err != nil {
+		return err
+	}
+	for _, entry := range entries {
+		if strings.HasPrefix(entry.Name(), filepath.Base(destination)+".tmp.") {
+			if err := os.Remove(filepath.Join(filepath.Dir(destination), entry.Name())); err != nil {
 				return err
 			}
 		}
-		defer func() {
-			if cleanupErr := os.Remove(lock); cleanupErr != nil {
-				fmt.Fprintln(os.Stderr, cleanupErr)
-				if err == nil {
-					err = cleanupErr
-				}
-			}
-		}()
-	} else if info, err := os.Stat(destination); err == nil && info.Mode().IsRegular() && info.Size() > 0 {
-		fmt.Fprintln(os.Stderr, "File exists:", destination)
-		return nil
+	}
+	if !strings.Contains(url, "/archive/refs/heads/") {
+		if info, err := os.Stat(destination); err == nil && info.Mode().IsRegular() && info.Size() > 0 {
+			fmt.Fprintln(os.Stderr, "File exists:", destination)
+			return nil
+		}
 	}
 	if !strings.HasPrefix(url, "https://") {
 		return fmt.Errorf("unsupported URL scheme (https only): %s", url)
@@ -86,14 +103,14 @@ func download(ctx context.Context, url, destination string) (err error) {
 		return fmt.Errorf("failed to create temporary file in %s: %w", filepath.Dir(destination), err)
 	}
 	path := temporary.Name()
+	defer func() {
+		if cleanupErr := os.Remove(path); cleanupErr != nil && !os.IsNotExist(cleanupErr) {
+			err = errors.Join(err, cleanupErr)
+		}
+	}()
 	if err := temporary.Close(); err != nil {
 		return err
 	}
-	defer func() {
-		if cleanupErr := os.Remove(path); cleanupErr != nil && !os.IsNotExist(cleanupErr) {
-			fmt.Fprintln(os.Stderr, cleanupErr)
-		}
-	}()
 	retries, err := strconv.Atoi(setting("DOWNLOAD_RETRIES", "5"))
 	if err != nil {
 		return err
@@ -131,6 +148,8 @@ func download(ctx context.Context, url, destination string) (err error) {
 			}
 			command = exec.CommandContext(ctx, limiter, "-k", "1", maxTime, "wget", "-q", "-T", connectTimeout, "-O", path, url)
 		}
+		// Keep ownership while an orphaned transport may still write after SIGKILL.
+		command.ExtraFiles = []*os.File{lock}
 		command.Stdout, command.Stderr = os.Stdout, os.Stderr
 		command.Cancel = func() error {
 			err := command.Process.Signal(syscall.SIGTERM)
@@ -201,7 +220,7 @@ func run(ctx context.Context, args []string) error {
 	}
 	for record := range slices.Values(downloads) {
 		if record.URL != "" && record.Name != "" {
-			if err := download(ctx, record.URL, filepath.Join(root, ".tmp", record.Name)); err != nil {
+			if err := download(ctx, record.URL, filepath.Join(root, ".cache", "downloads", record.Name)); err != nil {
 				return err
 			}
 		}

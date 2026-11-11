@@ -48,25 +48,28 @@ jobs:
       - name: Cache source downloads
         uses: actions/cache@v6
         with:
-          path: ${{ github.workspace }}/.tmp
-          key: tmp-${{ inputs.target }}-${{ hashFiles('metadata.json', 'cmd/**/*.go', 'internal/**/*.go', 'go.mod', 'go.sum') }}
-          restore-keys: tmp-${{ inputs.target }}-
+          path: ${{ github.workspace }}/.cache/downloads
+          key: downloads-${{ inputs.target }}-${{ hashFiles('metadata.json', 'cmd/**/*.go', 'internal/**/*.go', 'go.mod', 'go.sum') }}
+          restore-keys: downloads-${{ inputs.target }}-
 
       - name: Expose GitHub cache runtime
         uses: crazy-max/ghaction-github-runtime@v4
 
-      - name: Build target
+      - name: Build and package with GoReleaser
         env:
+          BUILD_BACKEND: buildx
           BUILDKIT_CACHE_BACKEND: gha
-          BUILD_OUTPUT_DEST: ${{ github.workspace }}/.out/${{ inputs.target }}
+          GORELEASER_CURRENT_TAG: ${{ inputs.tag }}
+          TAG: ${{ inputs.tag }}
+          BUILD_OUTPUT_DEST: ${{ github.workspace }}/dist/${{ inputs.target }}
           TARGET: ${{ inputs.target }}
-        run: go tool task build -- "$TARGET"
+        run: go tool task goreleaser -- release --clean --verbose --timeout=6h --skip=publish,validate
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: "fs"
-          scan-ref: ".out/${{ inputs.target }}"
+          scan-ref: "dist/${{ inputs.target }}"
           format: "sarif"
           output: "trivy-results.sarif"
           severity: "CRITICAL,HIGH"
@@ -76,17 +79,11 @@ jobs:
         with:
           sarif_file: "trivy-results.sarif"
 
-      - name: Create release package
-        env:
-          TARGET: ${{ inputs.target }}
-          TAG: ${{ inputs.tag }}
-        run: go tool task package -- "$TARGET" "$TAG"
-
       - name: Upload release artifacts
         uses: actions/upload-artifact@v7
         with:
           name: ${{ inputs.target }}-static-build
-          path: .out/${{ inputs.target }}
+          path: dist/${{ inputs.target }}
           include-hidden-files: true
 
       - name: Upload release package
@@ -94,8 +91,8 @@ jobs:
         with:
           name: ${{ inputs.target }}-release-package
           path: |-
-            .out/goreleaser/${{ inputs.tag }}.tar.gz
-            .out/goreleaser/${{ inputs.tag }}_checksums.txt
+            dist/release/${{ inputs.tag }}.tar.gz
+            dist/release/${{ inputs.tag }}_checksums.txt
           include-hidden-files: true
           if-no-files-found: error
 
@@ -118,12 +115,12 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           name: ${{ inputs.target }}-release-package
-          path: .out/release-package
+          path: dist/release-package
 
       - name: Publish assets to release
         env:
           GITHUB_TOKEN: ${{ github.token }}
           GORELEASER_CURRENT_TAG: ${{ inputs.tag }}
-          RELEASE_ARCHIVE: .out/release-package/${{ inputs.tag }}.tar.gz
+          RELEASE_ARCHIVE: dist/release-package/${{ inputs.tag }}.tar.gz
           TAG: ${{ inputs.tag }}
-        run: go tool task goreleaser -- release --clean --skip=archive,validate
+        run: go tool task goreleaser -- release --clean --skip=before,archive,validate

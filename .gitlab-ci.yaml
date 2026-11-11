@@ -6,8 +6,12 @@ stages:
 validate-contributor-checks:
   stage: checks
   image: golang:alpine
+  cache:
+    key: "apk-golang-alpine-${CI_RUNNER_ID}"
+    paths:
+      - .cache/apk/**/*.apk
   before_script:
-    - apk add --no-cache ca-certificates git
+    - sh .gitlab/ci/install-packages.sh ca-certificates git
   script:
     - go tool task test
     - go tool task golangci-lint -- run ./...
@@ -24,8 +28,12 @@ validate-contributor-checks:
 generate-package-pipeline:
   stage: prepare
   image: golang:alpine
+  cache:
+    key: "apk-golang-alpine-${CI_RUNNER_ID}"
+    paths:
+      - .cache/apk/**/*.apk
   before_script:
-    - apk add --no-cache ca-certificates git
+    - sh .gitlab/ci/install-packages.sh ca-certificates git
   script:
     - |-
       target=

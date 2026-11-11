@@ -25,9 +25,9 @@ This target builds a static PIE `haproxy` binary for musl-based deployments.
 
 ### Private Build Inputs
 
-- Source archives listed in root `metadata.json` are the `.tmp/` prefetch inputs for this target.
+- Source archives listed in root `metadata.json` are the `.cache/downloads/` prefetch inputs for this target.
 - APK packages remain the package-registry inputs.
-  `c-ares-dev`, `curl-dev`, `curl-static`, and `pkgconf` are consumed from APK packages, not from `.tmp/` source archives.
+  `c-ares-dev`, `curl-dev`, `curl-static`, and `pkgconf` are consumed from APK packages, not from `.cache/downloads/` source archives.
 - `pkg-config` only reads local `.pc` metadata from APK packages and `/opt/lib/pkgconfig`.
   It is not a source download path.
 - The OpenTelemetry dependency stages use C++17 and the SDK's `OTELCPP_*` CMake options.
@@ -78,11 +78,11 @@ This build-profile change does not change HAProxy's HTTP/2 proxying of applicati
 
 > [!NOTE]
 >
-> Outputs are under `.out/haproxy/`.
+> Outputs are under `dist/haproxy/`.
 > Override with `BUILD_OUTPUT_DEST`.
 
 ```bash
-./.out/haproxy/sbin/haproxy -vv
+./dist/haproxy/sbin/haproxy -vv
 ```
 
 ## Runtime Introspection Output
