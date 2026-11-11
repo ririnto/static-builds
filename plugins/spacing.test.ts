@@ -1,4 +1,10 @@
+import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { describe, it } from "node:test";
+import { fileURLToPath } from "node:url";
 
 import { RuleTester } from "oxlint/plugins-dev";
 
@@ -65,3 +71,60 @@ tester.run(
     ]
   }
 );
+
+void it("enables both spacing rules through the root configuration", () => {
+  const root = fileURLToPath(new URL("..", import.meta.url));
+  const directory = mkdtempSync(path.join(tmpdir(), "spacing-config-"));
+  const fixture = path.join(directory, "fixture.ts");
+  try {
+    writeFileSync(
+      fixture,
+      'import { test } from "vitest";\n\ntest("one", () => {\n\n  return 1;\n});\ntest("two", () => {});\n'
+    );
+    const result = spawnSync(
+      "pnpm",
+      [
+        "exec",
+        "ultracite",
+        "check",
+        "--format",
+        "json",
+        "--config",
+        path.join(root, "oxlint.config.ts"),
+        fixture
+      ],
+      {
+        cwd: root,
+        encoding: "utf-8"
+      }
+    );
+    assert.equal(result.status, 1, result.stderr);
+    const output: unknown = JSON.parse(
+      result.stdout.slice(result.stdout.indexOf("{"))
+    );
+    assert.ok(
+      output !== null && typeof output === "object" && "diagnostics" in output
+    );
+    assert.ok(Array.isArray(output.diagnostics));
+    const diagnostics: unknown[] = output.diagnostics;
+    const codes = new Set(
+      diagnostics.flatMap((diagnostic) => {
+        if (
+          diagnostic !== null &&
+          typeof diagnostic === "object" &&
+          "code" in diagnostic &&
+          typeof diagnostic.code === "string" &&
+          "severity" in diagnostic &&
+          diagnostic.severity === "error"
+        ) {
+          return [diagnostic.code];
+        }
+        return [];
+      })
+    );
+    assert.ok(codes.has("style-blank-lines(no-blank-lines-in-functions)"));
+    assert.ok(codes.has("style-spacing(sibling-test-spacing)"));
+  } finally {
+    rmSync(directory, { force: true, recursive: true });
+  }
+});
