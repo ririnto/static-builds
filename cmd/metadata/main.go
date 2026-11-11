@@ -10,6 +10,7 @@ import (
 )
 
 func run(args []string) error {
+
 	if len(args) != 2 {
 		return fmt.Errorf("usage: metadata <command> <argument>")
 	}
@@ -76,6 +77,7 @@ func run(args []string) error {
 }
 
 func main() {
+
 	if err := run(os.Args[1:]); err != nil {
 		fmt.Fprintln(os.Stderr, "Error:", err)
 		os.Exit(1)
