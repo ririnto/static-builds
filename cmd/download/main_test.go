@@ -8,7 +8,6 @@ import (
 )
 
 func TestCachedSource(t *testing.T) {
-
 	path := filepath.Join(t.TempDir(), "source.tar.gz")
 	if err := os.WriteFile(path, []byte("cached source"), 0600); err != nil {
 		t.Fatal(err)
@@ -22,7 +21,6 @@ func TestCachedSource(t *testing.T) {
 }
 
 func TestBranchFailurePreservesSourceAndRemovesLock(t *testing.T) {
-
 	path := filepath.Join(t.TempDir(), "branch.tar.gz")
 	if err := os.WriteFile(path, []byte("previous source"), 0600); err != nil {
 		t.Fatal(err)
@@ -39,7 +37,6 @@ func TestBranchFailurePreservesSourceAndRemovesLock(t *testing.T) {
 }
 
 func TestTargetRequired(t *testing.T) {
-
 	if err := run(context.Background(), nil); err == nil {
 		t.Fatal("accepted a missing target")
 	}

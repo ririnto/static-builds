@@ -11,7 +11,6 @@ import (
 )
 
 func TestLoadPreservesOrderedQueries(t *testing.T) {
-
 	t.Parallel()
 	path := filepath.Join(t.TempDir(), "metadata.json")
 	if err := os.WriteFile(path, []byte(`{"zeta":{"tag_prefix":"zeta","version_env_var":"VERSION","env":{"VERSION":"first","OTHER":"other","VERSION":"later"},"release_files":["sbin/zeta","conf","sbin/zeta"],"downloads":[{"url":"https://example.invalid/{VERSION}/{OTHER}/{VERSION}","name":"{VERSION}.tar.gz"},{"url":"https://example.invalid/second","name":"second.tar.gz"}]},"alpha":{"env":{"VERSION":"alpha"}},"zeta":{"env":{"VERSION":"duplicate target"}}}`), 0600); err != nil {
@@ -47,7 +46,6 @@ func TestLoadPreservesOrderedQueries(t *testing.T) {
 }
 
 func TestTargetFromTag(t *testing.T) {
-
 	t.Parallel()
 	for test := range slices.Values([]struct {
 		name    string
@@ -64,7 +62,6 @@ func TestTargetFromTag(t *testing.T) {
 		{name: "empty targets", tag: "nginx-1.0.0", wantErr: "unknown tag"},
 	}) {
 		t.Run(test.name, func(t *testing.T) {
-
 			t.Parallel()
 			data := metadata.Metadata{Targets: test.targets}
 			target, err := data.TargetFromTag(test.tag)
@@ -80,7 +77,6 @@ func TestTargetFromTag(t *testing.T) {
 }
 
 func TestLoadRejectsInvalidMetadata(t *testing.T) {
-
 	t.Parallel()
 	for test := range slices.Values([]struct {
 		name, input, wantErr string
@@ -95,7 +91,6 @@ func TestLoadRejectsInvalidMetadata(t *testing.T) {
 		{"unicode in ignored field", `{"target":{"ignored":"\u0061"}}`, "unsupported unicode escape"},
 	}) {
 		t.Run(test.name, func(t *testing.T) {
-
 			t.Parallel()
 			path := filepath.Join(t.TempDir(), "metadata.json")
 			if err := os.WriteFile(path, []byte(test.input), 0600); err != nil {
@@ -110,7 +105,6 @@ func TestLoadRejectsInvalidMetadata(t *testing.T) {
 }
 
 func TestDownloadPlaceholderErrors(t *testing.T) {
-
 	t.Parallel()
 	for test := range slices.Values([]struct {
 		name      string
@@ -121,7 +115,6 @@ func TestDownloadPlaceholderErrors(t *testing.T) {
 		{name: "unknown second name placeholder", downloads: []metadata.Download{{URL: "{VERSION}", Name: "first"}, {URL: "{VERSION}", Name: "{MISSING}"}}, wantErr: "downloads[2].name"},
 	}) {
 		t.Run(test.name, func(t *testing.T) {
-
 			t.Parallel()
 			target := metadata.Target{Name: "target", Env: []metadata.Entry{{Key: "VERSION", Value: "1"}}, Downloads: test.downloads}
 			downloads, err := target.RenderDownloads()
@@ -133,7 +126,6 @@ func TestDownloadPlaceholderErrors(t *testing.T) {
 }
 
 func TestEmptyFirstEnvironmentValue(t *testing.T) {
-
 	t.Parallel()
 	target := metadata.Target{
 		Name:          "target",
