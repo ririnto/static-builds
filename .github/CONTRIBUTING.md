@@ -13,7 +13,7 @@ Use the repository's `.markdownlint-cli2.jsonc` when running Markdown lint.
 ### Contributor validation
 
 The [GitHub validation workflow](workflows/markdown-validation.yaml) runs Go-managed tooling checks on every pull request without building targets or publishing releases.
-GitLab invokes Go tests, golangci-lint, shell formatting, and Jsonnet checks through `go tool task` before its manual package trigger.
+GitLab invokes Go tests, golangci-lint, shell formatting, and Jsonnet checks through `go tool task` before its manual branch-package trigger or automatic tag-release pipeline.
 Its Go jobs use `golang:alpine` with Go's default `GOTOOLCHAIN=auto` behavior honoring the `go.mod` directive.
 The GitLab package component invokes `go tool task build-rootless` without Docker-in-Docker.
 Node, pnpm, and Java checks run through local contributor hooks.
@@ -87,6 +87,10 @@ Only the supported `customRules` spelling loads packages through the installed C
 The lowercase `customrules` spelling does not register rules through this entrypoint.
 All checks exclude ignored build outputs and source caches.
 These checks run without building targets or invoking release jobs.
+Validate tag handling with `go tool task validate-release-tag -- <target> <tag>` without creating a tag.
+Render a tag child pipeline with the Jsonnet `--tla-str release_tag=<tag>` argument and one explicit target.
+Use GoReleaser snapshot or `--skip=publish` runs for nonpublishing packaging checks.
+Live release publication is separate from configuration validation.
 Node dependencies are development-only and are excluded from the Docker build context.
 Dockerfiles copy explicit target inputs and release packaging selects only metadata-listed target outputs.
 

@@ -40,17 +40,7 @@ jobs:
           TAG: ${{ inputs.tag }}
         run: |-
           test "$(git rev-parse "refs/tags/$TAG^{commit}")" = "$(git rev-parse HEAD)"
-          prefix=$(go tool task manifest -- get-tag-prefix "$TARGET")
-          official=$(go tool task manifest -- get-official-version "$TARGET")
-          test "${TAG#"$prefix"-}" != "$TAG"
-          version_revision=${TAG#"$prefix"-}
-          test "${version_revision%.*}" != "$version_revision"
-          version=${version_revision%.*}
-          echo "${version_revision##*.}" | grep -E '^[0-9]+$'
-          if [ "$version" != "$official" ]; then
-            test "${version#"$official"-}" != "$version"
-            echo "${version#"$official"-}" | grep -E '^[A-Za-z0-9]+([.-][A-Za-z0-9]+)*$'
-          fi
+          go tool task validate-release-tag -- "$TARGET" "$TAG"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4

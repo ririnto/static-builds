@@ -134,7 +134,8 @@ Keep custom Markdownlint rules under `rules/`.
 
 - Keep `metadata.json` as the single source of target mapping, release-file selection, environment values, downloads, and tag-prefix exceptions.
 - Write local and CI build artifacts under `.out/<target>/...`.
-- Use `.github/workflows/release-from-tag.yaml` as the only tag-triggered release entrypoint.
+- Use `.github/workflows/release-from-tag.yaml` as the only GitHub tag-triggered release entrypoint.
+- Route GitLab release tags through the parent pipeline and the shared static-release component.
 - Delegate build and release logic to `.github/workflows/template-release.yaml`.
 - Run Trivy filesystem scanning in the release workflow and upload SARIF results to GitHub Security.
 - Request minimum GitHub permissions per release job.
@@ -159,9 +160,11 @@ Keep custom Markdownlint rules under `rules/`.
 
 - For GitLab package pipelines on `main` and `feature/*`, prefer one manual parent job generating a child pipeline.
 - Generate that pipeline through `.gitlab/ci/package-pipeline.gitlab-ci.jsonnet` and reuse `templates/static-release.yml`.
-- Keep GitLab package builds as artifact-only jobs without custom publisher jobs.
+- Keep GitLab branch package builds artifact-only and publish tag releases in a separate GoReleaser job.
 - Use GoReleaser for release packaging and generated archive checksums on GitHub and GitLab.
-- Keep GitHub publication separate from build jobs and GitLab package jobs artifact-only.
+- Keep publication separate from build jobs on both hosts.
+- Validate release tags against metadata before building or publishing.
+- Use the existing GitLab job token and Generic Package Registry for release assets without stored publisher credentials.
 - Append `-beta` to package versions on `feature/*` branches.
 
 ## YAML filenames

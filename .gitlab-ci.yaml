@@ -13,6 +13,7 @@ validate-contributor-checks:
     - go tool task golangci-lint -- run ./...
     - go tool task shfmt -- -d
     - go tool task jsonnet -- -S --ext-str branch=main --ext-str target= --ext-str component_ref=example.invalid/group/static-builds/static-release@main
+    - go tool task jsonnet -- -S --ext-str branch= --ext-str target=dnsmasq --ext-str component_ref=example.invalid/group/static-builds/static-release@release-check --tla-str "release_tag=dnsmasq-$(go tool task manifest -- get-official-version dnsmasq).0"
     - go tool task jsonnetfmt -- --test
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
@@ -26,11 +27,19 @@ generate-package-pipeline:
   before_script:
     - apk add --no-cache ca-certificates git
   script:
-    - go tool task jsonnet -- -S --ext-str "branch=${CI_COMMIT_BRANCH:-}" --ext-str target= --ext-str "component_ref=${CI_SERVER_FQDN}/${CI_PROJECT_PATH}/static-release@${CI_COMMIT_REF_NAME}" > package-pipeline.gitlab-ci.yaml
+    - |-
+      target=
+      if [ -n "${CI_COMMIT_TAG:-}" ]; then
+        test "$(git rev-parse "refs/tags/$CI_COMMIT_TAG^{commit}")" = "$(git rev-parse HEAD)"
+        target=$(go tool task manifest -- get-target-from-tag "$CI_COMMIT_TAG")
+        go tool task validate-release-tag -- "$target" "$CI_COMMIT_TAG"
+      fi
+      go tool task jsonnet -- -S --ext-str "branch=${CI_COMMIT_BRANCH:-}" --ext-str "target=$target" --ext-str "component_ref=${CI_SERVER_FQDN}/${CI_PROJECT_PATH}/static-release@${CI_COMMIT_REF_NAME}" --tla-str "release_tag=${CI_COMMIT_TAG:-}" >package-pipeline.gitlab-ci.yaml
   artifacts:
     paths:
       - package-pipeline.gitlab-ci.yaml
   rules:
+    - if: "$CI_COMMIT_TAG"
     - if: '$CI_COMMIT_BRANCH == "main"'
     - if: '$CI_COMMIT_BRANCH =~ /^feature\/.+$/'
     - when: never
@@ -38,10 +47,12 @@ generate-package-pipeline:
 run-package-pipeline:
   stage: package
   trigger:
+    strategy: mirror
     include:
       - artifact: package-pipeline.gitlab-ci.yaml
         job: generate-package-pipeline
   rules:
+    - if: "$CI_COMMIT_TAG"
     - if: '$CI_COMMIT_BRANCH == "main"'
       when: manual
     - if: '$CI_COMMIT_BRANCH =~ /^feature\/.+$/'
