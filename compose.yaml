@@ -23,7 +23,7 @@ services:
       TAG: ${TAG:-local}
       GORELEASER_CURRENT_TAG: ${TAG:-local}
       BUILD_BACKEND: rootless
-      BUILDKITD_FLAGS: --oci-worker-snapshotter=native
+      BUILDKITD_FLAGS: --root /home/user/.local/share/buildkit/${TARGET:-unset} --oci-worker-snapshotter=native
       BUILDKIT_PLATFORM: ${BUILDKIT_PLATFORM:-linux/amd64}
       GOFLAGS: -buildvcs=false
     security_opt:

@@ -123,7 +123,25 @@ tasks:
   goreleaser:
     desc: Build, package, hash, and publish through GoReleaser (-- <args...>)
     cmds:
-      - go tool goreleaser {{range .CLI_ARGS_LIST}}{{. | shellQuote}} {{end}}
+      - |-
+        set -e
+        set -- {{range .CLI_ARGS_LIST}}{{. | shellQuote}} {{end}}
+        if [ "${1:-}" = release ]; then
+          case "${TARGET:?build target is required}" in
+            *[!A-Za-z0-9_-]*)
+              echo "Error: Invalid target directory name '$TARGET'" >&2
+              exit 1
+              ;;
+          esac
+          go tool task manifest -- get-release-files "${TARGET:?build target is required}"
+          config=$(mktemp)
+          trap 'rm -f "$config"' EXIT
+          grep -qx 'dist: dist/release' .goreleaser.yaml
+          sed "s|^dist: dist/release$|dist: dist/release/$TARGET|" .goreleaser.yaml >"$config"
+          go tool goreleaser "$@" --config "$config"
+        else
+          go tool goreleaser "$@"
+        fi
 
   jsonnet:
     desc: Render the GitLab package pipeline

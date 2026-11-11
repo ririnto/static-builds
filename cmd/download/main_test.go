@@ -16,9 +16,55 @@ import (
 
 func TestDownloadProcess(t *testing.T) {
 	if os.Getenv("DOWNLOAD_TEST_PROCESS") == "1" {
-		os.Args = []string{"download", "fixture"}
+		os.Args = []string{"download", setting("DOWNLOAD_TEST_TARGET", "fixture")}
 		main()
 		os.Exit(0)
+	}
+}
+
+func TestTargetDownloadsAreIndependent(t *testing.T) {
+	root := downloadFixture(t, false)
+	if err := os.WriteFile(filepath.Join(root, "metadata.json"), []byte(`{
+		"fixture":{"env":{"VERSION":"1"},"downloads":[{"url":"https://example.invalid/first.tar.gz","name":"source.tar.gz"}]},
+		"other":{"env":{"VERSION":"1"},"downloads":[{"url":"https://example.invalid/second.tar.gz","name":"source.tar.gz"}]}
+	}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(root, ".cache", "downloads"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, ".cache", "downloads", "source.tar.gz"), []byte("legacy archive"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	first, firstOutput := downloadCommand(t, root, "DOWNLOAD_TEST_HOLD=1")
+	startDownload(t, first)
+	waitForFile(t, filepath.Join(root, "started"))
+	second, secondOutput := downloadCommand(t, root, "DOWNLOAD_TEST_TARGET=other", "DOWNLOAD_TEST_CONTENT=other source")
+	if err := second.Run(); err != nil {
+		t.Fatalf("independent target blocked or failed: %v\n%s", err, secondOutput)
+	}
+	if err := os.WriteFile(filepath.Join(root, "proceed"), nil, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := first.Wait(); err != nil {
+		t.Fatalf("first target: %v\n%s", err, firstOutput)
+	}
+	assertDownload(t, root, "complete source")
+	for _, target := range []string{"fixture", "other"} {
+		command, output := downloadCommand(t, root, "DOWNLOAD_TEST_TARGET="+target, "DOWNLOAD_TEST_CONTENT=unexpected replacement")
+		if err := command.Run(); err != nil {
+			t.Fatalf("cached target %s: %v\n%s", target, err, output)
+		}
+	}
+	assertDownload(t, root, "complete source")
+	if data, err := os.ReadFile(filepath.Join(root, ".cache", "downloads", "other", "source.tar.gz")); err != nil || string(data) != "other source" {
+		t.Fatalf("other archive = %q, %v", data, err)
+	}
+	if data, err := os.ReadFile(filepath.Join(root, ".cache", "downloads", "source.tar.gz")); err != nil || string(data) != "legacy archive" {
+		t.Fatalf("legacy archive changed: %q, %v", data, err)
+	}
+	if data, err := os.ReadFile(filepath.Join(root, "requests")); err != nil || string(data) != "request\nrequest\n" {
+		t.Fatalf("expected one download per target: %q, %v", data, err)
 	}
 }
 
@@ -61,7 +107,9 @@ func downloadCommand(t *testing.T, root string, extra ...string) (*exec.Cmd, *by
 	if err != nil {
 		t.Fatal(err)
 	}
-	command := exec.Command(executable, "-test.run=^TestDownloadProcess$")
+	ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
+	t.Cleanup(cancel)
+	command := exec.CommandContext(ctx, executable, "-test.run=^TestDownloadProcess$")
 	command.Dir = root
 	command.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	command.Env = append(os.Environ(), "DOWNLOAD_TEST_PROCESS=1", "METADATA_PATH_OVERRIDE="+filepath.Join(root, "metadata.json"), "PATH="+root, "DOWNLOAD_RETRIES=1")
@@ -73,11 +121,11 @@ func downloadCommand(t *testing.T, root string, extra ...string) (*exec.Cmd, *by
 
 func assertDownload(t *testing.T, root, want string) {
 	t.Helper()
-	data, err := os.ReadFile(filepath.Join(root, ".cache", "downloads", "source.tar.gz"))
+	data, err := os.ReadFile(filepath.Join(root, ".cache", "downloads", "fixture", "source.tar.gz"))
 	if err != nil || string(data) != want {
 		t.Fatalf("archive = %q, %v; want %q", data, err, want)
 	}
-	partials, err := filepath.Glob(filepath.Join(root, ".cache", "downloads", "*.tmp.*"))
+	partials, err := filepath.Glob(filepath.Join(root, ".cache", "downloads", "fixture", "*.tmp.*"))
 	if err != nil || len(partials) != 0 {
 		t.Fatalf("incomplete downloads remain: %v, %v", partials, err)
 	}
@@ -130,7 +178,7 @@ func downloadLog(t *testing.T, command *exec.Cmd) string {
 
 func assertContendingDownload(t *testing.T, root string, command *exec.Cmd) {
 	t.Helper()
-	partials, err := filepath.Glob(filepath.Join(root, ".cache", "downloads", "*.tmp.*"))
+	partials, err := filepath.Glob(filepath.Join(root, ".cache", "downloads", "fixture", "*.tmp.*"))
 	if err != nil || len(partials) != 1 {
 		t.Fatalf("expected one active partial: %v, %v", partials, err)
 	}
@@ -138,7 +186,7 @@ func assertContendingDownload(t *testing.T, root string, command *exec.Cmd) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	lock, err := os.OpenFile(filepath.Join(root, ".cache", "downloads", "source.tar.gz.lock"), os.O_RDWR, 0)
+	lock, err := os.OpenFile(filepath.Join(root, ".cache", "downloads", "fixture", "source.tar.gz.lock"), os.O_RDWR, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -307,7 +355,7 @@ func TestAbandonedPartialCleanup(t *testing.T) {
 			if err := command.Run(); err != nil {
 				t.Fatalf("initial download: %v\n%s", err, output)
 			}
-			partial := filepath.Join(root, ".cache", "downloads", "source.tar.gz.tmp.abandoned")
+			partial := filepath.Join(root, ".cache", "downloads", "fixture", "source.tar.gz.tmp.abandoned")
 			if blocked {
 				if err := os.Mkdir(partial, 0700); err != nil {
 					t.Fatal(err)

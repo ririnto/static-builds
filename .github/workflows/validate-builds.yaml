@@ -24,6 +24,8 @@ on:
       - "!**/*.md"
       - "!nginx/examples/**"
       - "!nginx/tsconfig.json"
+      - "!nginx-upstream-healthcheck/examples/njs/**"
+      - "!nginx-upstream-healthcheck/tsconfig.json"
 
 permissions:
   contents: read
@@ -100,7 +102,7 @@ jobs:
           RELEASE_FILES=$(go tool task manifest -- get-release-files "$TARGET")
           export RELEASE_FILES
           (
-            cd dist/release
+            cd "dist/release/$TARGET"
             sha256sum --check "${TAG}_checksums.txt"
           )
           python3 - <<'PY'
@@ -111,7 +113,8 @@ jobs:
 
           expected = set(os.environ["RELEASE_FILES"].splitlines())
           output = Path(os.environ["BUILD_OUTPUT_DEST"])
-          package = Path("dist/release") / f"{os.environ['TAG']}.tar.gz"
+          release = Path("dist/release") / os.environ["TARGET"]
+          package = release / f"{os.environ['TAG']}.tar.gz"
           report = [f"Verified {os.environ['TARGET']} on {os.environ['BUILDKIT_PLATFORM']}"]
           with tarfile.open(package, "r:gz") as archive:
               members = [member for member in archive.getmembers() if not member.isdir()]
@@ -129,7 +132,7 @@ jobs:
                   report.append(f"{member.name}: {member.size} bytes, mode {member.mode:04o}")
           report.append("SHA-256 checksum, selected files, bytes, and modes passed.")
           result = "\n".join(report) + "\n"
-          Path("dist/release/package-verification.txt").write_text(result)
+          (release / "package-verification.txt").write_text(result)
           print(result, end="")
           PY
 
@@ -138,8 +141,8 @@ jobs:
         with:
           name: validation-${{ matrix.target }}-${{ matrix.arch }}
           path: |-
-            dist/release/${{ env.TAG }}.tar.gz
-            dist/release/${{ env.TAG }}_checksums.txt
-            dist/release/package-verification.txt
+            dist/release/${{ env.TARGET }}/${{ env.TAG }}.tar.gz
+            dist/release/${{ env.TARGET }}/${{ env.TAG }}_checksums.txt
+            dist/release/${{ env.TARGET }}/package-verification.txt
           if-no-files-found: error
           retention-days: 7

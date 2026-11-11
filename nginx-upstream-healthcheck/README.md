@@ -3,6 +3,9 @@
 This target builds NGINX Open Source stable release 1.30.6 as a static musl PIE with active HTTP and stream health checks, njs, and VTS metrics.
 The healthcheck code is compiled into the binary as `ngx_http_upstream_healthcheck_module`.
 
+This target owns its sources, operational configuration, account files, and optional examples independently of the nginx target.
+It never consumes nginx build outputs or release packages.
+
 ## Build and packaged files
 
 Build this target with `TARGET=nginx-upstream-healthcheck TAG=nginx-upstream-healthcheck-local go tool task goreleaser -- release --clean --snapshot --verbose --timeout=6h --skip=publish,validate`.
@@ -35,7 +38,7 @@ The build verifies that HTTP health checks admit, remove, and readmit a local ba
 
 The binary has a compiled prefix of `/home/nobody` and a default configuration path of `config/nginx.conf` beneath that prefix.
 The scratch image places the installed files at `/` and starts `/sbin/nginx -p / -g 'daemon off;'`.
-It includes the shared operational `config/nginx.conf`, its HTTP include directory `config/conf.d`, runtime directories, and minimal `nobody` user and group records with ID 65534 for the workers.
+It includes the target-owned operational `config/nginx.conf`, its HTTP include directory `config/conf.d`, runtime directories, and minimal `nobody` user and group records with ID 65534 for the workers.
 The master starts as root and drops worker privileges to that account.
 Mount your own configuration at `/config/nginx.conf` or HTTP snippets under `/config/conf.d`.
 The base configuration retains the upstream default HTTP server and includes `conf.d/*.conf` within its HTTP context.
@@ -50,12 +53,12 @@ Provide your backend CA at `<prefix>/config/backend-ca.pem`.
 The example uses `backend-ca.pem` because NGINX resolves trusted certificate paths relative to the configuration directory.
 Keep the checker and proxy trust directives pointed at the same bundle.
 
-For an unprivileged local smoke test, use the optional [repository scripting example](../nginx/examples/njs/scripting.conf) with its adjacent `scripting.js` file:
+For an unprivileged local smoke test, use the optional [repository scripting example](examples/njs/scripting.conf) with its adjacent `scripting.js` file:
 
 ```sh
 cd /path/to/extracted/archive
 mkdir -p logs client_body_temp proxy_temp
-./sbin/nginx -p "$PWD/" -c /absolute/path/to/repository/nginx/examples/njs/scripting.conf -e stderr -g 'pid logs/nginx.pid; daemon off;'
+./sbin/nginx -p "$PWD/" -c /absolute/path/to/repository/nginx-upstream-healthcheck/examples/njs/scripting.conf -e stderr -g 'pid logs/nginx.pid; daemon off;'
 ```
 
 Run this command as a non-root user so workers inherit your account without looking up `nobody`.
@@ -75,7 +78,7 @@ The release fixes XML security issues CVE-2026-101025 and CVE-2026-101019 and ch
 Review the [official njs 1.0.2 release notes](https://nginx.org/en/docs/njs/changes.html#njs1.0.2) before upgrading existing scripts that use XML or Fetch.
 Set `js_engine qjs;` in each context that imports an njs script.
 The [official engine guidance](https://nginx.org/en/docs/njs/engine.html) recommends QuickJS for new configurations.
-The shared [scripting configuration](../nginx/examples/njs/scripting.conf) and [script](../nginx/examples/njs/scripting.js) are repository examples only.
+The target-owned [scripting configuration](examples/njs/scripting.conf) and [script](examples/njs/scripting.js) are repository examples only.
 Neither the default configuration nor the healthcheck module uses them, so images, build outputs, and release archives exclude them.
 
 The existing C module performs active probes against NGINX's selected peer and shares health state across workers.

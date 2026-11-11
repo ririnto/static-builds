@@ -1,0 +1,11 @@
+**
+!dnsmasq
+!dnsmasq/**
+!.cache
+.cache/*
+!.cache/downloads
+.cache/downloads/*
+!.cache/downloads/dnsmasq
+!.cache/downloads/dnsmasq/*
+.cache/downloads/dnsmasq/*.lock
+.cache/downloads/dnsmasq/*.tmp.*

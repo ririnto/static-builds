@@ -4,11 +4,13 @@ ARG UBI10_MINIMAL_VERSION
 ARG TARGET_PREFIX=/home/nobody
 
 FROM alpine:${ALPINE_VERSION} AS build
+ARG TARGETARCH
+ARG BUILD_TARGET=monit
 ARG MONIT_VERSION
 ARG TARGET_PREFIX
 
 WORKDIR /build
-RUN --mount=type=cache,target=/var/cache/apk \
+RUN --mount=type=cache,id=monit-apk-${TARGETARCH},sharing=locked,target=/var/cache/apk \
     apk add \
         build-base \
         linux-headers \
@@ -18,7 +20,7 @@ RUN --mount=type=cache,target=/var/cache/apk \
         zlib-static \
         flex \
         byacc
-ADD ".cache/downloads/monit-${MONIT_VERSION}.tar.gz" /build/
+ADD ".cache/downloads/monit/monit-${MONIT_VERSION}.tar.gz" /build/
 WORKDIR "/build/monit-${MONIT_VERSION}"
 RUN ./configure \
     --prefix=${TARGET_PREFIX} \
@@ -34,11 +36,12 @@ RUN gcc -static -static-pie -o ${TARGET_PREFIX}/bin/monit \
         -lpthread -lresolv -ldl -lm
 
 FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
+ARG TARGETARCH
+ARG BUILD_TARGET=monit
 ARG TARGET_PREFIX
-RUN --mount=type=cache,target=/var/cache/dnf \
+RUN --mount=type=cache,id=monit-dnf-${TARGETARCH},sharing=locked,target=/var/cache/dnf \
     microdnf -y install file binutils strace
 COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
-ARG TARGETARCH
 RUN set -eu; \
     case "$TARGETARCH" in \
         amd64) machine='Advanced Micro Devices X86-64' ;; \

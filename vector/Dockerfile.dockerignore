@@ -1,0 +1,11 @@
+**
+!vector
+!vector/**
+!.cache
+.cache/*
+!.cache/downloads
+.cache/downloads/*
+!.cache/downloads/vector
+!.cache/downloads/vector/*
+.cache/downloads/vector/*.lock
+.cache/downloads/vector/*.tmp.*

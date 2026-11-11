@@ -1,0 +1,11 @@
+**
+!haproxy
+!haproxy/**
+!.cache
+.cache/*
+!.cache/downloads
+.cache/downloads/*
+!.cache/downloads/haproxy
+!.cache/downloads/haproxy/*
+.cache/downloads/haproxy/*.lock
+.cache/downloads/haproxy/*.tmp.*

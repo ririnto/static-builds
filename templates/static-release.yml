@@ -17,7 +17,7 @@ spec:
     - when: $[[ inputs.run_policy ]]
   image: golang:alpine
   cache:
-    key: "apk-golang-alpine-${CI_RUNNER_ID}"
+    key: "apk-golang-alpine-$[[ inputs.target ]]-${CI_RUNNER_ID}"
     paths:
       - .cache/apk/**/*.apk
   variables:
@@ -46,15 +46,15 @@ spec:
   artifacts:
     paths:
       - "dist/$[[ inputs.target ]]/"
-      - "dist/release/$[[ inputs.package_name ]].tar.gz"
-      - "dist/release/$[[ inputs.package_name ]]_checksums.txt"
+      - "dist/release/$[[ inputs.target ]]/$[[ inputs.package_name ]].tar.gz"
+      - "dist/release/$[[ inputs.target ]]/$[[ inputs.package_name ]]_checksums.txt"
     when: always
 
 "gitlab-static-release-$[[ inputs.target ]]":
   stage: release
   image: golang:alpine
   cache:
-    key: "apk-golang-alpine-${CI_RUNNER_ID}"
+    key: "apk-golang-alpine-$[[ inputs.target ]]-${CI_RUNNER_ID}"
     paths:
       - .cache/apk/**/*.apk
   needs:
@@ -64,15 +64,16 @@ spec:
     - if: '$CI_COMMIT_TAG && $CI_COMMIT_TAG == "$[[ inputs.release_tag ]]"'
     - when: never
   variables:
+    TARGET: "$[[ inputs.target ]]"
     GORELEASER_FORCE_TOKEN: gitlab
     GORELEASER_CURRENT_TAG: "$[[ inputs.release_tag ]]"
     TAG: "$[[ inputs.release_tag ]]"
-    RELEASE_ARCHIVE: "dist/release-package/$[[ inputs.release_tag ]].tar.gz"
+    RELEASE_ARCHIVE: "dist/release-package/$[[ inputs.target ]]/$[[ inputs.release_tag ]].tar.gz"
   before_script:
     - sh .gitlab/ci/install-packages.sh ca-certificates git
   script:
     - test "$(git rev-parse "refs/tags/$TAG^{commit}")" = "$(git rev-parse HEAD)"
     - go tool task validate-release-tag -- "$[[ inputs.target ]]" "$TAG"
-    - mkdir -p dist/release-package
-    - cp "dist/release/$TAG.tar.gz" "$RELEASE_ARCHIVE"
+    - mkdir -p "dist/release-package/$TARGET"
+    - cp "dist/release/$TARGET/$TAG.tar.gz" "$RELEASE_ARCHIVE"
     - GITLAB_TOKEN="$CI_JOB_TOKEN" go tool task goreleaser -- release --clean --skip=before,archive,validate

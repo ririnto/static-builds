@@ -111,7 +111,7 @@ The same configuration loads repository-owned plugins from `plugins/` to check f
 The test spacing rule recognizes registrations imported from Vitest, Jest globals, and Bun, but does not recognize `node:test` registrations.
 `check:ultracite` runs Ultracite with type-aware lint across its discovered files.
 `check:typescript` checks those TypeScript files through `tsconfig.json` and the Node LTS compiler preset.
-Ultracite checks the optional njs example in `nginx/examples/njs/scripting.js` for lint and formatting.
+Ultracite checks the optional njs examples in each nginx target's `examples/njs/scripting.js` for lint and formatting.
 The njs example is not copied into runtime images or release archives.
 The custom healthcheck target checks its health transitions through a local proxy.
 The njs example uses upstream `njs-types` declarations through its own TypeScript configuration.

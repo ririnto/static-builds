@@ -1,7 +1,7 @@
 # nginx
 
 This target builds static nginx with njs and VTS compiled into one musl PIE binary.
-Both nginx targets use the same njs scripting profile.
+Both nginx targets independently build the same njs scripting profile.
 The selected nginx 1.30.6 release belongs to the Open Source Stable series.
 NGINX Open Source does not publish a separate LTS line.
 

@@ -25,9 +25,9 @@ This target builds a static PIE `haproxy` binary for musl-based deployments.
 
 ### Private Build Inputs
 
-- Source archives listed in root `metadata.json` are the `.cache/downloads/` prefetch inputs for this target.
+- Source archives listed in root `metadata.json` are the `.cache/downloads/haproxy/` prefetch inputs for this target.
 - APK packages remain the package-registry inputs.
-  `c-ares-dev`, `curl-dev`, `curl-static`, and `pkgconf` are consumed from APK packages, not from `.cache/downloads/` source archives.
+  `c-ares-dev`, `curl-dev`, `curl-static`, and `pkgconf` are consumed from APK packages, not from `.cache/downloads/haproxy/` source archives.
 - `pkg-config` only reads local `.pc` metadata from APK packages and `/opt/lib/pkgconfig`.
   It is not a source download path.
 - The OpenTelemetry dependency stages use C++17 and the SDK's `OTELCPP_*` CMake options.
