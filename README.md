@@ -503,6 +503,8 @@ Selected release contents:
 
 - Configure the GitLab project to use `.gitlab-ci.yaml` as its custom CI/CD configuration path after merge.
 - The GitLab check job runs Go-managed contributor checks before package generation and retains the manual parent trigger.
+- GitLab rejects merge-request pipelines at the workflow boundary and keeps existing branch and tag pipelines.
+- A branch push with an open merge request runs only its branch pipeline.
 - GitLab pipelines on `main` and `feature/*` generate a child configuration with `.gitlab/ci/package-pipeline.gitlab-ci.jsonnet`.
 - One manual parent trigger starts branch child pipelines, which build selected targets and retain their artifacts.
 - Tag pipelines resolve one target from metadata and validate the official version and numeric revision before generating the child pipeline.
