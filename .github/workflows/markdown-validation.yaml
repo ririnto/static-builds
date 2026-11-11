@@ -28,7 +28,7 @@ jobs:
         run: go tool task golangci-lint -- run ./...
 
       - name: Check shell formatting
-        run: go tool task shfmt -- -d -i 2 -ci
+        run: go tool task shfmt -- -d
 
       - name: Check Jsonnet
         run: |-

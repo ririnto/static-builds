@@ -13,7 +13,7 @@ tasks:
     cmds:
       - |-
         set -e
-        set -- {{.CLI_ARGS}}
+        set -- {{range .CLI_ARGS_LIST}}{{. | shellQuote}} {{end}}
         go tool task download -- "${1:-}"
         ROOT_DIR=$(pwd)
         TARGET="$1"
@@ -62,7 +62,7 @@ tasks:
     cmds:
       - |-
         set -e
-        set -- {{.CLI_ARGS}}
+        set -- {{range .CLI_ARGS_LIST}}{{. | shellQuote}} {{end}}
         go tool task download -- "${1:-}"
         TARGET="$1"
         shift
@@ -88,24 +88,24 @@ tasks:
   buildctl:
     desc: Run the BuildKit client
     cmds:
-      - go tool buildctl {{.CLI_ARGS}}
+      - go tool buildctl {{range .CLI_ARGS_LIST}}{{. | shellQuote}} {{end}}
 
   download:
     desc: Download a target's sources (-- <target>)
     cmds:
-      - go run ./cmd/download {{.CLI_ARGS}}
+      - go run ./cmd/download {{range .CLI_ARGS_LIST}}{{. | shellQuote}} {{end}}
 
   manifest:
     desc: Query manifest metadata (-- <command> <argument>)
     cmds:
-      - go run ./cmd/metadata {{.CLI_ARGS}}
+      - go run ./cmd/metadata {{range .CLI_ARGS_LIST}}{{. | shellQuote}} {{end}}
 
   package:
     desc: Package a target's manifest-selected files (-- <target> <tag> [GoReleaser args...])
     cmds:
       - |-
         set -e
-        set -- {{.CLI_ARGS}}
+        set -- {{range .CLI_ARGS_LIST}}{{. | shellQuote}} {{end}}
         TARGET="${1:?build target is required}"
         TAG="${2:?package tag is required}"
         shift 2
@@ -126,45 +126,46 @@ tasks:
   goreleaser:
     desc: Package and publish release artifacts
     cmds:
-      - go tool goreleaser {{.CLI_ARGS}}
+      - go tool goreleaser {{range .CLI_ARGS_LIST}}{{. | shellQuote}} {{end}}
 
   jsonnet:
     desc: Render the GitLab package pipeline
     cmds:
-      - go tool jsonnet {{.CLI_ARGS}} .gitlab/ci/package-pipeline.gitlab-ci.jsonnet
+      - go tool jsonnet {{range .CLI_ARGS_LIST}}{{. | shellQuote}} {{end}}.gitlab/ci/package-pipeline.gitlab-ci.jsonnet
 
   jsonnetfmt:
     desc: Format the GitLab package pipeline
     cmds:
-      - go tool jsonnetfmt {{.CLI_ARGS}} .gitlab/ci/package-pipeline.gitlab-ci.jsonnet
+      - go tool jsonnetfmt {{range .CLI_ARGS_LIST}}{{. | shellQuote}} {{end}}.gitlab/ci/package-pipeline.gitlab-ci.jsonnet
 
   test:
     desc: Test Go commands
     cmds:
-      - go test ./... {{.CLI_ARGS}}
+      - go test ./... {{range .CLI_ARGS_LIST}}{{. | shellQuote}} {{end}}
 
   fmt:
     desc: Format Go source
     cmds:
-      - go fmt ./... {{.CLI_ARGS}}
+      - go fmt ./... {{range .CLI_ARGS_LIST}}{{. | shellQuote}} {{end}}
 
   tidy:
     desc: Tidy Go module dependencies
     cmds:
-      - go mod tidy {{.CLI_ARGS}}
+      - go mod tidy {{range .CLI_ARGS_LIST}}{{. | shellQuote}} {{end}}
 
   shfmt:
     desc: Format maintained shell scripts
     vars:
+      SHELL_PATHS:
+        sh: git ls-files -z '*.sh' '.husky/pre-*'
       SHELL_FILES:
-        sh: git ls-files '*.sh' '.husky/pre-*'
+        ref: 'splitList "\x00" .SHELL_PATHS | compact'
     cmds:
       - for:
           var: SHELL_FILES
-          split: "\n"
-        cmd: go tool shfmt {{.CLI_ARGS}} {{.ITEM | shellQuote}}
+        cmd: go tool shfmt -i 2 -ci {{range .CLI_ARGS_LIST}}{{. | shellQuote}} {{end}}-- {{.ITEM | shellQuote}}
 
   golangci-lint:
     desc: Lint Go source
     cmds:
-      - go tool golangci-lint {{.CLI_ARGS}}
+      - go tool golangci-lint {{range .CLI_ARGS_LIST}}{{. | shellQuote}} {{end}}
