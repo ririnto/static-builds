@@ -1457,7 +1457,6 @@ static void
 ngx_http_upstream_healthcheck_stop_worker(ngx_http_upstream_healthcheck_main_conf_t *mcf)
 {
     ngx_http_upstream_healthcheck_conf_t      **hcs;
-    ngx_http_upstream_healthcheck_probe_t       *probe;
     ngx_uint_t                                i;
 
     hcs = mcf->upstreams.elts;
@@ -1467,9 +1466,8 @@ ngx_http_upstream_healthcheck_stop_worker(ngx_http_upstream_healthcheck_main_con
             ngx_del_timer(&hcs[i]->timer);
         }
         while (hcs[i]->probes != NULL) {
-            probe = hcs[i]->probes;
             ngx_http_upstream_healthcheck_probe_finish(
-                probe, 0, 0, 0, 0,
+                hcs[i]->probes, 0, 0, 0, 0,
                 NGX_UPSTREAM_HEALTHCHECK_RESULT_SOCKERR);
         }
     }
@@ -3421,7 +3419,6 @@ static void
 ngx_stream_upstream_healthcheck_stop_worker(ngx_stream_upstream_healthcheck_main_conf_t *mcf)
 {
     ngx_stream_upstream_healthcheck_conf_t      **hcs;
-    ngx_stream_upstream_healthcheck_probe_t       *probe;
     ngx_uint_t                                  i;
 
     hcs = mcf->upstreams.elts;
@@ -3431,9 +3428,8 @@ ngx_stream_upstream_healthcheck_stop_worker(ngx_stream_upstream_healthcheck_main
             ngx_del_timer(&hcs[i]->timer);
         }
         while (hcs[i]->probes != NULL) {
-            probe = hcs[i]->probes;
             ngx_stream_upstream_healthcheck_probe_finish(
-                probe, 0, 0, 0, NGX_UPSTREAM_HEALTHCHECK_RESULT_SOCKERR);
+                hcs[i]->probes, 0, 0, 0, NGX_UPSTREAM_HEALTHCHECK_RESULT_SOCKERR);
         }
     }
 }
@@ -4622,7 +4618,6 @@ ngx_upstream_healthcheck_tls_start(ngx_connection_t *c, ngx_pool_t *pool,
     ngx_ssl_t *ssl, ngx_str_t *tls_name,
     ngx_connection_handler_pt handler, ngx_uint_t *force_down)
 {
-    ngx_int_t  rc;
     u_char    *name;
 
     *force_down = 0;
@@ -4647,8 +4642,7 @@ ngx_upstream_healthcheck_tls_start(ngx_connection_t *c, ngx_pool_t *pool,
         return NGX_ERROR;
     }
     c->ssl->handler = handler;
-    rc = ngx_ssl_handshake(c);
-    return rc;
+    return ngx_ssl_handshake(c);
 }
 
 static ngx_int_t
@@ -4666,12 +4660,9 @@ ngx_upstream_healthcheck_tls_verified(ngx_connection_t *c, ngx_str_t *tls_name)
 static void
 ngx_upstream_healthcheck_shutdown_tls(ngx_connection_t *c)
 {
-    ngx_int_t  rc;
-
     c->ssl->no_wait_shutdown = 1;
     c->ssl->no_send_shutdown = 1;
-    rc = ngx_ssl_shutdown(c);
-    if (rc == NGX_AGAIN && c->ssl != NULL) {
+    if (ngx_ssl_shutdown(c) == NGX_AGAIN && c->ssl != NULL) {
         SSL_free(c->ssl->connection);
         c->ssl = NULL;
     }
@@ -5450,11 +5441,9 @@ ngx_http_upstream_healthcheck_output_uint(
     ngx_http_upstream_healthcheck_output_t *out, ngx_uint_t value)
 {
     u_char   buffer[NGX_INT_T_LEN + 1];
-    u_char  *last;
 
-    last = ngx_sprintf(buffer, "%ui", value);
-    return ngx_http_upstream_healthcheck_output_append(out, buffer,
-                                                      last - buffer);
+    return ngx_http_upstream_healthcheck_output_append(
+               out, buffer, ngx_sprintf(buffer, "%ui", value) - buffer);
 }
 
 static ngx_int_t
@@ -5462,11 +5451,9 @@ ngx_http_upstream_healthcheck_output_int(
     ngx_http_upstream_healthcheck_output_t *out, ngx_int_t value)
 {
     u_char   buffer[NGX_INT_T_LEN + 2];
-    u_char  *last;
 
-    last = ngx_sprintf(buffer, "%i", value);
-    return ngx_http_upstream_healthcheck_output_append(out, buffer,
-                                                      last - buffer);
+    return ngx_http_upstream_healthcheck_output_append(
+               out, buffer, ngx_sprintf(buffer, "%i", value) - buffer);
 }
 
 static ngx_int_t
@@ -5474,11 +5461,11 @@ ngx_http_upstream_healthcheck_output_seconds(
     ngx_http_upstream_healthcheck_output_t *out, ngx_msec_t value)
 {
     u_char   buffer[NGX_INT_T_LEN + 5];
-    u_char  *last;
 
-    last = ngx_sprintf(buffer, "%ui.%03ui", value / 1000, value % 1000);
-    return ngx_http_upstream_healthcheck_output_append(out, buffer,
-                                                      last - buffer);
+    return ngx_http_upstream_healthcheck_output_append(
+               out, buffer,
+               ngx_sprintf(buffer, "%ui.%03ui", value / 1000, value % 1000)
+               - buffer);
 }
 
 static ngx_int_t
@@ -5642,10 +5629,8 @@ ngx_http_upstream_healthcheck_output_sample_uint(
     const ngx_http_upstream_healthcheck_sample_t *sample, ngx_uint_t value)
 {
     u_char   buffer[NGX_INT_T_LEN + 1];
-    u_char  *last;
 
-    last = ngx_sprintf(buffer, "%ui", value);
-    *last = '\0';
+    *ngx_sprintf(buffer, "%ui", value) = '\0';
     return ngx_http_upstream_healthcheck_output_sample(out, name, sample,
                                                        (char *) buffer);
 }
@@ -5656,10 +5641,8 @@ ngx_http_upstream_healthcheck_output_sample_int(
     const ngx_http_upstream_healthcheck_sample_t *sample, ngx_int_t value)
 {
     u_char   buffer[NGX_INT_T_LEN + 2];
-    u_char  *last;
 
-    last = ngx_sprintf(buffer, "%i", value);
-    *last = '\0';
+    *ngx_sprintf(buffer, "%i", value) = '\0';
     return ngx_http_upstream_healthcheck_output_sample(out, name, sample,
                                                        (char *) buffer);
 }
