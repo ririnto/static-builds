@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 )
 
@@ -50,6 +51,7 @@ type value struct {
 }
 
 func readValue(decoder *json.Decoder) (value, error) {
+
 	token, err := decoder.Token()
 	if err != nil {
 		return value{}, err
@@ -86,6 +88,7 @@ func readValue(decoder *json.Decoder) (value, error) {
 }
 
 func stringValue(v value) (string, error) {
+
 	text, ok := v.token.(string)
 	if !ok {
 		return "", fmt.Errorf("expected string")
@@ -95,6 +98,7 @@ func stringValue(v value) (string, error) {
 
 // Load reads and validates the entire metadata file before returning any queries.
 func Load(path string) (*Metadata, error) {
+
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -110,9 +114,10 @@ func Load(path string) (*Metadata, error) {
 }
 
 func parse(data []byte) (*Metadata, error) {
+
 	// The former parser rejects Unicode escapes, including in ignored fields.
 	inString, escaped := false, false
-	for _, character := range data {
+	for character := range slices.Values(data) {
 		if escaped {
 			if character == 'u' {
 				return nil, fmt.Errorf("unsupported unicode escape")
@@ -137,12 +142,12 @@ func parse(data []byte) (*Metadata, error) {
 		return nil, fmt.Errorf("metadata must be a non-empty object")
 	}
 	result := &Metadata{}
-	for _, item := range root.object {
+	for item := range slices.Values(root.object) {
 		if item.value.token != json.Delim('{') {
 			return nil, fmt.Errorf("metadata entries must be objects keyed by target name")
 		}
 		target := Target{Name: item.key}
-		for _, field := range item.value.object {
+		for field := range slices.Values(item.value.object) {
 			switch field.key {
 			case "tag_prefix", "version_env_var":
 				text, err := stringValue(field.value)
@@ -158,7 +163,7 @@ func parse(data []byte) (*Metadata, error) {
 				if field.value.token != json.Delim('{') {
 					return nil, fmt.Errorf("target '%s' has malformed env object", item.key)
 				}
-				for _, entry := range field.value.object {
+				for entry := range slices.Values(field.value.object) {
 					text, err := stringValue(entry.value)
 					if err != nil {
 						return nil, err
@@ -169,7 +174,7 @@ func parse(data []byte) (*Metadata, error) {
 				if field.value.token != json.Delim('[') {
 					return nil, fmt.Errorf("target '%s' has malformed release_files array", item.key)
 				}
-				for _, entry := range field.value.array {
+				for entry := range slices.Values(field.value.array) {
 					text, err := stringValue(entry)
 					if err != nil {
 						return nil, err
@@ -186,7 +191,7 @@ func parse(data []byte) (*Metadata, error) {
 					if entry.token != json.Delim('{') {
 						return nil, fmt.Errorf("target '%s' has invalid download entry #%d", item.key, index+1)
 					}
-					for _, downloadField := range entry.object {
+					for downloadField := range slices.Values(entry.object) {
 						if downloadField.key == "url" || downloadField.key == "name" {
 							text, err := stringValue(downloadField.value)
 							if err != nil {
@@ -213,6 +218,7 @@ func parse(data []byte) (*Metadata, error) {
 
 // LoadDefault honors the existing metadata override and otherwise uses the repository root.
 func LoadDefault() (*Metadata, error) {
+
 	path := os.Getenv("METADATA_PATH_OVERRIDE")
 	if path == "" {
 		root, err := os.Getwd()
@@ -226,16 +232,19 @@ func LoadDefault() (*Metadata, error) {
 
 // Target selects a target without changing input ordering.
 func (m *Metadata) Target(name string) (*Target, error) {
-	for index := range m.Targets {
-		if m.Targets[index].Name == name {
-			return &m.Targets[index], nil
-		}
+
+	if index := slices.IndexFunc(m.Targets, func(target Target) bool {
+
+		return target.Name == name
+	}); index >= 0 {
+		return &m.Targets[index], nil
 	}
 	return nil, fmt.Errorf("unknown target '%s'", name)
 }
 
 // TargetFromTag resolves the longest prefix and rejects ambiguous matches.
 func (m *Metadata) TargetFromTag(tag string) (*Target, error) {
+
 	var best *Target
 	ambiguous := false
 	for index := range m.Targets {
@@ -259,6 +268,7 @@ func (m *Metadata) TargetFromTag(tag string) (*Target, error) {
 
 // Environment returns ordered build environment records.
 func (t *Target) Environment() ([]Entry, error) {
+
 	if len(t.Env) == 0 {
 		return nil, fmt.Errorf("target '%s' is missing env metadata", t.Name)
 	}
@@ -267,6 +277,7 @@ func (t *Target) Environment() ([]Entry, error) {
 
 // Prefix returns the required canonical release prefix.
 func (t *Target) Prefix() (string, error) {
+
 	if t.TagPrefix == "" {
 		return "", fmt.Errorf("target '%s' is missing tag_prefix", t.Name)
 	}
@@ -275,43 +286,41 @@ func (t *Target) Prefix() (string, error) {
 
 // OfficialVersion uses the first matching environment entry.
 func (t *Target) OfficialVersion() (string, error) {
+
 	if t.VersionEnvVar == "" {
 		return "", fmt.Errorf("target '%s' is missing version_env_var", t.Name)
 	}
-	for _, entry := range t.Env {
-		if entry.Key == t.VersionEnvVar {
-			if entry.Value == "" {
-				return "", fmt.Errorf("target '%s' is missing official version value", t.Name)
-			}
-			return entry.Value, nil
-		}
+	if index := slices.IndexFunc(t.Env, func(entry Entry) bool {
+
+		return entry.Key == t.VersionEnvVar
+	}); index >= 0 && t.Env[index].Value != "" {
+		return t.Env[index].Value, nil
 	}
 	return "", fmt.Errorf("target '%s' is missing official version value", t.Name)
 }
 
 // Files selects the ordered release paths.
 func (t *Target) Files() ([]string, error) {
+
 	if len(t.ReleaseFiles) == 0 {
 		return nil, fmt.Errorf("target '%s' is missing release_files", t.Name)
 	}
 	return t.ReleaseFiles, nil
 }
 
-func (t *Target) render(template string, index int, field string) (string, error) {
+func (t *Target) render(remainder string, index int, field string) (string, error) {
+
 	var output strings.Builder
-	remainder := template
 	for strings.Contains(remainder, "{") && strings.Contains(remainder[strings.IndexByte(remainder, '{')+1:], "}") {
 		prefix, tail, _ := strings.Cut(remainder, "{")
 		placeholder, rest, _ := strings.Cut(tail, "}")
 		output.WriteString(prefix)
-		found := false
-		for _, entry := range t.Env {
-			if !found && entry.Key == placeholder {
-				output.WriteString(entry.Value)
-				found = true
-			}
-		}
-		if !found {
+		if entry := slices.IndexFunc(t.Env, func(entry Entry) bool {
+
+			return entry.Key == placeholder
+		}); entry >= 0 {
+			output.WriteString(t.Env[entry].Value)
+		} else {
 			return "", fmt.Errorf("target '%s' references unknown placeholder '%s' in downloads[%d].%s", t.Name, placeholder, index, field)
 		}
 		remainder = rest
@@ -322,6 +331,7 @@ func (t *Target) render(template string, index int, field string) (string, error
 
 // RenderDownloads substitutes environment placeholders in source records.
 func (t *Target) RenderDownloads() ([]Download, error) {
+
 	if _, err := t.Environment(); err != nil {
 		return nil, err
 	}

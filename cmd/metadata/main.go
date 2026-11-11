@@ -1,13 +1,16 @@
+// Command metadata prints build and release values from target metadata.
 package main
 
 import (
 	"fmt"
 	"os"
+	"slices"
 
 	"github.com/ririnto/static-builds/internal/metadata"
 )
 
 func run(args []string) error {
+
 	if len(args) != 2 {
 		return fmt.Errorf("usage: metadata <command> <argument>")
 	}
@@ -38,7 +41,7 @@ func run(args []string) error {
 		if err != nil {
 			return err
 		}
-		for _, entry := range entries {
+		for entry := range slices.Values(entries) {
 			fmt.Printf("%s=%s\n", entry.Key, entry.Value)
 		}
 	case "get-official-version":
@@ -58,7 +61,7 @@ func run(args []string) error {
 		if err != nil {
 			return err
 		}
-		for _, file := range files {
+		for file := range slices.Values(files) {
 			fmt.Println(file)
 		}
 	case "get-downloads":
@@ -66,7 +69,7 @@ func run(args []string) error {
 		if err != nil {
 			return err
 		}
-		for _, download := range downloads {
+		for download := range slices.Values(downloads) {
 			fmt.Printf("%s\t%s\n", download.URL, download.Name)
 		}
 	}
@@ -74,6 +77,7 @@ func run(args []string) error {
 }
 
 func main() {
+
 	if err := run(os.Args[1:]); err != nil {
 		fmt.Fprintln(os.Stderr, "Error:", err)
 		os.Exit(1)
