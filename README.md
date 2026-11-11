@@ -12,9 +12,10 @@ Build statically-linked binaries using Docker multi-stage builds for portable, m
 
 ## Prerequisites
 
-Local builds require the Go version declared in `go.mod` and Docker CLI access to a running Linux daemon and the Docker Buildx plugin.
-GitHub release packaging uses GoReleaser with metadata-selected paths.
-GitLab package jobs use `tar`.
+Local container builds require Docker Compose 2.17 or later and access to a running Linux Docker daemon.
+The Compose tooling image supplies Go and rootless BuildKit, so Go does not need to be installed on the host.
+Direct Buildx builds and contributor checks still require the Go version declared in `go.mod`.
+GitHub and GitLab release packaging use GoReleaser with metadata-selected paths and generated SHA-256 checksums.
 See the [state machine inventory](.github/state-machines.md), [Taskfile](Taskfile.yaml), [download command](cmd/download/main.go), and [metadata command](cmd/metadata/main.go).
 
 Install `curl` or `wget` to download target sources, and allow network access to their upstream hosts.
@@ -64,9 +65,45 @@ pnpm run build -- nginx
 Build artifacts are written to `.out/<target>/` by default for both local and CI builds.
 You can override this with `BUILD_OUTPUT_DEST`.
 
+### Local container builds
+
+Run a one-shot rootless build from the repository root:
+
+```sh
+mkdir -p .tmp .cache .out
+docker compose build build
+docker compose run --rm build dnsmasq
+```
+
+Replace `dnsmasq` with the required target and append buildctl arguments such as `--progress=plain`.
+No target is selected when it is omitted.
+The output remains under `.out/<target>/`, and source downloads and exported build cache remain under `.tmp/` and `.cache/`.
+The checkout is read-only inside the service except for these three directories.
+Named volumes retain the Go module cache, Go compilation cache, and BuildKit state.
+The service does not mount the Docker socket, publish ports, use host networking, or run in privileged mode.
+
+The image starts from `golang:alpine` and runs the upstream daemonless BuildKit script as a non-root user.
+Its native snapshotter avoids a FUSE device, and its default process sandbox remains enabled.
+Following the [BuildKit rootless Docker configuration](https://github.com/moby/buildkit/blob/v0.34.2/docs/rootless.md#docker), Compose relaxes seccomp and masked system paths inside this dedicated build container.
+Only run trusted build inputs in this container because these settings reduce its isolation.
+An AppArmor-enabled Docker host additionally needs a compatible rootless AppArmor profile configured by its administrator.
+Do not disable host security controls to work around a runner denial.
+
+The builder itself runs on the Docker host's native architecture.
+`BUILDKIT_PLATFORM` selects the target artifact architecture, not the architecture of the rootless daemon.
+For example, `BUILDKIT_PLATFORM=linux/arm64 docker compose run --rm build dnsmasq` builds an arm64 target when its dependencies support that platform.
+Building a different architecture requires working emulation in the Docker host.
+The `vector` target currently selects a fixed x86_64 upstream archive.
+
+On native Linux, the bind-mounted directories must be writable by the image's user, whose default UID is 1000.
+Set `BUILDER_UID=$(id -u)` when building the tooling image if the host uses another non-root UID.
+Keep that UID consistent when reusing the named cache volumes.
+The container does not recursively change ownership of the checkout.
+Go VCS stamping is disabled for container tooling because a linked worktree's Git directory may be outside the mounted source tree.
+
 ### Build configuration
 
-Build configuration accepts inherited environment values.
+Direct Buildx configuration accepts inherited environment values.
 
 | Variable | Default | Values and purpose |
 | --- | --- | --- |
@@ -85,8 +122,8 @@ Build invocation examples:
 
 ### Network and platform behavior
 
-Local and GitHub builds use the configured Docker Buildx builder directly.
-GitLab uses `go tool task build-rootless` with an ephemeral rootless BuildKit daemon.
+Direct local builds and GitHub use the configured Docker Buildx builder.
+Compose and GitLab use `go tool task build-rootless` with an ephemeral rootless BuildKit daemon.
 `BUILDKIT_NETWORK=none` disables RUN-step networking.
 `BUILDKIT_NETWORK=host` requests host networking from the selected builder.
 The build does not automatically configure a Linux VM or cross-platform emulation.
@@ -97,6 +134,30 @@ For example, run `go tool task build -- haproxy` or `go tool task build -- apach
 Tool tasks also pass arguments through: `go tool task jsonnetfmt -- -i` formats the built-in pipeline file.
 `go tool task buildctl -- --help` exposes the Go-managed BuildKit client while builds continue to use Docker Buildx.
 `go tool task goreleaser -- <arguments>` packages and publishes release artifacts through [.goreleaser.yaml](.goreleaser.yaml).
+
+### Package an existing build
+
+Package only the release paths selected by `metadata.json` without publishing:
+
+```sh
+go tool task package -- dnsmasq dnsmasq-2.93-local.0 --snapshot
+```
+
+The target must already be built under `.out/<target>/` or `BUILD_OUTPUT_DEST`.
+The package task writes `.out/goreleaser/<tag>.tar.gz` and `.out/goreleaser/<tag>_checksums.txt`.
+It clears that GoReleaser output directory, so package one target at a time and copy outputs before packaging another target.
+Generated checksums describe the distributed archive and do not enforce checksums on downloaded upstream sources.
+Snapshot mode neither creates a tag nor publishes a release.
+
+GoReleaser OSS supports [build orchestration through before hooks](https://goreleaser.com/customization/general/hooks/), [archive checksums](https://goreleaser.com/customization/package/checksum/), and [GitHub or GitLab releases](https://goreleaser.com/customization/publish/scm/).
+This repository keeps compilation in the existing Task and Dockerfile build stages, then uses GoReleaser for the shared packaging and checksum stages.
+Its mixed-language targets do not use GoReleaser's native Go builder or the Pro-only prebuilt builder.
+The separate GitHub publication job receives only the built archive and checksum and recomputes the checksum from the downloaded archive before publishing.
+No build is repeated under release credentials.
+
+GitLab jobs use the same package task in snapshot mode and retain artifacts without creating GitLab Releases.
+GoReleaser also supports actual GitLab publication when invoked separately with the appropriate [GitLab token configuration](https://goreleaser.com/customization/publish/scm/gitlab/).
+Select only one release provider per invocation, and do not use a GitLab draft release as a nonpublishing test because GitLab has no draft-release mode.
 
 ### Running haproxy binary image
 
@@ -112,6 +173,7 @@ docker run --rm \
 .
 +-- metadata.json           # Canonical build/release metadata
 +-- Taskfile.yaml           # Repository task entrypoints
++-- compose.yaml            # Local Go and rootless BuildKit environment
 +-- go.mod                  # Go commands and toolchain tools
 +-- go.sum                  # Go module checksums
 +-- .gitlab-ci.yaml         # GitLab CI configuration
@@ -371,13 +433,13 @@ Invalid examples:
 ## How It Works
 
 1. Task runs `go tool task download -- <target>` to resolve the target's download resources from `metadata.json` before starting the build.
-2. The Taskfile build task invokes Docker Buildx directly to execute the multi-stage Dockerfile.
+2. The selected Task invokes Docker Buildx directly or the upstream daemonless rootless BuildKit script to execute the multi-stage Dockerfile.
 3. Built artifacts go to `.out/<target>/` for both local builds and CI.
 4. Each target verifies built artifacts in its Dockerfile before exporting its `scratch` stage.
 
 Local build caching uses the root `.cache/<target>/` directories by default.
 GitHub release builds use the GitHub Actions cache backend with a separate scope for each target.
-GitLab package builds use daemonless rootless BuildKit and retain local-cache behavior.
+Compose and GitLab package builds use daemonless rootless BuildKit and retain local-cache behavior.
 
 ## CI Behavior
 
@@ -385,7 +447,7 @@ GitLab package builds use daemonless rootless BuildKit and retain local-cache be
 - Release upload is optional and packages selected release files into one `.tar.gz` per tag.
 - Tag push release uses unified workflow `.github/workflows/release-from-tag.yaml`.
 - Workflow automatically determines the target from tag pattern and calls reusable template `.github/workflows/template-release.yaml`.
-- Template builds mapped target, scans for vulnerabilities, uploads the full `.out/<target>/` tree as artifact, then uploads `${tag}.tar.gz` that contains selected release files.
+- Template builds the mapped target, scans for vulnerabilities, uploads the full `.out/<target>/` tree as an artifact, then uploads `${tag}.tar.gz` and `${tag}_checksums.txt`.
 
 Selected release contents:
 
@@ -424,12 +486,12 @@ Selected release contents:
 - It invokes the upstream daemonless script as that user without Docker services.
 - The runner must permit unprivileged user namespaces and rootless mounts.
 - `feature/*` branches append `-beta` to the package version.
-- Release packaging and publication use GoReleaser in the GitHub release workflow.
+- Release packaging and generated archive checksums use GoReleaser on both hosts, while only GitHub publishes a Release automatically.
 - The generated child pipeline includes the local component at `templates/static-release.yml`.
 - GitLab component discovery requires the conventional `templates/*.yml` filename, so `templates/static-release.yml` remains the supported exception to the `.yaml` filename rule.
 - The parent configuration uses the supported custom configuration path documented by [GitLab](https://docs.gitlab.com/ci/pipelines/settings/#specify-a-custom-cicd-configuration-file), while the local component follows [GitLab's component discovery convention](https://docs.gitlab.com/ci/components/).
-- GitHub release packaging and GitLab package generation query `go tool task manifest -- get-release-files <target>` for selected paths.
-- GitHub uses GoReleaser to archive staged files, while GitLab uses `tar`.
+- The shared `go tool task package -- <target> <tag>` task queries `go tool task manifest -- get-release-files <target>` for selected paths.
+- Both hosts export the GoReleaser archive and its SHA-256 checksum file.
 
 GitHub publishing uses GoReleaser with `GITHUB_TOKEN`.
 GoReleaser creates the release or replaces its existing archive asset.

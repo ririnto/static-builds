@@ -100,6 +100,29 @@ tasks:
     cmds:
       - go run ./cmd/metadata {{.CLI_ARGS}}
 
+  package:
+    desc: Package a target's manifest-selected files (-- <target> <tag> [GoReleaser args...])
+    cmds:
+      - |-
+        set -e
+        set -- {{.CLI_ARGS}}
+        TARGET="${1:?build target is required}"
+        TAG="${2:?package tag is required}"
+        shift 2
+        mkdir -p .out
+        STAGING_DIR=$(mktemp -d "$(pwd)/.out/release.XXXXXXXX")
+        trap 'rm -rf "$STAGING_DIR"' EXIT
+        RELEASE_FILES="$STAGING_DIR/files"
+        mkdir -p "$RELEASE_FILES"
+        go tool task manifest -- get-release-files "$TARGET" >"$STAGING_DIR/manifest"
+        while IFS= read -r file; do
+          mkdir -p "$RELEASE_FILES/$(dirname "$file")"
+          cp -a "${BUILD_OUTPUT_DEST:-.out/$TARGET}/$file" "$RELEASE_FILES/$file"
+        done <"$STAGING_DIR/manifest"
+        export TAG RELEASE_FILES
+        export GORELEASER_CURRENT_TAG="$TAG"
+        go tool task goreleaser -- release --clean --skip=publish,validate "$@"
+
   goreleaser:
     desc: Package and publish release artifacts
     cmds:
