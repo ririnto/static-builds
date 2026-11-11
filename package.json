@@ -11,6 +11,7 @@
     "check:jsonnet": "run-p check:jsonnet:*",
     "check:jsonnet:feature": "go tool task jsonnet -- -S --ext-str branch=feature/tooling-check --ext-str target= --ext-str component_ref=example.invalid/group/static-builds/static-release@feature/tooling-check",
     "check:jsonnet:main": "go tool task jsonnet -- -S --ext-str branch=main --ext-str target= --ext-str component_ref=example.invalid/group/static-builds/static-release@main",
+    "check:jsonnet:release": "go tool task jsonnet -- -S --ext-str branch= --ext-str target=dnsmasq --ext-str component_ref=example.invalid/group/static-builds/static-release@release-check --tla-str \"release_tag=dnsmasq-$(go tool task manifest -- get-official-version dnsmasq).0\"",
     "check:jsonnetfmt": "go tool task jsonnetfmt -- --test",
     "check:lint-rules": "node --test rules/*.test.ts",
     "check:markdownlint-cli2": "markdownlint-cli2",

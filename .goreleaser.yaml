@@ -28,3 +28,9 @@ release:
   extra_files:
     - glob: ".out/release-package/{{ .Env.TAG }}.tar.gz"
   replace_existing_artifacts: true
+
+gitlab_urls:
+  api: "{{ .Env.CI_API_V4_URL }}"
+  download: "{{ .Env.CI_SERVER_URL }}"
+  use_job_token: true
+  use_package_registry: true

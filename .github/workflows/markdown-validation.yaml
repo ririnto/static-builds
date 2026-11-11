@@ -34,6 +34,7 @@ jobs:
         run: |-
           go tool task jsonnet -- -S --ext-str branch=main --ext-str target= --ext-str component_ref=example.invalid/group/static-builds/static-release@main
           go tool task jsonnet -- -S --ext-str branch=feature/tooling-check --ext-str target= --ext-str component_ref=example.invalid/group/static-builds/static-release@feature/tooling-check
+          go tool task jsonnet -- -S --ext-str branch= --ext-str target=dnsmasq --ext-str component_ref=example.invalid/group/static-builds/static-release@release-check --tla-str "release_tag=dnsmasq-$(go tool task manifest -- get-official-version dnsmasq).0"
 
       - name: Check Jsonnet formatting
         run: go tool task jsonnetfmt -- --test

@@ -150,13 +150,17 @@ Generated checksums describe the distributed archive and do not enforce checksum
 Snapshot mode neither creates a tag nor publishes a release.
 
 GoReleaser OSS supports [build orchestration through before hooks](https://goreleaser.com/customization/general/hooks/), [archive checksums](https://goreleaser.com/customization/package/checksum/), and [GitHub or GitLab releases](https://goreleaser.com/customization/publish/scm/).
-This repository keeps compilation in the existing Task and Dockerfile build stages, then uses GoReleaser for the shared packaging and checksum stages.
+This repository keeps compilation in the existing Task and Dockerfile build stages, then uses GoReleaser for shared packaging, checksum, and host-specific publication stages.
 Its mixed-language targets do not use GoReleaser's native Go builder or the Pro-only prebuilt builder.
 The separate GitHub publication job receives only the built archive and checksum and recomputes the checksum from the downloaded archive before publishing.
 No build is repeated under release credentials.
 
-GitLab jobs use the same package task in snapshot mode and retain artifacts without creating GitLab Releases.
-GoReleaser also supports actual GitLab publication when invoked separately with the appropriate [GitLab token configuration](https://goreleaser.com/customization/publish/scm/gitlab/).
+GitLab branch jobs use the same package task in snapshot mode and retain artifacts without creating GitLab Releases.
+GitLab release-tag pipelines build one manifest-selected target, then publish its archive and checksum in a separate GoReleaser job.
+The publisher uses the existing `CI_JOB_TOKEN` with [GoReleaser's job-token authentication](https://goreleaser.com/customization/publish/scm/gitlab/) and stores assets in the Generic Package Registry.
+It selects GitLab explicitly with `GORELEASER_FORCE_TOKEN=gitlab`, reads the repository from the GitLab checkout's origin, and uses `CI_API_V4_URL` and `CI_SERVER_URL` for the API and download host.
+No persistent token is configured and no build is repeated in the publisher.
+The triggering user must already have permission to publish the release and access any protected tag, and the project must allow package uploads.
 Select only one release provider per invocation, and do not use a GitLab draft release as a nonpublishing test because GitLab has no draft-release mode.
 
 ### Running haproxy binary image
@@ -410,6 +414,10 @@ Target selection, tag-prefix exceptions, release-file selection, and tag-version
 
 ### Release Tag Format
 
+Push release tags to each host where a release should be published.
+GitHub and GitLab do not replicate tags or Releases automatically.
+GitLab release publication depends on available CI capacity and a runner that supports the documented rootless build requirements.
+
 Tags MUST follow this format:
 
 - `{target}-{version}[-{prerelease}].{revision}`
@@ -473,12 +481,17 @@ Selected release contents:
 - Configure the GitLab project to use `.gitlab-ci.yaml` as its custom CI/CD configuration path after merge.
 - The GitLab check job runs Go-managed contributor checks before package generation and retains the manual parent trigger.
 - GitLab pipelines on `main` and `feature/*` generate a child configuration with `.gitlab/ci/package-pipeline.gitlab-ci.jsonnet`.
-- One manual parent trigger starts the child pipeline, which builds and publishes its selected targets automatically.
+- One manual parent trigger starts branch child pipelines, which build selected targets and retain their artifacts.
+- Tag pipelines resolve one target from metadata and validate the official version and numeric revision before generating the child pipeline.
+- The tag child pipeline runs automatically and publishes only after its package job succeeds.
+- The parent trigger mirrors child pipeline status so failed builds or publication fail the parent pipeline.
 - The package component uses `golang:alpine` and invokes `go tool task build-rootless`.
 - When `curl` is absent, `go tool task download -- <target>` uses the image's BusyBox `wget` and `timeout` fallback.
 - Contributor validation and pipeline generation use `golang:alpine` with Go's default `GOTOOLCHAIN=auto` behavior honoring the `go.mod` directive.
 - The prepare job exports the rendered child pipeline, and package jobs invoke named Taskfile tasks without a separate toolchain download.
-- GitLab package builds retain artifacts without custom publisher jobs.
+- GitLab branch package builds retain artifacts without publishing Releases.
+- Tag publishers copy the archive from the successful package job before GoReleaser cleans its output directory and recomputes the archive checksum.
+- GoReleaser uploads the archive and checksum as generic packages and links them from the GitLab Release.
 - GitLab contributor validation invokes Go tests, golangci-lint, shell formatting, and Jsonnet checks through `go tool task`.
 - The Node, pnpm, and Java contributor checks run in local hooks only.
 - The package component installs BuildKit, fuse-overlayfs, runc, RootlessKit, and UID mapping helpers from Alpine packages.
@@ -486,7 +499,7 @@ Selected release contents:
 - It invokes the upstream daemonless script as that user without Docker services.
 - The runner must permit unprivileged user namespaces and rootless mounts.
 - `feature/*` branches append `-beta` to the package version.
-- Release packaging and generated archive checksums use GoReleaser on both hosts, while only GitHub publishes a Release automatically.
+- Release packaging, generated archive checksums, and tag-triggered publication use GoReleaser on both hosts.
 - The generated child pipeline includes the local component at `templates/static-release.yml`.
 - GitLab component discovery requires the conventional `templates/*.yml` filename, so `templates/static-release.yml` remains the supported exception to the `.yaml` filename rule.
 - The parent configuration uses the supported custom configuration path documented by [GitLab](https://docs.gitlab.com/ci/pipelines/settings/#specify-a-custom-cicd-configuration-file), while the local component follows [GitLab's component discovery convention](https://docs.gitlab.com/ci/components/).
