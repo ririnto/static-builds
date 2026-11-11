@@ -73,8 +73,6 @@
     "env": {
       "ABSEIL_CPP_VERSION": "20260817.0",
       "ALPINE_VERSION": "3",
-      "GRPC_VERSION": "1.85.1",
-      "GRPC_PROTO_REF": "master",
       "HAPROXY_OTEL_ADDON_VERSION": "2.3.0",
       "HAPROXY_OTEL_C_WRAPPER_VERSION": "3.4.0",
       "HAPROXY_VERSION": "3.4.7",
@@ -84,7 +82,6 @@
       "OPENTELEMETRY_PROTO_VERSION": "1.11.1",
       "PROTOBUF_VERSION": "36.2",
       "RAPIDYAML_VERSION": "0.16.0",
-      "RE2_VERSION": "2025-11-05",
       "UBI10_MINIMAL_VERSION": "10.2"
     },
     "downloads": [
@@ -111,18 +108,6 @@
       {
         "url": "https://github.com/biojppm/rapidyaml/releases/download/v{RAPIDYAML_VERSION}/rapidyaml.v{RAPIDYAML_VERSION}.src.tgz",
         "name": "rapidyaml-{RAPIDYAML_VERSION}-src.tgz"
-      },
-      {
-        "url": "https://github.com/google/re2/archive/refs/tags/{RE2_VERSION}.tar.gz",
-        "name": "re2-{RE2_VERSION}.tar.gz"
-      },
-      {
-        "url": "https://github.com/grpc/grpc/archive/refs/tags/v{GRPC_VERSION}.tar.gz",
-        "name": "grpc-{GRPC_VERSION}.tar.gz"
-      },
-      {
-        "url": "https://github.com/grpc/grpc-proto/archive/refs/heads/{GRPC_PROTO_REF}.tar.gz",
-        "name": "grpc-proto-{GRPC_PROTO_REF}.tar.gz"
       },
       {
         "url": "https://github.com/nlohmann/json/archive/refs/tags/v{NLOHMANN_JSON_VERSION}.tar.gz",
