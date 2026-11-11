@@ -1,44 +1,17 @@
-import type {
-  ArrowFunctionExpression,
-  Function as OxcFunction,
-  Node
-} from "@oxc-project/types";
+import type { Context, ESTree, Scope } from "@oxlint/plugins";
 
 interface SourceRange {
   readonly end: number;
   readonly start: number;
 }
 
-interface Scope {
-  readonly upper: Scope | null;
-  readonly variables: readonly {
-    readonly name: string;
-    readonly defs: readonly {
-      readonly type: string;
-      readonly node: Node;
-      readonly parent: Node | null;
-    }[];
-  }[];
-}
-
-interface RuleContext {
-  readonly sourceCode: {
-    readonly getScope: (node: Node) => Scope;
-    readonly text: string;
-  };
-  readonly report: (diagnostic: {
-    readonly messageId: string;
-    readonly node: Node;
-  }) => void;
-}
-
 type FunctionNode =
-  | (OxcFunction & {
+  | (ESTree.Function & {
       readonly type: "FunctionDeclaration" | "FunctionExpression";
     })
-  | ArrowFunctionExpression;
+  | ESTree.ArrowFunctionExpression;
 
-const isFunctionNode = (node: Node): node is FunctionNode =>
+const isFunctionNode = (node: ESTree.Node): node is FunctionNode =>
   node.type === "FunctionDeclaration" ||
   node.type === "FunctionExpression" ||
   node.type === "ArrowFunctionExpression";
@@ -54,7 +27,7 @@ const registrations = new Set([
 ]);
 const frameworks = new Set(["vitest", "@jest/globals", "bun:test"]);
 
-const registrationCallee = (node: Node): Node | undefined => {
+const registrationCallee = (node: ESTree.Node): ESTree.Node | undefined => {
   if (node.type === "CallExpression") {
     let { callee } = node;
     if (
@@ -81,7 +54,10 @@ const registrationCallee = (node: Node): Node | undefined => {
   return undefined;
 };
 
-const registration = (node: Node, context: RuleContext): string | undefined => {
+const registration = (
+  node: ESTree.Node,
+  context: Context
+): string | undefined => {
   const callee = registrationCallee(node);
   if (callee?.type === "Identifier") {
     let scope: Scope | null = context.sourceCode.getScope(callee);
@@ -110,7 +86,7 @@ const registration = (node: Node, context: RuleContext): string | undefined => {
   return undefined;
 };
 
-const siblingGaps = (node: Node, context: RuleContext): SourceRange[] => {
+const siblingGaps = (node: ESTree.Node, context: Context): SourceRange[] => {
   const { parent } = node;
   const call = parent?.parent;
   const suite =
@@ -139,8 +115,8 @@ const siblingGaps = (node: Node, context: RuleContext): SourceRange[] => {
 };
 
 const siblingTestSpacingRule = {
-  create(context: RuleContext) {
-    const inspect = (node: Node): void => {
+  create(context: Context) {
+    const inspect = (node: ESTree.Node): void => {
       for (const gap of siblingGaps(node, context)) {
         if (
           /^\s*$/u.test(context.sourceCode.text.slice(gap.start, gap.end)) &&

@@ -30,10 +30,11 @@ Add top-level directories only from this allowlist.
 | --- | --- |
 | Targets | `apache-exporter/`, `apache-httpd/`, `coredns/`, `dnsmasq/`, `haproxy/`, `monit/`, `nginx/`, `nginx-upstream-healthcheck/`, `vector/` |
 | Hidden support | `.cache/`, `.github/`, `.gitlab/`, `.husky/` |
-| Other support | `cmd/`, `internal/`, `rules/`, `templates/`, `dist/` |
+| Other support | `cmd/`, `internal/`, `plugins/`, `rules/`, `templates/`, `dist/` |
 
 Require a Dockerfile in every target directory.
 Keep custom Markdownlint rules under `rules/`.
+Keep repository-owned Oxlint plugins and their focused tests under `plugins/`.
 
 ## Code and tooling
 
@@ -60,7 +61,8 @@ Keep custom Markdownlint rules under `rules/`.
 - Include Go command tests, golangci-lint, shfmt, Markdown lint, rule tests, TypeScript, Ultracite, markdownlint-cli2 code-block style checks, and Jsonnet evaluation and formatting in contributor checks.
 - Keep contributor checks independent of target builds and runtime verification harnesses.
 - Verify successful Git operations and failure propagation through those hooks.
-- Use Ultracite as the only direct caller of Oxlint and Oxfmt.
+- Use Ultracite as the only CLI caller of Oxlint and Oxfmt.
+- Use Oxlint's official RuleTester API for focused custom-rule tests.
 - Route scripts, hooks, workflows, documentation, and validation commands through Ultracite rather than calling Oxlint or Oxfmt directly.
 - Preserve the Markdownlint baseline with `gitignore: true`, compact tables, and recursively sorted configuration keys.
 - Do not disable lint rules, add suppressions, or weaken configuration to make changes pass.

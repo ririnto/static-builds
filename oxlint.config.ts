@@ -11,11 +11,11 @@ export default defineConfig({
   jsPlugins: [
     {
       name: "style-blank-lines",
-      specifier: "./rules/plugins/no-blank-lines-in-functions.ts"
+      specifier: "./plugins/no-blank-lines-in-functions.ts"
     },
     {
       name: "style-spacing",
-      specifier: "./rules/plugins/sibling-test-spacing.ts"
+      specifier: "./plugins/sibling-test-spacing.ts"
     }
   ],
   overrides: [
