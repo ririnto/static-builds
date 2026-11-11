@@ -5,7 +5,7 @@ The healthcheck code is compiled into the binary as `ngx_http_upstream_healthche
 
 ## Build and packaged files
 
-Build this target with `go tool task build -- nginx-upstream-healthcheck`.
+Build this target with `TARGET=nginx-upstream-healthcheck TAG=nginx-upstream-healthcheck-local go tool task goreleaser -- release --clean --snapshot --verbose --timeout=6h --skip=publish,validate`.
 
 Build metadata selects the NGINX, njs, QuickJS-NG, and VTS release versions.
 
@@ -19,47 +19,43 @@ Build metadata selects the NGINX, njs, QuickJS-NG, and VTS release versions.
 The build statically compiles the official njs NGINX module and selects the supported `qjs` engine explicitly.
 QuickJS-NG is linked statically through its normal CMake build.
 The build disables optional libxslt support.
-The build output is `.out/nginx-upstream-healthcheck/`.
+The build output is `dist/nginx-upstream-healthcheck/`.
 Release tags use the `nginx-upstream-healthcheck` prefix and take their version from `NGINX_VERSION`.
 
-Release packages include these paths beneath the target prefix:
-
-- `sbin/nginx`
-- `conf/scripting.conf`
-- `conf/scripting.js`
-- `conf/upstream-healthcheck.conf`
-- `README.md`
-
-The packaged healthcheck configuration shows HTTP, HTTPS, TLS-only, stream TCP, TLS stream, and protected localhost metrics examples.
-It uses `conf/backend-ca.pem` as an example trust bundle, which you must provide for your backends.
+Release archives contain only `sbin/nginx`.
+Documentation and optional configuration examples remain in the repository and are excluded from images, build outputs, and release archives.
+The [healthcheck example](examples/config/nginx.conf) shows HTTP, HTTPS, TLS-only, stream TCP, TLS stream, and protected localhost metrics configurations.
+It uses `backend-ca.pem` beside the configuration as an example trust bundle, which you must provide for your backends.
 Replace its resolver and backend names for your environment before using it.
-Canonical `metadata.json` selects the configuration and this README for release packaging.
+Canonical `metadata.json` selects only the binary for release packaging.
 The healthcheck profile needs no additional runtime library.
 The build verifies that HTTP health checks admit, remove, and readmit a local backend through the proxy.
 
 ## Start the image or release archive
 
-The binary has a compiled prefix of `/home/nobody` and a default configuration path of `conf/nginx.conf` beneath that prefix.
+The binary has a compiled prefix of `/home/nobody` and a default configuration path of `config/nginx.conf` beneath that prefix.
 The scratch image places the installed files at `/` and starts `/sbin/nginx -p / -g 'daemon off;'`.
-It includes the upstream default `conf/nginx.conf`, runtime directories, and minimal `nobody` user and group records with ID 65534 for the workers.
+It includes the shared operational `config/nginx.conf`, its HTTP include directory `config/conf.d`, runtime directories, and minimal `nobody` user and group records with ID 65534 for the workers.
 The master starts as root and drops worker privileges to that account.
-Mount your own configuration at `/conf/nginx.conf` to replace the upstream default.
+Mount your own configuration at `/config/nginx.conf` or HTTP snippets under `/config/conf.d`.
+The base configuration retains the upstream default HTTP server and includes `conf.d/*.conf` within its HTTP context.
 Keep `/logs` and any configured temporary directories writable.
 The default image writes its PID to `/logs/nginx.pid` and logs beneath `/logs`.
 
-The release archive contains only the five files listed above, without a default `nginx.conf`, account databases, or runtime directories.
+The release archive contains only the binary, without configuration, account databases, or runtime directories.
 Extract it into a directory of your choice and pass an absolute prefix with `-p` to override `/home/nobody`.
-Pass `-c conf/upstream-healthcheck.conf` to use the healthcheck example after replacing its resolver, backends, and listener addresses.
-Provide your backend CA at `<prefix>/conf/backend-ca.pem`.
+Copy and adapt the repository healthcheck example as `<prefix>/config/nginx.conf` after replacing its resolver, backends, and listener addresses.
+Its HTTP and stream sections form a complete top-level configuration, not an HTTP-only `config/conf.d` snippet.
+Provide your backend CA at `<prefix>/config/backend-ca.pem`.
 The example uses `backend-ca.pem` because NGINX resolves trusted certificate paths relative to the configuration directory.
 Keep the checker and proxy trust directives pointed at the same bundle.
 
-For an unprivileged local smoke test, use the packaged scripting configuration:
+For an unprivileged local smoke test, use the optional [repository scripting example](../nginx/examples/njs/scripting.conf) with its adjacent `scripting.js` file:
 
 ```sh
 cd /path/to/extracted/archive
 mkdir -p logs client_body_temp proxy_temp
-./sbin/nginx -p "$PWD/" -c conf/scripting.conf -e stderr -g 'pid logs/nginx.pid; daemon off;'
+./sbin/nginx -p "$PWD/" -c /absolute/path/to/repository/nginx/examples/njs/scripting.conf -e stderr -g 'pid logs/nginx.pid; daemon off;'
 ```
 
 Run this command as a non-root user so workers inherit your account without looking up `nobody`.
@@ -79,7 +75,8 @@ The release fixes XML security issues CVE-2026-101025 and CVE-2026-101019 and ch
 Review the [official njs 1.0.2 release notes](https://nginx.org/en/docs/njs/changes.html#njs1.0.2) before upgrading existing scripts that use XML or Fetch.
 Set `js_engine qjs;` in each context that imports an njs script.
 The [official engine guidance](https://nginx.org/en/docs/njs/engine.html) recommends QuickJS for new configurations.
-The packaged `conf/scripting.conf` and `conf/scripting.js` provide the scripting example.
+The shared [scripting configuration](../nginx/examples/njs/scripting.conf) and [script](../nginx/examples/njs/scripting.js) are repository examples only.
+Neither the default configuration nor the healthcheck module uses them, so images, build outputs, and release archives exclude them.
 
 The existing C module performs active probes against NGINX's selected peer and shares health state across workers.
 The target already compiles njs with QuickJS-NG, but the available JavaScript APIs do not provide the peer and socket operations this checker needs.
@@ -102,7 +99,7 @@ The existing C implementation therefore remains the smaller maintained path for 
 Configure `healthcheck` inside each checked HTTP `upstream` block.
 The upstream requires a shared `zone` and a built-in round-robin-compatible peer list.
 
-Use the HTTP examples in [upstream-healthcheck.conf](conf/upstream-healthcheck.conf).
+Use the HTTP examples in [nginx.conf](examples/config/nginx.conf).
 
 Replace the resolver, backend names, CA file, and listener addresses for your environment.
 Healthcheck TLS settings and proxy TLS settings are independent.
@@ -148,7 +145,7 @@ Size failure detection and recovery windows for the observed cadence, probe dura
 Configure `healthcheck_tcp` inside a checked `stream` `upstream` block with a shared `zone`.
 The default `type=tcp` probe succeeds after connecting to the selected peer.
 
-Use the stream examples in [upstream-healthcheck.conf](conf/upstream-healthcheck.conf).
+Use the stream examples in [nginx.conf](examples/config/nginx.conf).
 
 For TLS-only stream checks, omit send and expect directives to stop after the verified handshake.
 With payload and expectation directives, the probe continues over TLS and checks the application response.
@@ -247,7 +244,7 @@ The NGINX results classify the point where each probe succeeded or failed while 
 
 ## Build and contributor checks
 
-Build this target with `go tool task build -- nginx-upstream-healthcheck`.
+Build this target with `TARGET=nginx-upstream-healthcheck TAG=nginx-upstream-healthcheck-local go tool task goreleaser -- release --clean --snapshot --verbose --timeout=6h --skip=publish,validate`.
 The Dockerfile checks static linking, executable permissions, and the healthcheck configuration before exporting the binary, configurations, and runtime identity files.
 Verification lives in Dockerfile stages without per-target startup scripts or separate functional harnesses.
 Run `go tool task test` and `pnpm check` from the repository root for Go command tests and contributor tooling checks.

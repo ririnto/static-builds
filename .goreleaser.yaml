@@ -1,6 +1,33 @@
 version: 2
 
-dist: .out/goreleaser
+dist: dist/release
+
+before:
+  hooks:
+    - |-
+      sh -eu -c '
+        : "${TARGET:?build target is required}"
+        : "${TAG:?release tag is required}"
+        case "${BUILD_BACKEND:-buildx}" in
+          buildx) backend=build ;;
+          rootless) backend=build-rootless ;;
+          *)
+            echo "Error: Invalid BUILD_BACKEND (allowed: buildx, rootless)" >&2
+            exit 1
+            ;;
+        esac
+        files=$(go tool task manifest -- get-release-files "$TARGET")
+        go tool task "$backend" -- "$TARGET"
+        staging="dist/release-files/$TARGET"
+        rm -rf "$staging"
+        mkdir -p "$staging"
+        while IFS= read -r file; do
+          mkdir -p "$staging/$(dirname "$file")"
+          cp -a "${BUILD_OUTPUT_DEST:-dist/$TARGET}/$file" "$staging/$file"
+        done <<EOF
+      $files
+      EOF
+      '
 
 builds:
   - skip: true
@@ -9,7 +36,7 @@ archives:
   - meta: true
     name_template: "{{ .Env.TAG }}"
     files:
-      - src: "{{ .Env.RELEASE_FILES }}"
+      - src: "dist/release-files/{{ .Env.TARGET }}"
         dst: .
 
 checksum:
@@ -26,7 +53,7 @@ release:
   draft: false
   prerelease: "false"
   extra_files:
-    - glob: ".out/release-package/{{ .Env.TAG }}.tar.gz"
+    - glob: "dist/release-package/{{ .Env.TAG }}.tar.gz"
   replace_existing_artifacts: true
 
 gitlab_urls:

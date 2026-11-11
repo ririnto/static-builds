@@ -79,6 +79,7 @@ __pypackages__/
 .envrc
 
 bin/
+dist/
 .out/
 .tmp/
 *.tmp

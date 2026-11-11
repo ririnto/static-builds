@@ -19,31 +19,43 @@ services:
         USER user
         WORKDIR /workspace
     environment:
+      TARGET: ${TARGET:-}
+      TAG: ${TAG:-local}
+      GORELEASER_CURRENT_TAG: ${TAG:-local}
+      BUILD_BACKEND: rootless
       BUILDKITD_FLAGS: --oci-worker-snapshotter=native
       BUILDKIT_PLATFORM: ${BUILDKIT_PLATFORM:-linux/amd64}
       GOFLAGS: -buildvcs=false
     security_opt:
       - seccomp=unconfined
       - systempaths=unconfined
-    entrypoint: [go, tool, task, build-rootless, --]
+    entrypoint:
+      [
+        go,
+        tool,
+        task,
+        goreleaser,
+        --,
+        release,
+        --clean,
+        --snapshot,
+        --verbose,
+        --timeout=6h,
+        "--skip=publish,validate"
+      ]
     volumes:
       - type: bind
         source: .
         target: /workspace
         read_only: true
       - type: bind
-        source: .tmp
-        target: /workspace/.tmp
-        bind:
-          create_host_path: false
-      - type: bind
         source: .cache
         target: /workspace/.cache
         bind:
           create_host_path: false
       - type: bind
-        source: .out
-        target: /workspace/.out
+        source: dist
+        target: /workspace/dist
         bind:
           create_host_path: false
       - buildkit-state:/home/user/.local/share/buildkit

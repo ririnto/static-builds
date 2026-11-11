@@ -1,0 +1,145 @@
+name: Build Validation
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/validate-builds.yaml"
+      - ".goreleaser.yaml"
+      - ".dockerignore"
+      - "Taskfile.yaml"
+      - "metadata.json"
+      - "go.mod"
+      - "go.sum"
+      - "cmd/**"
+      - "internal/**"
+      - "apache-exporter/**"
+      - "apache-httpd/**"
+      - "coredns/**"
+      - "dnsmasq/**"
+      - "haproxy/**"
+      - "monit/**"
+      - "nginx/**"
+      - "nginx-upstream-healthcheck/**"
+      - "vector/**"
+      - "!**/*.md"
+      - "!nginx/examples/**"
+      - "!nginx/tsconfig.json"
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  matrix:
+    name: Select metadata targets
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    outputs:
+      builds: ${{ steps.matrix.outputs.builds }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Select native build platforms
+        id: matrix
+        run: |-
+          builds=$(jq -c '{include: [keys[] as $target |
+            {target: $target, arch: "amd64", runner: "ubuntu-26.04"},
+            if $target != "vector" then
+              {target: $target, arch: "arm64", runner: "ubuntu-26.04-arm"}
+            else empty end]}' metadata.json)
+          printf 'builds=%s\n' "$builds" >>"$GITHUB_OUTPUT"
+
+  build:
+    name: Build ${{ matrix.target }} (${{ matrix.arch }})
+    needs: matrix
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix: ${{ fromJSON(needs.matrix.outputs.builds) }}
+    env:
+      TARGET: ${{ matrix.target }}
+      TAG: ${{ matrix.target }}-pr-${{ github.event.pull_request.number }}-${{ matrix.arch }}
+      GORELEASER_CURRENT_TAG: ${{ matrix.target }}-pr-${{ github.event.pull_request.number }}-${{ matrix.arch }}
+      BUILD_BACKEND: buildx
+      BUILDKIT_PLATFORM: linux/${{ matrix.arch }}
+      BUILDKIT_CACHE_BACKEND: local
+      BUILD_OUTPUT_DEST: ${{ github.workspace }}/dist/${{ matrix.target }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build and package without publishing
+        run: go tool task goreleaser -- release --clean --snapshot --verbose --timeout=6h --skip=publish,validate
+
+      - name: Verify release package
+        run: |-
+          RELEASE_FILES=$(go tool task manifest -- get-release-files "$TARGET")
+          export RELEASE_FILES
+          (
+            cd dist/release
+            sha256sum --check "${TAG}_checksums.txt"
+          )
+          python3 - <<'PY'
+          import os
+          import stat
+          import tarfile
+          from pathlib import Path
+
+          expected = set(os.environ["RELEASE_FILES"].splitlines())
+          output = Path(os.environ["BUILD_OUTPUT_DEST"])
+          package = Path("dist/release") / f"{os.environ['TAG']}.tar.gz"
+          report = [f"Verified {os.environ['TARGET']} on {os.environ['BUILDKIT_PLATFORM']}"]
+          with tarfile.open(package, "r:gz") as archive:
+              members = [member for member in archive.getmembers() if not member.isdir()]
+              if len(members) != len(expected) or {member.name for member in members} != expected:
+                  raise SystemExit("Archive members do not match metadata release files")
+              for member in members:
+                  source = output / member.name
+                  if not member.isfile() or not stat.S_ISREG(source.lstat().st_mode):
+                      raise SystemExit(f"Release member is not a regular file: {member.name}")
+                  if member.mode != stat.S_IMODE(source.stat().st_mode):
+                      raise SystemExit(f"Release member mode differs: {member.name}")
+                  with archive.extractfile(member) as packaged:
+                      if packaged.read() != source.read_bytes():
+                          raise SystemExit(f"Release member bytes differ: {member.name}")
+                  report.append(f"{member.name}: {member.size} bytes, mode {member.mode:04o}")
+          report.append("SHA-256 checksum, selected files, bytes, and modes passed.")
+          result = "\n".join(report) + "\n"
+          Path("dist/release/package-verification.txt").write_text(result)
+          print(result, end="")
+          PY
+
+      - name: Upload verified package
+        uses: actions/upload-artifact@v7
+        with:
+          name: validation-${{ matrix.target }}-${{ matrix.arch }}
+          path: |-
+            dist/release/${{ env.TAG }}.tar.gz
+            dist/release/${{ env.TAG }}_checksums.txt
+            dist/release/package-verification.txt
+          if-no-files-found: error
+          retention-days: 7

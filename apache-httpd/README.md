@@ -27,12 +27,12 @@ This target builds Apache HTTPd as static PIE with selected modules compiled in.
 
 > [!NOTE]
 >
-> Outputs are under `.out/apache-httpd/`.
+> Outputs are under `dist/apache-httpd/`.
 > Override with `BUILD_OUTPUT_DEST`.
 
 ```bash
-./.out/apache-httpd/bin/httpd -V
-./.out/apache-httpd/bin/httpd -l
+./dist/apache-httpd/bin/httpd -V
+./dist/apache-httpd/bin/httpd -l
 ```
 
 ## Runtime Introspection Output
@@ -49,16 +49,16 @@ The source-backed commands below capture the same introspection surfaces, but do
 
 ### Regenerate the snapshot
 
-From the repository root, use the [Taskfile](../Taskfile.yaml) to build the target selected by the current metadata, then run the capture commands on a compatible Linux host.
+From the repository root, use the [GoReleaser configuration](../.goreleaser.yaml) to build and package the target selected by the current metadata, then run the capture commands on a compatible Linux host.
 The default build platform is `linux/amd64`.
-Task downloads the inputs before invoking the Docker Buildx entrypoint, including the Dockerfile verify stage.
+The GoReleaser before hook invokes Task to download the inputs and run Docker Buildx, including the Dockerfile verify stage.
 These commands assume the default output directory and must be adjusted if `BUILD_OUTPUT_DEST` is overridden.
 
 ```bash
-go tool task build -- apache-httpd
-./.out/apache-httpd/bin/httpd -V 2>&1
-./.out/apache-httpd/bin/httpd -l 2>&1
-./.out/apache-httpd/bin/httpd -d "$PWD/.out/apache-httpd" -M 2>&1
+TARGET=apache-httpd TAG=apache-httpd-local go tool task goreleaser -- release --clean --snapshot --verbose --timeout=6h --skip=publish,validate
+./dist/apache-httpd/bin/httpd -V 2>&1
+./dist/apache-httpd/bin/httpd -l 2>&1
+./dist/apache-httpd/bin/httpd -d "$PWD/dist/apache-httpd" -M 2>&1
 ```
 
 The host `-M` command selects the exported server root because the compiled default is `/home/nobody`.

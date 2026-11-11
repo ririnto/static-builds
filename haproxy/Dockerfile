@@ -24,7 +24,7 @@ RUN --mount=type=cache,target=/var/cache/apk \
 FROM otel-base AS otel-abseil
 ARG ABSEIL_CPP_VERSION
 ARG HARDENING_CFLAGS
-ADD ".tmp/abseil-cpp-${ABSEIL_CPP_VERSION}.tar.gz" /tmp/
+ADD ".cache/downloads/abseil-cpp-${ABSEIL_CPP_VERSION}.tar.gz" /tmp/
 RUN cmake -S "/tmp/abseil-cpp-${ABSEIL_CPP_VERSION}" -B /tmp/abseil-build \
         -DCMAKE_INSTALL_PREFIX=/opt \
         -DCMAKE_CXX_FLAGS="${HARDENING_CFLAGS}" \
@@ -40,7 +40,7 @@ RUN cmake --install /tmp/abseil-build
 FROM otel-base AS otel-protobuf
 ARG PROTOBUF_VERSION
 ARG HARDENING_CFLAGS
-ADD ".tmp/protobuf-${PROTOBUF_VERSION}.tar.gz" /tmp/
+ADD ".cache/downloads/protobuf-${PROTOBUF_VERSION}.tar.gz" /tmp/
 COPY --from=otel-abseil /opt /opt
 RUN cmake -S "/tmp/protobuf-${PROTOBUF_VERSION}" -B /tmp/protobuf-build \
         -DCMAKE_INSTALL_PREFIX=/opt \
@@ -59,7 +59,7 @@ RUN cmake --install /tmp/protobuf-build
 FROM otel-base AS otel-rapidyaml
 ARG RAPIDYAML_VERSION
 ARG HARDENING_CFLAGS
-ADD ".tmp/rapidyaml-${RAPIDYAML_VERSION}-src.tgz" /tmp/
+ADD ".cache/downloads/rapidyaml-${RAPIDYAML_VERSION}-src.tgz" /tmp/
 RUN cmake -S "/tmp/rapidyaml.v${RAPIDYAML_VERSION}" -B /tmp/rapidyaml-build \
         -DCMAKE_INSTALL_PREFIX=/opt \
         -DCMAKE_C_FLAGS="${HARDENING_CFLAGS}" \
@@ -83,10 +83,10 @@ ARG OPENTELEMETRY_CPP_VERSION
 ARG OPENTELEMETRY_PROTO_VERSION
 ARG NLOHMANN_JSON_VERSION
 ARG HARDENING_CFLAGS
-ADD ".tmp/opentelemetry-cpp-${OPENTELEMETRY_CPP_VERSION}.tar.gz" /tmp/
-ADD ".tmp/opentelemetry-proto-${OPENTELEMETRY_PROTO_VERSION}.tar.gz" /tmp/
-ADD ".tmp/nlohmann-json-${NLOHMANN_JSON_VERSION}.tar.gz" /tmp/
-ADD ".tmp/opentelemetry-c-wrapper-${HAPROXY_OTEL_C_WRAPPER_VERSION}.tar.gz" /build/
+ADD ".cache/downloads/opentelemetry-cpp-${OPENTELEMETRY_CPP_VERSION}.tar.gz" /tmp/
+ADD ".cache/downloads/opentelemetry-proto-${OPENTELEMETRY_PROTO_VERSION}.tar.gz" /tmp/
+ADD ".cache/downloads/nlohmann-json-${NLOHMANN_JSON_VERSION}.tar.gz" /tmp/
+ADD ".cache/downloads/opentelemetry-c-wrapper-${HAPROXY_OTEL_C_WRAPPER_VERSION}.tar.gz" /build/
 COPY --from=otel-abseil /opt /opt
 COPY --from=otel-protobuf /opt /opt
 COPY --from=otel-rapidyaml /opt /opt
@@ -178,8 +178,8 @@ RUN --mount=type=cache,target=/var/cache/apk \
         pcre2-dev \
         pcre2-static \
         zlib-static
-ADD ".tmp/haproxy-${HAPROXY_VERSION}.tar.gz" /build/
-ADD ".tmp/haproxy-opentelemetry-${HAPROXY_OTEL_ADDON_VERSION}.tar.gz" /build/
+ADD ".cache/downloads/haproxy-${HAPROXY_VERSION}.tar.gz" /build/
+ADD ".cache/downloads/haproxy-opentelemetry-${HAPROXY_OTEL_ADDON_VERSION}.tar.gz" /build/
 COPY --from=otel-cpp /opt /opt
 WORKDIR "/build/haproxy-${HAPROXY_VERSION}"
 RUN PKG_CONFIG_PATH=/opt/lib/pkgconfig make "-j$(nproc)" \
@@ -234,10 +234,38 @@ ARG TARGET_PREFIX
 RUN --mount=type=cache,target=/var/cache/dnf \
     microdnf -y install file binutils strace
 COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
-RUN readelf -h "${TARGET_PREFIX}/sbin/haproxy" | grep -E 'Type:|Machine:'
-RUN file "${TARGET_PREFIX}/sbin/haproxy" | grep -E 'statically linked|static-pie linked'
-RUN test -x "${TARGET_PREFIX}/sbin/haproxy"
-RUN strace "${TARGET_PREFIX}/sbin/haproxy" -vv
+ARG TARGETARCH
+RUN set -eu; \
+    case "$TARGETARCH" in \
+        amd64) machine='Advanced Micro Devices X86-64' ;; \
+        arm64) machine='AArch64' ;; \
+        arm) machine='ARM' ;; \
+        386) machine='Intel 80386' ;; \
+        ppc64le) machine='PowerPC64' ;; \
+        s390x) machine='IBM S/390' ;; \
+        riscv64) machine='RISC-V' ;; \
+        *) machine= ;; \
+    esac; \
+    for binary in "${TARGET_PREFIX}/sbin/haproxy"; do \
+        test -f "$binary"; \
+        test -x "$binary"; \
+        header=$(LC_ALL=C readelf -h "$binary"); \
+        printf '%s\n' "$header" | grep -E 'Type: +((EXEC)|(DYN)) '; \
+        if [ -n "$machine" ]; then \
+            printf '%s\n' "$header" | grep -E "Machine: +$machine$"; \
+        fi; \
+        description=$(LC_ALL=C file -b "$binary"); \
+        printf '%s\n' "$description" | grep -E '^ELF .* (statically linked|static-pie linked)(,|$)'; \
+        segments=$(LC_ALL=C readelf -l "$binary"); \
+        dynamic=$(LC_ALL=C readelf -d "$binary"); \
+        if printf '%s\n' "$segments" | grep -w INTERP; then \
+            echo "Unexpected ELF interpreter: $binary" >&2; exit 1; \
+        fi; \
+        if printf '%s\n' "$dynamic" | grep -F '(NEEDED)'; then \
+            echo "Unexpected shared library dependency: $binary" >&2; exit 1; \
+        fi; \
+    done
+RUN timeout --kill-after=5s 30s strace "${TARGET_PREFIX}/sbin/haproxy" -vv
 
 FROM scratch
 

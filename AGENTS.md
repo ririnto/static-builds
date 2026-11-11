@@ -29,8 +29,8 @@ Add top-level directories only from this allowlist.
 | Purpose | Allowed directories |
 | --- | --- |
 | Targets | `apache-exporter/`, `apache-httpd/`, `coredns/`, `dnsmasq/`, `haproxy/`, `monit/`, `nginx/`, `nginx-upstream-healthcheck/`, `vector/` |
-| Hidden support | `.cache/`, `.github/`, `.gitlab/`, `.husky/`, `.out/`, `.tmp/` |
-| Other support | `cmd/`, `internal/`, `rules/`, `templates/` |
+| Hidden support | `.cache/`, `.github/`, `.gitlab/`, `.husky/` |
+| Other support | `cmd/`, `internal/`, `rules/`, `templates/`, `dist/` |
 
 Require a Dockerfile in every target directory.
 Keep custom Markdownlint rules under `rules/`.
@@ -42,9 +42,10 @@ Keep custom Markdownlint rules under `rules/`.
 - Define tool-named Taskfile tasks with argument pass-through after `--`.
 - Manage Task, shfmt, Jsonnet, jsonnetfmt, golangci-lint, GoReleaser, and buildctl through the root Go module.
 - Invoke Go tests, formatting, and module maintenance through `go tool task test`, `go tool task fmt`, and `go tool task tidy`.
-- Use the Taskfile build task for direct local and GitHub Docker Buildx builds.
-- Use compose.yaml with the Taskfile build-rootless task for local container builds.
-- Use the Taskfile build-rootless task for daemonless rootless GitLab builds without Docker-in-Docker.
+- Use GoReleaser as the public local and CI entrypoint for build orchestration, release-file staging, archives, checksums, and publication.
+- Keep Taskfile build and build-rootless tasks as low-level Docker drivers invoked by GoReleaser OSS string before hooks.
+- Default to Buildx and select the rootless backend for Compose and configured native Linux or GitLab builds without Docker-in-Docker.
+- Use compose.yaml for local container builds through the nonpublishing GoReleaser snapshot flow.
 - Require an explicit build target and never select a default target.
 - Use `golang:alpine` for GitLab Go jobs and invoke named Taskfile tasks with Go's default toolchain selection.
 - Follow EditorConfig with four-space indentation, except two spaces for shell and YAML files.
@@ -123,7 +124,7 @@ Keep custom Markdownlint rules under `rules/`.
 
 - Refresh branch source archives on every download call.
 - Keep target-specific download metadata under that target's `metadata.json` `downloads` entries.
-- Place downloader output directly under root `.tmp/`.
+- Place reusable source archives under `.cache/downloads/` and keep incomplete downloads on the same filesystem for atomic replacement.
 - Do not enforce checksum verification or pinning for upstream source downloads.
 - Do not require build-time checksum verification for release artifacts or fail builds because upstream checksum files are unavailable.
 - Leave independent source validation, including available upstream checksums, to consumers.
@@ -133,7 +134,10 @@ Keep custom Markdownlint rules under `rules/`.
 ### Define build outputs and release workflows
 
 - Keep `metadata.json` as the single source of target mapping, release-file selection, environment values, downloads, and tag-prefix exceptions.
-- Write local and CI build artifacts under `.out/<target>/...`.
+- Write local and CI build artifacts under `dist/<target>/...`.
+- Stage metadata-selected release paths under `dist/release-files/<target>/` outside the GoReleaser distribution directory.
+- Clear target staging only after validation and a successful build.
+- Write GoReleaser archives and SHA-256 checksum files under `dist/release/` and process one target at a time when cleaning that directory.
 - Use `.github/workflows/release-from-tag.yaml` as the only GitHub tag-triggered release entrypoint.
 - Route GitLab release tags through the parent pipeline and the shared static-release component.
 - Delegate build and release logic to `.github/workflows/template-release.yaml`.
@@ -146,7 +150,8 @@ Keep custom Markdownlint rules under `rules/`.
 - Keep every final artifact dependent on its Dockerfile verify stage.
 - Use Docker Hub `redhat/ubi10-minimal` with the manifest-selected UBI tag for verify stages.
 - Verify static binaries inside Dockerfiles without per-target verify shell scripts or proxy harnesses.
-- Keep push and pull-request validation CI limited to contributor checks, without target builds or releases.
+- Keep contributor validation independent of target builds, and use `.github/workflows/validate-builds.yaml` for nonpublishing pull-request build and package checks.
+- Run build validation on isolated native amd64 and arm64 runners, excluding Vector from arm64 because its metadata selects an x86_64 archive, without publishing credentials or shared release caches.
 - Invoke Go tests, golangci-lint, shfmt, and Jsonnet tools through named `go tool task` tasks in GitLab validation jobs.
 - Keep Node, pnpm, and Java validation in local contributor hooks only.
 - Use existing verification entrypoints rather than introducing a test framework.
@@ -161,8 +166,10 @@ Keep custom Markdownlint rules under `rules/`.
 - For GitLab package pipelines on `main` and `feature/*`, prefer one manual parent job generating a child pipeline.
 - Generate that pipeline through `.gitlab/ci/package-pipeline.gitlab-ci.jsonnet` and reuse `templates/static-release.yml`.
 - Keep GitLab branch package builds artifact-only and publish tag releases in a separate GoReleaser job.
-- Use GoReleaser for release packaging and generated archive checksums on GitHub and GitLab.
+- Use `.goreleaser.yaml` for building, metadata-selected staging, archiving, generated SHA-256 checksums, and release publication on GitHub and GitLab.
 - Keep publication separate from build jobs on both hosts.
+- Pass the preserved archive through `RELEASE_ARCHIVE` and skip before hooks, archiving, and GoReleaser tag validation in publication jobs so publishing credentials never run builds.
+- Validate repository tag semantics separately before using GoReleaser with validation skipped.
 - Validate release tags against metadata before building or publishing.
 - Use the existing GitLab job token and Generic Package Registry for release assets without stored publisher credentials.
 - Append `-beta` to package versions on `feature/*` branches.

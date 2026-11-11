@@ -13,9 +13,12 @@ Use the repository's `.markdownlint-cli2.jsonc` when running Markdown lint.
 ### Contributor validation
 
 The [GitHub validation workflow](workflows/markdown-validation.yaml) runs Go-managed tooling checks on every pull request without building targets or publishing releases.
+The separate [build validation workflow](workflows/validate-builds.yaml) runs nonpublishing GoReleaser snapshots on build-relevant pull requests, using native amd64 for every metadata target and native arm64 for all except Vector's fixed x86_64 archive.
+Each matrix job has an isolated checkout and distribution directory, checks package SHA-256 and metadata-selected files, bytes, and modes, and uploads an architecture-named package without sharing release caches or credentials.
 GitLab invokes Go tests, golangci-lint, shell formatting, and Jsonnet checks through `go tool task` before its manual branch-package trigger or automatic tag-release pipeline.
 Its Go jobs use `golang:alpine` with Go's default `GOTOOLCHAIN=auto` behavior honoring the `go.mod` directive.
-The GitLab package component invokes `go tool task build-rootless` without Docker-in-Docker.
+The GitLab package component invokes GoReleaser with `BUILD_BACKEND=rootless`, whose before hook calls the low-level Task driver without Docker-in-Docker.
+GitLab reuses signed APK downloads by Alpine release and architecture while refreshing repository indexes on every job.
 Node, pnpm, and Java checks run through local contributor hooks.
 It also supports manual runs.
 The GitHub job runs Go tests, golangci-lint, shell formatting, and Jsonnet checks.
@@ -43,7 +46,7 @@ Tool tasks quote each CLI_ARGS_LIST element separately so argument boundaries re
 Use `go tool task jsonnetfmt -- -i` to format the package pipeline and `go tool task jsonnetfmt -- --test` to check it.
 `go tool task buildctl -- --help` exposes the BuildKit client without changing the Docker Buildx build driver.
 Local container builds use compose.yaml with a golang-based non-root image and the upstream daemonless BuildKit script.
-Run `mkdir -p .tmp .cache .out`, `docker compose build build`, and `docker compose run --rm build <target>` from the repository root.
+Run `mkdir -p .cache dist`, `docker compose build build`, and `TARGET=<target> docker compose run --rm build` from the repository root.
 The dedicated container relaxes seccomp and masked system paths as described in the [official rootless Docker guidance](https://github.com/moby/buildkit/blob/v0.34.2/docs/rootless.md#docker).
 It keeps BuildKit's process sandbox, uses the native snapshotter without a FUSE device, and never mounts the Docker socket.
 Direct local builds require Docker Buildx and a running Linux Docker daemon.
@@ -89,7 +92,10 @@ All checks exclude ignored build outputs and source caches.
 These checks run without building targets or invoking release jobs.
 Validate tag handling with `go tool task validate-release-tag -- <target> <tag>` without creating a tag.
 Render a tag child pipeline with the Jsonnet `--tla-str release_tag=<tag>` argument and one explicit target.
-Use GoReleaser snapshot or `--skip=publish` runs for nonpublishing packaging checks.
+Use `TARGET=<target> TAG=<target>-local go tool task goreleaser -- release --clean --snapshot --verbose --timeout=6h --skip=publish,validate` for nonpublishing build, staging, archive, and checksum checks.
+Run one target at a time because `--clean` removes the previous GoReleaser distribution output.
+The Compose service and `TARGET=<target> TAG=<target>-local pnpm run build` use this same snapshot flow.
+Compose defaults `TAG` to `local`, but never supplies a default target.
 Live release publication is separate from configuration validation.
 Node dependencies are development-only and are excluded from the Docker build context.
 Dockerfiles copy explicit target inputs and release packaging selects only metadata-listed target outputs.
@@ -103,8 +109,8 @@ The same configuration checks function-body spacing and adjacent test registrati
 The test spacing rule recognizes registrations imported from Vitest, Jest globals, and Bun, but does not recognize `node:test` registrations.
 `check:ultracite` runs Ultracite with type-aware lint across its discovered files.
 `check:typescript` checks those TypeScript files through `tsconfig.json` and the Node LTS compiler preset.
-Ultracite checks the njs runtime example in `nginx/scripting.js` for lint and formatting.
-Both nginx targets check that the scripting files are readable.
+Ultracite checks the optional njs example in `nginx/examples/njs/scripting.js` for lint and formatting.
+The njs example is not copied into runtime images or release archives.
 The custom healthcheck target checks its health transitions through a local proxy.
 The njs example uses upstream `njs-types` declarations through its own TypeScript configuration.
 
@@ -166,7 +172,7 @@ The contributor check entrypoint includes these tests, `go tool task golangci-li
 Target builds run their Dockerfile verify stages without per-target verify scripts or external runtime harnesses.
 The custom healthcheck module remains maintained production source.
 
-For build changes, run `go tool task build -- <target>` for each affected target before creating release tags.
+For build changes, run the nonpublishing GoReleaser snapshot command for each affected target and inspect its exported binaries, archive members, and checksum before creating release tags.
 The release workflows run on release tags or reusable workflow calls.
 The separate Markdown validation workflow runs on pull requests or manual requests with read-only repository access.
 Do not create release tags to validate documentation changes.

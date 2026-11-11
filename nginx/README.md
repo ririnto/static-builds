@@ -14,14 +14,24 @@ NGINX Open Source does not publish a separate LTS line.
 
 ## Allowed Target-Specific Variations
 
-- This target packages `sbin/nginx` and the njs scripting example under `conf/`.
+- This target packages only `sbin/nginx`.
 - It includes the QuickJS-NG engine with `js_engine qjs` and excludes optional libxslt support.
 - It excludes active upstream healthchecks.
+
+## Runtime configuration
+
+Both nginx images install their operational base configuration at `/config/nginx.conf` and include HTTP snippets from `/config/conf.d/*.conf`.
+The compiled path is `config/nginx.conf` beneath the selected prefix, and the images use `-p /`.
+The base configuration retains the upstream default HTTP server and supports additional HTTP configuration through `config/conf.d`.
+Mount your own configuration or snippets at those paths; no host configuration is changed by the build.
+The images include minimal `nobody` account records for worker processes and run nginx in the foreground.
+Release archives contain only the binary, so supply your own `config/nginx.conf`, writable logs, and runtime directories when deploying an archive.
 
 ## Scripting Installation
 
 The njs HTTP and stream modules use nginx's standard static `--add-module` installation.
-[scripting.conf](scripting.conf) and [scripting.js](scripting.js) provide loopback HTTP and TCP examples.
+[scripting.conf](examples/njs/scripting.conf) and [scripting.js](examples/njs/scripting.js) provide optional loopback HTTP and TCP examples.
+They are repository examples, not runtime dependencies, and are excluded from images, build outputs, and release archives.
 Set `js_engine qjs` to select the statically linked QuickJS-NG engine.
 The [official engine guidance](https://nginx.org/en/docs/njs/engine.html) recommends QuickJS for new configurations.
 The optional libxslt dependency is excluded from this target.
@@ -30,19 +40,19 @@ The njs 1.0.2 release fixes XML security issues CVE-2026-101025 and CVE-2026-101
 It also changes XML node-mutation compatibility and Fetch response validation.
 Review the [official njs 1.0.2 release notes](https://nginx.org/en/docs/njs/changes.html#njs1.0.2) before upgrading existing scripts that use XML or Fetch.
 
-On a compatible Linux host, run the packaged example from its deployment prefix:
+On a compatible Linux host, run the repository example explicitly with the built binary from the repository root:
 
 ```sh
-mkdir -p .out/nginx/logs
-./.out/nginx/sbin/nginx -p "$PWD/.out/nginx/" -c conf/scripting.conf
+mkdir -p dist/nginx/logs
+./dist/nginx/sbin/nginx -p "$PWD/dist/nginx/" -c "$PWD/nginx/examples/njs/scripting.conf"
 curl http://127.0.0.1:18081/njs
-./.out/nginx/sbin/nginx -p "$PWD/.out/nginx/" -c conf/scripting.conf -s quit
+./dist/nginx/sbin/nginx -p "$PWD/dist/nginx/" -c "$PWD/nginx/examples/njs/scripting.conf" -s quit
 ```
 
-The Dockerfile performs these checks before exporting the binary and scripting examples:
+The Dockerfile performs these checks before exporting the built installation:
 
 - Static linking assertions
-- Executable and scripting-file presence checks
+- Executable permission checks
 
 Upstream njs runtime behavior is not re-tested by this target.
 The custom [healthcheck target](../nginx-upstream-healthcheck/README.md) validates its healthcheck configuration.
@@ -52,11 +62,11 @@ Run `go tool task shfmt -- -d -i 2 -ci` from the repository root to check mainta
 
 > [!NOTE]
 >
-> Outputs are under `.out/nginx/`.
+> Outputs are under `dist/nginx/`.
 > Override with `BUILD_OUTPUT_DEST`.
 
 ```bash
-./.out/nginx/sbin/nginx -V
+./dist/nginx/sbin/nginx -V
 ```
 
 ## Runtime Introspection Output
@@ -72,14 +82,14 @@ The source-backed commands below capture the same introspection surfaces, but do
 
 ### Regenerate the snapshot
 
-From the repository root, use the [Taskfile](../Taskfile.yaml) to build the target selected by the current metadata, then run the capture commands on a compatible Linux host.
+From the repository root, use the [GoReleaser configuration](../.goreleaser.yaml) to build and package the target selected by the current metadata, then run the capture commands on a compatible Linux host.
 The default build platform is `linux/amd64`.
-Task downloads the inputs before invoking Docker Buildx directly.
+The GoReleaser before hook invokes Task to download the inputs and run Docker Buildx, including the Dockerfile verify stage.
 These commands assume the default output directory and must be adjusted if `BUILD_OUTPUT_DEST` is overridden.
 
 ```bash
-go tool task build -- nginx
-./.out/nginx/sbin/nginx -V 2>&1
+TARGET=nginx TAG=nginx-local go tool task goreleaser -- release --clean --snapshot --verbose --timeout=6h --skip=publish,validate
+./dist/nginx/sbin/nginx -V 2>&1
 ```
 
 Record the capture date, repository revision, selected metadata versions, build platform, build environment, exact commands, and results with any replacement output.

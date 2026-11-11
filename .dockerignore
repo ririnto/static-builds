@@ -12,3 +12,10 @@ third-party
 **/.omc
 **/.omx
 **/.sisyphus
+
+dist
+!.cache
+.cache/*
+!.cache/downloads
+.cache/downloads/*.lock
+.cache/downloads/*.tmp.*

@@ -14,7 +14,7 @@ Upstream application internals remain outside this repository's verification sco
 | Fetch retry | Attempt, failed process, bounded delay, next attempt or exhaustion. | Successful nonempty downloads replace the destination through a sibling-file rename. |
 | Cancellation | Signal, cancelled context, child termination or cancelled wait, cleanup. | Go command tests do not establish process-tree termination or all signal interleavings. |
 
-The [branch-download model](../.claude/skills/branch-download/SKILL.md) checks one invocation's lock cleanup under its stated filesystem assumptions.
+The [branch-download model](../.claude/skills/branch-download/SKILL.md) checks two downloaders' exclusive descriptor ownership, including inherited transport ownership after parent exit, under its stated filesystem assumptions.
 The model does not prove download integrity, retry liveness, or concurrent publication.
 
 ## Builds and publication
@@ -30,7 +30,9 @@ The model does not prove download integrity, retry liveness, or concurrent publi
 | Contributor hooks | Git operation, checks, success or blocked operation. | Both tracked hooks invoke the complete contributor checks. |
 
 Static verification checks metadata-selected release executables, including Apache HTTPd's `rotatelogs`.
-Each target also executes its version command under `strace` in UBI.
+Each released executable runs a bounded command under `strace` in UBI.
+Version commands cover the primary binaries, while `rotatelogs` processes finite input in a temporary directory and verifies the output.
+Each trace has a 30-second timeout with a five-second kill grace period.
 Vector component lists, CoreDNS plugin lists, HTTPd module lists, and nginx configuration parsing remain build checks.
 Application functional verification belongs to the custom healthcheck target.
 The workflow descriptions reflect source inspection rather than hosted execution evidence.

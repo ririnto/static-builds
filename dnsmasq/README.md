@@ -27,11 +27,11 @@ This target builds a static PIE `dnsmasq` binary from source.
 
 > [!NOTE]
 >
-> Outputs are under `.out/dnsmasq/`.
+> Outputs are under `dist/dnsmasq/`.
 > Override with `BUILD_OUTPUT_DEST`.
 
 ```bash
-./.out/dnsmasq/sbin/dnsmasq -v
+./dist/dnsmasq/sbin/dnsmasq -v
 ```
 
 ## Runtime Introspection Output

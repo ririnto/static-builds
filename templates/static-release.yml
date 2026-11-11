@@ -16,12 +16,20 @@ spec:
   rules:
     - when: $[[ inputs.run_policy ]]
   image: golang:alpine
+  cache:
+    key: "apk-golang-alpine-${CI_RUNNER_ID}"
+    paths:
+      - .cache/apk/**/*.apk
   variables:
+    TARGET: "$[[ inputs.target ]]"
+    TAG: "$[[ inputs.package_name ]]"
+    GORELEASER_CURRENT_TAG: "$[[ inputs.package_name ]]"
+    BUILD_BACKEND: rootless
     BUILDKITD_FLAGS: --oci-worker-no-process-sandbox
     RELEASE_TAG: "$[[ inputs.release_tag ]]"
-    BUILD_OUTPUT_DEST: "$CI_PROJECT_DIR/.out/$[[ inputs.target ]]"
+    BUILD_OUTPUT_DEST: "$CI_PROJECT_DIR/dist/$[[ inputs.target ]]"
   before_script:
-    - apk add --no-cache ca-certificates git buildkit fuse3 fuse-overlayfs runc rootlesskit shadow-uidmap su-exec
+    - sh .gitlab/ci/install-packages.sh ca-certificates git buildkit fuse3 fuse-overlayfs runc rootlesskit shadow-uidmap su-exec
     - |-
       if [ -n "$RELEASE_TAG" ]; then
         test "$RELEASE_TAG" = "$CI_COMMIT_TAG"
@@ -34,18 +42,21 @@ spec:
     - mkdir -p /run/user/1000 /home/user/.local/tmp /home/user/.local/share/buildkit
     - chown -R user:user /run/user/1000 /home/user "$CI_PROJECT_DIR"
   script:
-    - su-exec user env HOME=/home/user USER=user GOPATH=/home/user/go XDG_RUNTIME_DIR=/run/user/1000 TMPDIR=/home/user/.local/tmp go tool task build-rootless -- "$[[ inputs.target ]]"
-    - su-exec user env HOME=/home/user USER=user GOPATH=/home/user/go XDG_RUNTIME_DIR=/run/user/1000 TMPDIR=/home/user/.local/tmp go tool task package -- "$[[ inputs.target ]]" "$[[ inputs.package_name ]]" --snapshot
+    - su-exec user env HOME=/home/user USER=user GOPATH=/home/user/go XDG_RUNTIME_DIR=/run/user/1000 TMPDIR=/home/user/.local/tmp go tool task goreleaser -- release --clean --verbose --timeout=6h --snapshot --skip=publish,validate
   artifacts:
     paths:
-      - ".out/$[[ inputs.target ]]/"
-      - ".out/goreleaser/$[[ inputs.package_name ]].tar.gz"
-      - ".out/goreleaser/$[[ inputs.package_name ]]_checksums.txt"
+      - "dist/$[[ inputs.target ]]/"
+      - "dist/release/$[[ inputs.package_name ]].tar.gz"
+      - "dist/release/$[[ inputs.package_name ]]_checksums.txt"
     when: always
 
 "gitlab-static-release-$[[ inputs.target ]]":
   stage: release
   image: golang:alpine
+  cache:
+    key: "apk-golang-alpine-${CI_RUNNER_ID}"
+    paths:
+      - .cache/apk/**/*.apk
   needs:
     - job: "gitlab-static-package-$[[ inputs.target ]]"
       artifacts: true
@@ -56,12 +67,12 @@ spec:
     GORELEASER_FORCE_TOKEN: gitlab
     GORELEASER_CURRENT_TAG: "$[[ inputs.release_tag ]]"
     TAG: "$[[ inputs.release_tag ]]"
-    RELEASE_ARCHIVE: ".out/release-package/$[[ inputs.release_tag ]].tar.gz"
+    RELEASE_ARCHIVE: "dist/release-package/$[[ inputs.release_tag ]].tar.gz"
   before_script:
-    - apk add --no-cache ca-certificates git
+    - sh .gitlab/ci/install-packages.sh ca-certificates git
   script:
     - test "$(git rev-parse "refs/tags/$TAG^{commit}")" = "$(git rev-parse HEAD)"
     - go tool task validate-release-tag -- "$[[ inputs.target ]]" "$TAG"
-    - mkdir -p .out/release-package
-    - cp ".out/goreleaser/$TAG.tar.gz" "$RELEASE_ARCHIVE"
-    - GITLAB_TOKEN="$CI_JOB_TOKEN" go tool task goreleaser -- release --clean --skip=archive,validate
+    - mkdir -p dist/release-package
+    - cp "dist/release/$TAG.tar.gz" "$RELEASE_ARCHIVE"
+    - GITLAB_TOKEN="$CI_JOB_TOKEN" go tool task goreleaser -- release --clean --skip=before,archive,validate

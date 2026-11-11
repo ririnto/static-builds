@@ -1,7 +1,7 @@
 {
   "nginx": {
     "tag_prefix": "nginx",
-    "release_files": ["sbin/nginx", "conf/scripting.conf", "conf/scripting.js"],
+    "release_files": ["sbin/nginx"],
     "env": {
       "ALPINE_VERSION": "3",
       "NGINX_VERSION": "1.30.6",
@@ -32,13 +32,7 @@
   },
   "nginx-upstream-healthcheck": {
     "tag_prefix": "nginx-upstream-healthcheck",
-    "release_files": [
-      "sbin/nginx",
-      "conf/scripting.conf",
-      "conf/scripting.js",
-      "conf/upstream-healthcheck.conf",
-      "README.md"
-    ],
+    "release_files": ["sbin/nginx"],
     "env": {
       "ALPINE_VERSION": "3",
       "NGINX_VERSION": "1.30.6",
