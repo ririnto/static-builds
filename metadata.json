@@ -146,7 +146,7 @@
     },
     "downloads": [
       {
-        "url": "https://downloads.apache.org/httpd/httpd-{HTTPD_VERSION}.tar.gz",
+        "url": "https://archive.apache.org/dist/httpd/httpd-{HTTPD_VERSION}.tar.gz",
         "name": "httpd-{HTTPD_VERSION}.tar.gz"
       },
       {
