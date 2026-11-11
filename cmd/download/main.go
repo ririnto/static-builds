@@ -19,7 +19,6 @@ import (
 )
 
 func setting(name, fallback string) string {
-
 	if value := os.Getenv(name); value != "" {
 		return value
 	}
@@ -27,7 +26,6 @@ func setting(name, fallback string) string {
 }
 
 func pause(ctx context.Context, duration time.Duration) error {
-
 	timer := time.NewTimer(duration)
 	defer timer.Stop()
 	select {
@@ -39,7 +37,6 @@ func pause(ctx context.Context, duration time.Duration) error {
 }
 
 func lookPath(name string) (string, error) {
-
 	path, err := exec.LookPath(name)
 	if errors.Is(err, exec.ErrNotFound) {
 		return "", nil
@@ -48,7 +45,6 @@ func lookPath(name string) (string, error) {
 }
 
 func download(ctx context.Context, url, destination string) (err error) {
-
 	if err := os.MkdirAll(filepath.Dir(destination), 0755); err != nil {
 		return err
 	}
@@ -71,7 +67,6 @@ func download(ctx context.Context, url, destination string) (err error) {
 			}
 		}
 		defer func() {
-
 			if cleanupErr := os.Remove(lock); cleanupErr != nil {
 				fmt.Fprintln(os.Stderr, cleanupErr)
 				if err == nil {
@@ -95,7 +90,6 @@ func download(ctx context.Context, url, destination string) (err error) {
 		return err
 	}
 	defer func() {
-
 		if cleanupErr := os.Remove(path); cleanupErr != nil && !os.IsNotExist(cleanupErr) {
 			fmt.Fprintln(os.Stderr, cleanupErr)
 		}
@@ -139,7 +133,6 @@ func download(ctx context.Context, url, destination string) (err error) {
 		}
 		command.Stdout, command.Stderr = os.Stdout, os.Stderr
 		command.Cancel = func() error {
-
 			err := command.Process.Signal(syscall.SIGTERM)
 			if err != nil && !errors.Is(err, os.ErrProcessDone) && !errors.Is(err, syscall.ESRCH) {
 				fmt.Fprintln(os.Stderr, "Error: cancel download:", err)
@@ -182,12 +175,10 @@ func download(ctx context.Context, url, destination string) (err error) {
 }
 
 func run(ctx context.Context, args []string) error {
-
 	if len(args) == 0 {
 		return fmt.Errorf("usage: download <target>")
 	}
 	if strings.ContainsAny(args[0], "/\\") || strings.IndexFunc(args[0], func(c rune) bool {
-
 		return (c < 'A' || c > 'Z') && (c < 'a' || c > 'z') && (c < '0' || c > '9') && !strings.ContainsRune("._-", c)
 	}) >= 0 {
 		return fmt.Errorf("invalid target '%s'", args[0])
@@ -219,7 +210,6 @@ func run(ctx context.Context, args []string) error {
 }
 
 func main() {
-
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 	if err := run(ctx, os.Args[1:]); err != nil {
