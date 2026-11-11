@@ -4,6 +4,8 @@ ARG UBI10_MINIMAL_VERSION
 ARG TARGET_PREFIX=/home/nobody
 
 FROM alpine:${ALPINE_VERSION} AS build
+ARG TARGETARCH
+ARG BUILD_TARGET=nginx-upstream-healthcheck
 ARG NGINX_VERSION
 ARG NGINX_VTS_MODULE_VERSION
 ARG NJS_VERSION
@@ -11,7 +13,7 @@ ARG QUICKJS_VERSION
 ARG TARGET_PREFIX
 
 WORKDIR /build
-RUN --mount=type=cache,target=/var/cache/apk \
+RUN --mount=type=cache,id=nginx-upstream-healthcheck-apk-${TARGETARCH},sharing=locked,target=/var/cache/apk \
     apk add \
         build-base \
         cmake \
@@ -25,10 +27,10 @@ RUN --mount=type=cache,target=/var/cache/apk \
         pcre2-static \
         zlib-dev \
         zlib-static
-ADD ".cache/downloads/nginx-${NGINX_VERSION}.tar.gz" /build/
-ADD ".cache/downloads/nginx-module-vts-${NGINX_VTS_MODULE_VERSION}.tar.gz" "/build/nginx-${NGINX_VERSION}/"
-ADD ".cache/downloads/njs-${NJS_VERSION}.tar.gz" /build/
-ADD ".cache/downloads/quickjs-${QUICKJS_VERSION}.tar.gz" /build/
+ADD ".cache/downloads/nginx-upstream-healthcheck/nginx-${NGINX_VERSION}.tar.gz" /build/
+ADD ".cache/downloads/nginx-upstream-healthcheck/nginx-module-vts-${NGINX_VTS_MODULE_VERSION}.tar.gz" "/build/nginx-${NGINX_VERSION}/"
+ADD ".cache/downloads/nginx-upstream-healthcheck/njs-${NJS_VERSION}.tar.gz" /build/
+ADD ".cache/downloads/nginx-upstream-healthcheck/quickjs-${QUICKJS_VERSION}.tar.gz" /build/
 RUN cmake -S "/build/quickjs-${QUICKJS_VERSION}" -B /build/quickjs-build \
     -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_BUILD_TYPE=Release
 RUN cmake --build /build/quickjs-build "-j$(nproc)"
@@ -71,14 +73,15 @@ RUN ./configure \
 RUN make "-j$(nproc)"
 RUN make install
 RUN mkdir -p "${TARGET_PREFIX}/config/conf.d"
-COPY nginx/config/nginx.conf ${TARGET_PREFIX}/config/nginx.conf
+COPY nginx-upstream-healthcheck/config/nginx.conf ${TARGET_PREFIX}/config/nginx.conf
 
 FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
+ARG TARGETARCH
+ARG BUILD_TARGET=nginx-upstream-healthcheck
 ARG TARGET_PREFIX
-RUN --mount=type=cache,target=/var/cache/dnf \
+RUN --mount=type=cache,id=nginx-upstream-healthcheck-dnf-${TARGETARCH},sharing=locked,target=/var/cache/dnf \
     microdnf -y install binutils curl-minimal file openssl strace
 COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
-ARG TARGETARCH
 RUN set -eu; \
     case "$TARGETARCH" in \
         amd64) machine='Advanced Micro Devices X86-64' ;; \

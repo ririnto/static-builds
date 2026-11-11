@@ -1,0 +1,11 @@
+**
+!monit
+!monit/**
+!.cache
+.cache/*
+!.cache/downloads
+.cache/downloads/*
+!.cache/downloads/monit
+!.cache/downloads/monit/*
+.cache/downloads/monit/*.lock
+.cache/downloads/monit/*.tmp.*

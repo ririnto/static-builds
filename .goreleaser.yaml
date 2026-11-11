@@ -53,7 +53,7 @@ release:
   draft: false
   prerelease: "false"
   extra_files:
-    - glob: "dist/release-package/{{ .Env.TAG }}.tar.gz"
+    - glob: "dist/release-package/{{ .Env.TARGET }}/{{ .Env.TAG }}.tar.gz"
   replace_existing_artifacts: true
 
 gitlab_urls:

@@ -48,7 +48,7 @@ jobs:
       - name: Cache source downloads
         uses: actions/cache@v6
         with:
-          path: ${{ github.workspace }}/.cache/downloads
+          path: ${{ github.workspace }}/.cache/downloads/${{ inputs.target }}
           key: downloads-${{ inputs.target }}-${{ hashFiles('metadata.json', 'cmd/**/*.go', 'internal/**/*.go', 'go.mod', 'go.sum') }}
           restore-keys: downloads-${{ inputs.target }}-
 
@@ -91,8 +91,8 @@ jobs:
         with:
           name: ${{ inputs.target }}-release-package
           path: |-
-            dist/release/${{ inputs.tag }}.tar.gz
-            dist/release/${{ inputs.tag }}_checksums.txt
+            dist/release/${{ inputs.target }}/${{ inputs.tag }}.tar.gz
+            dist/release/${{ inputs.target }}/${{ inputs.tag }}_checksums.txt
           include-hidden-files: true
           if-no-files-found: error
 
@@ -115,12 +115,13 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           name: ${{ inputs.target }}-release-package
-          path: dist/release-package
+          path: dist/release-package/${{ inputs.target }}
 
       - name: Publish assets to release
         env:
           GITHUB_TOKEN: ${{ github.token }}
           GORELEASER_CURRENT_TAG: ${{ inputs.tag }}
-          RELEASE_ARCHIVE: dist/release-package/${{ inputs.tag }}.tar.gz
+          TARGET: ${{ inputs.target }}
+          RELEASE_ARCHIVE: dist/release-package/${{ inputs.target }}/${{ inputs.tag }}.tar.gz
           TAG: ${{ inputs.tag }}
         run: go tool task goreleaser -- release --clean --skip=before,archive,validate

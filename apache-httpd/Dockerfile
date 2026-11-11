@@ -4,13 +4,15 @@ ARG UBI10_MINIMAL_VERSION
 ARG TARGET_PREFIX=/home/nobody
 
 FROM alpine:${ALPINE_VERSION} AS build
+ARG TARGETARCH
+ARG BUILD_TARGET=apache-httpd
 ARG HTTPD_VERSION
 ARG APR_VERSION
 ARG APR_UTIL_VERSION
 ARG TARGET_PREFIX
 
 WORKDIR /tmp
-RUN --mount=type=cache,target=/var/cache/apk \
+RUN --mount=type=cache,id=apache-httpd-apk-${TARGETARCH},sharing=locked,target=/var/cache/apk \
     apk add \
         build-base \
         linux-headers \
@@ -27,9 +29,9 @@ RUN --mount=type=cache,target=/var/cache/apk \
         expat-static \
         brotli-dev \
         brotli-static
-ADD ".cache/downloads/httpd-${HTTPD_VERSION}.tar.gz" /tmp/
-ADD ".cache/downloads/apr-${APR_VERSION}.tar.gz" /tmp/
-ADD ".cache/downloads/apr-util-${APR_UTIL_VERSION}.tar.gz" /tmp/
+ADD ".cache/downloads/apache-httpd/httpd-${HTTPD_VERSION}.tar.gz" /tmp/
+ADD ".cache/downloads/apache-httpd/apr-${APR_VERSION}.tar.gz" /tmp/
+ADD ".cache/downloads/apache-httpd/apr-util-${APR_UTIL_VERSION}.tar.gz" /tmp/
 RUN mv "/tmp/apr-${APR_VERSION}" "/tmp/httpd-${HTTPD_VERSION}/srclib/apr"
 RUN mv "/tmp/apr-util-${APR_UTIL_VERSION}" "/tmp/httpd-${HTTPD_VERSION}/srclib/apr-util"
 WORKDIR "/tmp/httpd-${HTTPD_VERSION}"
@@ -79,11 +81,12 @@ RUN make "-j$(nproc)"
 RUN make install
 
 FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
+ARG TARGETARCH
+ARG BUILD_TARGET=apache-httpd
 ARG TARGET_PREFIX
-RUN --mount=type=cache,target=/var/cache/dnf \
+RUN --mount=type=cache,id=apache-httpd-dnf-${TARGETARCH},sharing=locked,target=/var/cache/dnf \
     microdnf -y install file binutils strace
 COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
-ARG TARGETARCH
 RUN set -eu; \
     case "$TARGETARCH" in \
         amd64) machine='Advanced Micro Devices X86-64' ;; \

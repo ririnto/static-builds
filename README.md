@@ -64,8 +64,17 @@ TARGET=nginx TAG=nginx-local pnpm run build
 
 Build artifacts are written to `dist/<target>/` by default for both local and CI builds.
 You can override this with `BUILD_OUTPUT_DEST`.
-Archives and checksum files are written separately under `dist/release/`.
+Archives and checksum files are written separately under `dist/release/<target>/`.
 The pnpm build script runs the same nonpublishing GoReleaser snapshot command.
+
+### Independent targets
+
+Each target owns its Dockerfile inputs, downloaded archives, mutable build caches, exported installation, release staging, and package directory.
+Dockerfile-specific ignore files admit only that target's source directory and complete download archives into its build context.
+Neither nginx target reads the other's configuration, account files, examples, binaries, or packages.
+Both compile their own NGINX, njs, QuickJS-NG, and VTS sources using their own metadata entry.
+Common base images and the Go tools remain reusable infrastructure, not artifacts produced by another target.
+Explicit output or cache overrides must use different destinations when building different targets.
 
 ### Local container builds
 
@@ -79,11 +88,11 @@ TARGET=dnsmasq docker compose run --rm build
 
 Replace `dnsmasq` with the required target.
 The service defaults to a nonpublishing GoReleaser snapshot with `BUILD_BACKEND=rootless` and `TAG=local`.
-Set `TAG=dnsmasq-local` alongside `TARGET` to name the archive `dist/release/dnsmasq-local.tar.gz` and checksum `dist/release/dnsmasq-local_checksums.txt`.
+Set `TAG=dnsmasq-local` alongside `TARGET` to name the archive `dist/release/dnsmasq/dnsmasq-local.tar.gz` and checksum `dist/release/dnsmasq/dnsmasq-local_checksums.txt`.
 No target is selected when it is omitted.
-The output remains under `dist/<target>/`, and source downloads and exported build cache remain under `.cache/downloads/` and `.cache/`.
+The output remains under `dist/<target>/`, and source downloads and exported build cache remain under `.cache/downloads/<target>/` and `.cache/`.
 The checkout is read-only inside the service except for the cache and distribution directories.
-Named volumes retain the Go module cache, Go compilation cache, and BuildKit state.
+Named volumes retain the Go tool module cache, Go tool compilation cache, and target-specific BuildKit state directories.
 The service does not mount the Docker socket, publish ports, use host networking, or run in privileged mode.
 
 The image starts from `golang:alpine` and runs the upstream daemonless BuildKit script as a non-root user.
@@ -150,8 +159,9 @@ Build one target, stage only its metadata-selected release paths, and create its
 TARGET=dnsmasq TAG=dnsmasq-local go tool task goreleaser -- release --clean --snapshot --verbose --timeout=6h --skip=publish,validate
 ```
 
-GoReleaser writes `dist/release/<TAG>.tar.gz` and `dist/release/<TAG>_checksums.txt`.
-The command cleans that GoReleaser output directory, so run one target at a time and copy outputs before building another target.
+GoReleaser writes `dist/release/<TARGET>/<TAG>.tar.gz` and `dist/release/<TARGET>/<TAG>_checksums.txt`.
+The command cleans only that target's GoReleaser output directory, preserving other targets' packages.
+Serialize builds of the same target because its output, staging, and package directories are shared between invocations.
 Generated SHA-256 checksums describe the distributed archive and do not enforce checksums on downloaded upstream sources.
 Snapshot mode neither creates a tag nor publishes a release.
 Build-producing entrypoints enable verbose hook output and use a six-hour GoReleaser timeout.
@@ -166,6 +176,10 @@ Staging uses `dist/release-files/<TARGET>/` outside GoReleaser's distribution di
 The hook clears that target's staging directory only after validation and a successful build.
 GoReleaser then archives the staged files and generates their archive checksum.
 Its mixed-language targets do not use GoReleaser's native Go builder or the Pro-only prebuilt builder.
+The pinned GoReleaser OSS version does not template its distribution directory.
+The Task entrypoint validates the target, renders only the distribution path into a temporary copy of the shared configuration, and removes that copy on exit.
+This also runs before publication with hooks skipped, so missing or unknown targets cannot clean another target's distribution directory.
+Use the named Task entrypoint rather than invoking GoReleaser release directly against the shared configuration.
 
 Both hosts invoke GoReleaser once in the build job instead of separate build and package commands.
 Their separate publication jobs receive the built archive, set `RELEASE_ARCHIVE` to its preserved copy, and run GoReleaser with `--skip=before,archive,validate` to recompute the checksum and publish.
@@ -303,7 +317,7 @@ Each target must follow this structure:
    # Build stage
    FROM alpine:${ALPINE_VERSION} AS build
    ARG YOUR_TARGET_VERSION
-   ADD ".cache/downloads/your-target-${YOUR_TARGET_VERSION}.tar.gz" /build/
+   ADD ".cache/downloads/your-target/your-target-${YOUR_TARGET_VERSION}.tar.gz" /build/
    # ... build steps ...
 
    # Verify built artifacts in a Dockerfile stage before export.

@@ -4,6 +4,8 @@ ARG UBI10_MINIMAL_VERSION
 ARG TARGET_PREFIX=/home/nobody
 
 FROM alpine:${ALPINE_VERSION} AS build
+ARG TARGETARCH
+ARG BUILD_TARGET=nginx
 ARG NGINX_VERSION
 ARG NGINX_VTS_MODULE_VERSION
 ARG NJS_VERSION
@@ -11,7 +13,7 @@ ARG QUICKJS_VERSION
 ARG TARGET_PREFIX
 
 WORKDIR /build
-RUN --mount=type=cache,target=/var/cache/apk \
+RUN --mount=type=cache,id=nginx-apk-${TARGETARCH},sharing=locked,target=/var/cache/apk \
     apk add \
         build-base \
         cmake \
@@ -25,10 +27,10 @@ RUN --mount=type=cache,target=/var/cache/apk \
         pcre2-static \
         zlib-dev \
         zlib-static
-ADD ".cache/downloads/nginx-${NGINX_VERSION}.tar.gz" /build/
-ADD ".cache/downloads/nginx-module-vts-${NGINX_VTS_MODULE_VERSION}.tar.gz" "/build/nginx-${NGINX_VERSION}/"
-ADD ".cache/downloads/njs-${NJS_VERSION}.tar.gz" /build/
-ADD ".cache/downloads/quickjs-${QUICKJS_VERSION}.tar.gz" /build/
+ADD ".cache/downloads/nginx/nginx-${NGINX_VERSION}.tar.gz" /build/
+ADD ".cache/downloads/nginx/nginx-module-vts-${NGINX_VTS_MODULE_VERSION}.tar.gz" "/build/nginx-${NGINX_VERSION}/"
+ADD ".cache/downloads/nginx/njs-${NJS_VERSION}.tar.gz" /build/
+ADD ".cache/downloads/nginx/quickjs-${QUICKJS_VERSION}.tar.gz" /build/
 RUN cmake -S "/build/quickjs-${QUICKJS_VERSION}" -B /build/quickjs-build \
     -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_BUILD_TYPE=Release
 RUN cmake --build /build/quickjs-build "-j$(nproc)"
@@ -72,11 +74,12 @@ RUN mkdir -p "${TARGET_PREFIX}/config/conf.d"
 COPY nginx/config/nginx.conf ${TARGET_PREFIX}/config/nginx.conf
 
 FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
+ARG TARGETARCH
+ARG BUILD_TARGET=nginx
 ARG TARGET_PREFIX
-RUN --mount=type=cache,target=/var/cache/dnf \
+RUN --mount=type=cache,id=nginx-dnf-${TARGETARCH},sharing=locked,target=/var/cache/dnf \
     microdnf -y install file binutils strace
 COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
-ARG TARGETARCH
 RUN set -eu; \
     case "$TARGETARCH" in \
         amd64) machine='Advanced Micro Devices X86-64' ;; \
@@ -114,7 +117,7 @@ FROM scratch
 ARG TARGET_PREFIX
 
 COPY --from=verify ${TARGET_PREFIX} /
-COPY nginx-upstream-healthcheck/passwd /etc/passwd
-COPY nginx-upstream-healthcheck/group /etc/group
+COPY nginx/passwd /etc/passwd
+COPY nginx/group /etc/group
 EXPOSE 80 443
 ENTRYPOINT ["/sbin/nginx", "-p", "/", "-g", "daemon off;"]

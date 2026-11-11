@@ -126,7 +126,7 @@ Keep repository-owned Oxlint plugins and their focused tests under `plugins/`.
 
 - Refresh branch source archives on every download call.
 - Keep target-specific download metadata under that target's `metadata.json` `downloads` entries.
-- Place reusable source archives under `.cache/downloads/` and keep incomplete downloads on the same filesystem for atomic replacement.
+- Place reusable source archives under `.cache/downloads/<target>/` and keep incomplete downloads on the same filesystem for atomic replacement.
 - Do not enforce checksum verification or pinning for upstream source downloads.
 - Do not require build-time checksum verification for release artifacts or fail builds because upstream checksum files are unavailable.
 - Leave independent source validation, including available upstream checksums, to consumers.
@@ -139,7 +139,7 @@ Keep repository-owned Oxlint plugins and their focused tests under `plugins/`.
 - Write local and CI build artifacts under `dist/<target>/...`.
 - Stage metadata-selected release paths under `dist/release-files/<target>/` outside the GoReleaser distribution directory.
 - Clear target staging only after validation and a successful build.
-- Write GoReleaser archives and SHA-256 checksum files under `dist/release/` and process one target at a time when cleaning that directory.
+- Write GoReleaser archives and SHA-256 checksum files under `dist/release/<target>/` and serialize builds of the same target.
 - Use `.github/workflows/release-from-tag.yaml` as the only GitHub tag-triggered release entrypoint.
 - Route GitLab release tags through the parent pipeline and the shared static-release component.
 - Delegate build and release logic to `.github/workflows/template-release.yaml`.

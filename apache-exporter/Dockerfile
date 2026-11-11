@@ -4,30 +4,32 @@ ARG UBI10_MINIMAL_VERSION
 ARG TARGET_PREFIX=/out
 
 FROM golang:${GO_VERSION}-alpine AS build
+ARG TARGETARCH
+ARG BUILD_TARGET=apache-exporter
 ARG APACHE_EXPORTER_VERSION
 ARG TARGET_PREFIX
-ARG TARGETARCH
 
 WORKDIR /build
-RUN --mount=type=cache,target=/var/cache/apk \
+RUN --mount=type=cache,id=apache-exporter-apk-${TARGETARCH},sharing=locked,target=/var/cache/apk \
     apk add \
         git
-ADD ".cache/downloads/apache-exporter-${APACHE_EXPORTER_VERSION}.tar.gz" /build/
+ADD ".cache/downloads/apache-exporter/apache-exporter-${APACHE_EXPORTER_VERSION}.tar.gz" /build/
 WORKDIR "/build/apache_exporter-${APACHE_EXPORTER_VERSION}"
 RUN mkdir -p ${TARGET_PREFIX}/bin
-RUN --mount=type=cache,target=/root/.cache/go-build \
-    --mount=type=cache,target=/go/pkg/mod \
+RUN --mount=type=cache,id=apache-exporter-go-build-${TARGETARCH},sharing=locked,target=/root/.cache/go-build \
+    --mount=type=cache,id=apache-exporter-go-modules-${TARGETARCH},sharing=locked,target=/go/pkg/mod \
     CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} \
     go build -a -tags netgo -trimpath \
         -ldflags "-X github.com/prometheus/common/version.Version=${APACHE_EXPORTER_VERSION}" \
         -o ${TARGET_PREFIX}/bin/apache-exporter .
 
 FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
+ARG TARGETARCH
+ARG BUILD_TARGET=apache-exporter
 ARG TARGET_PREFIX
-RUN --mount=type=cache,target=/var/cache/dnf \
+RUN --mount=type=cache,id=apache-exporter-dnf-${TARGETARCH},sharing=locked,target=/var/cache/dnf \
     microdnf -y install file binutils strace
 COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
-ARG TARGETARCH
 RUN set -eu; \
     case "$TARGETARCH" in \
         amd64) machine='Advanced Micro Devices X86-64' ;; \

@@ -5,7 +5,9 @@ ARG TARGET_PREFIX=/home/nobody
 ARG HARDENING_CFLAGS="-O2 -pipe -fPIC -fstack-protector-strong -fstack-clash-protection -ffunction-sections -fdata-sections -ftrivial-auto-var-init=zero"
 
 FROM alpine:${ALPINE_VERSION} AS otel-base
-RUN --mount=type=cache,target=/var/cache/apk \
+ARG TARGETARCH
+ARG BUILD_TARGET=haproxy
+RUN --mount=type=cache,id=haproxy-apk-${TARGETARCH},sharing=locked,target=/var/cache/apk \
     apk add \
         build-base \
         ca-certificates \
@@ -24,7 +26,7 @@ RUN --mount=type=cache,target=/var/cache/apk \
 FROM otel-base AS otel-abseil
 ARG ABSEIL_CPP_VERSION
 ARG HARDENING_CFLAGS
-ADD ".cache/downloads/abseil-cpp-${ABSEIL_CPP_VERSION}.tar.gz" /tmp/
+ADD ".cache/downloads/haproxy/abseil-cpp-${ABSEIL_CPP_VERSION}.tar.gz" /tmp/
 RUN cmake -S "/tmp/abseil-cpp-${ABSEIL_CPP_VERSION}" -B /tmp/abseil-build \
         -DCMAKE_INSTALL_PREFIX=/opt \
         -DCMAKE_CXX_FLAGS="${HARDENING_CFLAGS}" \
@@ -40,7 +42,7 @@ RUN cmake --install /tmp/abseil-build
 FROM otel-base AS otel-protobuf
 ARG PROTOBUF_VERSION
 ARG HARDENING_CFLAGS
-ADD ".cache/downloads/protobuf-${PROTOBUF_VERSION}.tar.gz" /tmp/
+ADD ".cache/downloads/haproxy/protobuf-${PROTOBUF_VERSION}.tar.gz" /tmp/
 COPY --from=otel-abseil /opt /opt
 RUN cmake -S "/tmp/protobuf-${PROTOBUF_VERSION}" -B /tmp/protobuf-build \
         -DCMAKE_INSTALL_PREFIX=/opt \
@@ -59,7 +61,7 @@ RUN cmake --install /tmp/protobuf-build
 FROM otel-base AS otel-rapidyaml
 ARG RAPIDYAML_VERSION
 ARG HARDENING_CFLAGS
-ADD ".cache/downloads/rapidyaml-${RAPIDYAML_VERSION}-src.tgz" /tmp/
+ADD ".cache/downloads/haproxy/rapidyaml-${RAPIDYAML_VERSION}-src.tgz" /tmp/
 RUN cmake -S "/tmp/rapidyaml.v${RAPIDYAML_VERSION}" -B /tmp/rapidyaml-build \
         -DCMAKE_INSTALL_PREFIX=/opt \
         -DCMAKE_C_FLAGS="${HARDENING_CFLAGS}" \
@@ -83,10 +85,10 @@ ARG OPENTELEMETRY_CPP_VERSION
 ARG OPENTELEMETRY_PROTO_VERSION
 ARG NLOHMANN_JSON_VERSION
 ARG HARDENING_CFLAGS
-ADD ".cache/downloads/opentelemetry-cpp-${OPENTELEMETRY_CPP_VERSION}.tar.gz" /tmp/
-ADD ".cache/downloads/opentelemetry-proto-${OPENTELEMETRY_PROTO_VERSION}.tar.gz" /tmp/
-ADD ".cache/downloads/nlohmann-json-${NLOHMANN_JSON_VERSION}.tar.gz" /tmp/
-ADD ".cache/downloads/opentelemetry-c-wrapper-${HAPROXY_OTEL_C_WRAPPER_VERSION}.tar.gz" /build/
+ADD ".cache/downloads/haproxy/opentelemetry-cpp-${OPENTELEMETRY_CPP_VERSION}.tar.gz" /tmp/
+ADD ".cache/downloads/haproxy/opentelemetry-proto-${OPENTELEMETRY_PROTO_VERSION}.tar.gz" /tmp/
+ADD ".cache/downloads/haproxy/nlohmann-json-${NLOHMANN_JSON_VERSION}.tar.gz" /tmp/
+ADD ".cache/downloads/haproxy/opentelemetry-c-wrapper-${HAPROXY_OTEL_C_WRAPPER_VERSION}.tar.gz" /build/
 COPY --from=otel-abseil /opt /opt
 COPY --from=otel-protobuf /opt /opt
 COPY --from=otel-rapidyaml /opt /opt
@@ -153,12 +155,14 @@ RUN cmake --build /build/opentelemetry-c-wrapper/build --parallel "$(nproc)"
 RUN cmake --install /build/opentelemetry-c-wrapper/build
 
 FROM alpine:${ALPINE_VERSION} AS build
+ARG TARGETARCH
+ARG BUILD_TARGET=haproxy
 ARG HAPROXY_VERSION
 ARG HAPROXY_OTEL_ADDON_VERSION
 ARG TARGET_PREFIX
 
 WORKDIR /build
-RUN --mount=type=cache,target=/var/cache/apk \
+RUN --mount=type=cache,id=haproxy-apk-${TARGETARCH},sharing=locked,target=/var/cache/apk \
     apk add \
         build-base \
         brotli-static \
@@ -178,8 +182,8 @@ RUN --mount=type=cache,target=/var/cache/apk \
         pcre2-dev \
         pcre2-static \
         zlib-static
-ADD ".cache/downloads/haproxy-${HAPROXY_VERSION}.tar.gz" /build/
-ADD ".cache/downloads/haproxy-opentelemetry-${HAPROXY_OTEL_ADDON_VERSION}.tar.gz" /build/
+ADD ".cache/downloads/haproxy/haproxy-${HAPROXY_VERSION}.tar.gz" /build/
+ADD ".cache/downloads/haproxy/haproxy-opentelemetry-${HAPROXY_OTEL_ADDON_VERSION}.tar.gz" /build/
 COPY --from=otel-cpp /opt /opt
 WORKDIR "/build/haproxy-${HAPROXY_VERSION}"
 RUN PKG_CONFIG_PATH=/opt/lib/pkgconfig make "-j$(nproc)" \
@@ -230,11 +234,12 @@ RUN make install \
     PREFIX=${TARGET_PREFIX}
 
 FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
+ARG TARGETARCH
+ARG BUILD_TARGET=haproxy
 ARG TARGET_PREFIX
-RUN --mount=type=cache,target=/var/cache/dnf \
+RUN --mount=type=cache,id=haproxy-dnf-${TARGETARCH},sharing=locked,target=/var/cache/dnf \
     microdnf -y install file binutils strace
 COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
-ARG TARGETARCH
 RUN set -eu; \
     case "$TARGETARCH" in \
         amd64) machine='Advanced Micro Devices X86-64' ;; \

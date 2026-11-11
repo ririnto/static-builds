@@ -17,5 +17,5 @@ dist
 !.cache
 .cache/*
 !.cache/downloads
-.cache/downloads/*.lock
-.cache/downloads/*.tmp.*
+.cache/downloads/**/*.lock
+.cache/downloads/**/*.tmp.*

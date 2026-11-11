@@ -220,7 +220,7 @@ func run(ctx context.Context, args []string) error {
 	}
 	for record := range slices.Values(downloads) {
 		if record.URL != "" && record.Name != "" {
-			if err := download(ctx, record.URL, filepath.Join(root, ".cache", "downloads", record.Name)); err != nil {
+			if err := download(ctx, record.URL, filepath.Join(root, ".cache", "downloads", args[0], record.Name)); err != nil {
 				return err
 			}
 		}
