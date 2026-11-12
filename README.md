@@ -540,7 +540,7 @@ Selected release contents:
 - The Node, pnpm, and Java contributor checks run in local hooks only.
 - The package component installs fuse-overlayfs, runc, RootlessKit, and UID mapping helpers from Alpine packages.
 - GitLab caches signed APK files under `.cache/apk/<Alpine-release>/<architecture>/` with a runner-isolated cache key.
-- The shared installer refreshes repository indexes before each install, and caches neither indexes nor installed system directories.
+- Each job refreshes repository indexes while installing packages, and caches neither indexes nor installed system directories.
 - GitHub retains the existing Go module cache and BuildKit GHA layer cache; it does not install APK packages on its Ubuntu host or persist APK cache mounts.
 - It creates user 1000 and maps `user:100000:65536` in both `/etc/subuid` and `/etc/subgid`.
 - It invokes the upstream daemonless script as that user without Docker services.

@@ -17,7 +17,10 @@ check:
     paths:
       - .cache/apk/**/*.apk
   before_script:
-    - sh .gitlab/ci/install-packages.sh ca-certificates git
+    - |-
+      cache_dir=".cache/apk/$(cat /etc/alpine-release)/$(apk --print-arch)"
+      mkdir -p "$cache_dir"
+      apk --cache-dir "$cache_dir" add --update-cache ca-certificates git
   script:
     - go tool task test
     - go tool task golangci-lint -- run ./...
@@ -32,7 +35,10 @@ generate-package-pipeline:
     paths:
       - .cache/apk/**/*.apk
   before_script:
-    - sh .gitlab/ci/install-packages.sh ca-certificates git
+    - |-
+      cache_dir=".cache/apk/$(cat /etc/alpine-release)/$(apk --print-arch)"
+      mkdir -p "$cache_dir"
+      apk --cache-dir "$cache_dir" add --update-cache ca-certificates git
   script:
     - |-
       target=

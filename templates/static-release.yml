@@ -26,7 +26,10 @@ spec:
     BUILDKITD_FLAGS: --oci-worker-no-process-sandbox
     BUILD_OUTPUT_DEST: "$CI_PROJECT_DIR/.cache/build/$[[ inputs.target ]]"
   before_script:
-    - sh .gitlab/ci/install-packages.sh ca-certificates git fuse3 fuse-overlayfs runc rootlesskit shadow-uidmap su-exec
+    - |-
+      cache_dir=".cache/apk/$(cat /etc/alpine-release)/$(apk --print-arch)"
+      mkdir -p "$cache_dir"
+      apk --cache-dir "$cache_dir" add --update-cache ca-certificates git fuse3 fuse-overlayfs runc rootlesskit shadow-uidmap su-exec
     - adduser -D -u 1000 user
     - echo user:100000:65536 > /etc/subuid
     - echo user:100000:65536 > /etc/subgid
@@ -60,7 +63,10 @@ spec:
     GORELEASER_CURRENT_TAG: "$[[ inputs.release_tag ]]"
     TAG: "$[[ inputs.release_tag ]]"
   before_script:
-    - sh .gitlab/ci/install-packages.sh ca-certificates git
+    - |-
+      cache_dir=".cache/apk/$(cat /etc/alpine-release)/$(apk --print-arch)"
+      mkdir -p "$cache_dir"
+      apk --cache-dir "$cache_dir" add --update-cache ca-certificates git
   script:
     - RELEASE_ARCHIVE="$(mktemp -d)/$TARGET-$TAG.tgz"
     - export RELEASE_ARCHIVE
