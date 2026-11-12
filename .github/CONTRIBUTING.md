@@ -52,7 +52,7 @@ Run `mkdir -p .cache dist`, `docker compose build build`, and `TARGET=<target> d
 The dedicated container relaxes seccomp and masked system paths as described in the [official rootless Docker guidance](https://github.com/moby/buildkit/blob/v0.34.2/docs/rootless.md#docker).
 It keeps BuildKit's process sandbox, uses the native snapshotter without a FUSE device, and never mounts the Docker socket.
 Direct local builds require a non-root user on a configured Linux host with BuildKit, RootlessKit, runc, subordinate UID/GID mappings, and unprivileged user namespaces.
-GitHub installs the official module-selected BuildKit daemon and distribution-packaged `rootlesskit`, `uidmap`, and `runc` without changing host security controls.
+Go manages the BuildKit client and daemon through `go.mod`; GitHub installs distribution-packaged `rootlesskit`, `uidmap`, and `runc` without changing host security controls.
 Use Compose on macOS and Windows.
 GitLab builds use a non-root user with subordinate UID and GID ranges of `100000:65536`.
 The runner must permit unprivileged user namespaces and rootless mounts.
@@ -98,7 +98,7 @@ All checks exclude ignored build outputs and source caches.
 These checks run without building targets or invoking release jobs.
 Check target mapping with `go tool task manifest -- get-target-from-tag <tag>` without creating a tag.
 Render a tag child pipeline with the Jsonnet `--tla-str release_tag=<tag>` argument and one explicit target.
-Use `TARGET=<target> TAG=<target>-local go tool task goreleaser -- release --clean --snapshot --verbose --timeout=6h --skip=publish,validate` for nonpublishing build, staging, archive, and checksum checks.
+Use `TARGET=<target> TAG=<target>-local go tool task goreleaser -- release --clean --snapshot --verbose --timeout=6h --skip=publish,validate` for nonpublishing build, archive, and checksum checks.
 Run one target at a time because `--clean` removes the previous GoReleaser distribution output.
 The Compose service and `TARGET=<target> TAG=<target>-local pnpm run build` use this same snapshot flow.
 Compose defaults `TAG` to `local`, but never supplies a default target.

@@ -43,7 +43,7 @@ Keep repository-owned Oxlint plugins and their focused tests under `plugins/`.
 - Define tool-named Taskfile tasks with argument pass-through after `--`.
 - Manage Task, shfmt, Jsonnet, jsonnetfmt, golangci-lint, GoReleaser, and buildctl through the root Go module.
 - Invoke Go tests, formatting, and module maintenance through `go tool task test`, `go tool task fmt`, and `go tool task tidy`.
-- Use GoReleaser as the public local and CI entrypoint for build orchestration, release-file staging, archives, checksums, and publication.
+- Use GoReleaser as the public local and CI entrypoint for build orchestration, release-file selection, archives, checksums, and publication.
 - Keep the Taskfile build task as the rootless BuildKit driver invoked by GoReleaser OSS string before hooks.
 - Use rootless BuildKit for Compose, configured native Linux hosts, and both CI services without Docker-in-Docker.
 - Use compose.yaml for local container builds through the nonpublishing GoReleaser snapshot flow.
@@ -137,10 +137,8 @@ Keep repository-owned Oxlint plugins and their focused tests under `plugins/`.
 ### Define build outputs and release workflows
 
 - Keep `metadata.json` as the single source of target mapping, release-file selection, environment values, downloads, and tag-prefix exceptions.
-- Write local and CI build artifacts under `dist/<target>/...`.
-- Stage metadata-selected release paths under `dist/release-files/<target>/` outside the GoReleaser distribution directory.
-- Clear target staging only after validation and a successful build.
-- Write GoReleaser archives and SHA-256 sidecars under `dist/release/`. Serialize releases per checkout and preserve needed packages elsewhere before `--clean`.
+- Keep direct Task build output under `dist/<target>/...` and GoReleaser intermediate binaries under `.cache/build/<target>/...`.
+- Write GoReleaser archives and SHA-256 sidecars as `dist/<target>-<tag>.tgz` and `.tgz.sha256`. Serialize releases per checkout and preserve needed packages elsewhere before `--clean`.
 - Use `.github/workflows/release-from-tag.yaml` as the only GitHub tag-triggered release entrypoint.
 - Route GitLab release tags through the parent pipeline and the shared static-release component.
 - Delegate build and release logic to `.github/workflows/template-release.yaml`.
@@ -169,10 +167,10 @@ Keep repository-owned Oxlint plugins and their focused tests under `plugins/`.
 - For GitLab package pipelines on `main` and `feature/*`, generate and trigger child pipelines automatically, with an optional manual build job for each target.
 - Generate that pipeline through `.gitlab/ci/package-pipeline.gitlab-ci.jsonnet` and reuse `templates/static-release.yml`.
 - Keep GitLab branch package builds artifact-only and publish tag releases in a separate GoReleaser job.
-- Use `.goreleaser.yaml` for building, metadata-selected staging, archiving, generated SHA-256 checksums, and release publication on GitHub and GitLab.
+- Use `.goreleaser.yaml` for building, metadata-selected files, archiving, generated SHA-256 checksums, and release publication on GitHub and GitLab.
 - Keep publication separate from build jobs on both hosts.
 - Pass the preserved archive through `RELEASE_ARCHIVE` and skip before hooks, archiving, and GoReleaser tag validation in publication jobs so publishing credentials never run builds.
-- Resolve the release target from metadata and verify the tagged commit before using GoReleaser with validation skipped.
+- Resolve the release target from metadata without repeated tag checks in downstream jobs.
 - Use the existing GitLab job token and Generic Package Registry for release assets without stored publisher credentials.
 - Append `-beta` to package versions on `feature/*` branches.
 

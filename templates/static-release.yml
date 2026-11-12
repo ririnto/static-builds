@@ -24,15 +24,9 @@ spec:
     TAG: "$[[ inputs.package_name ]]"
     GORELEASER_CURRENT_TAG: "$[[ inputs.package_name ]]"
     BUILDKITD_FLAGS: --oci-worker-no-process-sandbox
-    RELEASE_TAG: "$[[ inputs.release_tag ]]"
-    BUILD_OUTPUT_DEST: "$CI_PROJECT_DIR/dist/$[[ inputs.target ]]"
+    BUILD_OUTPUT_DEST: "$CI_PROJECT_DIR/.cache/build/$[[ inputs.target ]]"
   before_script:
-    - sh .gitlab/ci/install-packages.sh ca-certificates git buildkit fuse3 fuse-overlayfs runc rootlesskit shadow-uidmap su-exec
-    - |-
-      if [ -n "$RELEASE_TAG" ]; then
-        test "$RELEASE_TAG" = "$CI_COMMIT_TAG"
-        test "$(git rev-parse "refs/tags/$RELEASE_TAG^{commit}")" = "$(git rev-parse HEAD)"
-      fi
+    - sh .gitlab/ci/install-packages.sh ca-certificates git fuse3 fuse-overlayfs runc rootlesskit shadow-uidmap su-exec
     - adduser -D -u 1000 user
     - echo user:100000:65536 > /etc/subuid
     - echo user:100000:65536 > /etc/subgid
@@ -42,9 +36,9 @@ spec:
     - su-exec user env HOME=/home/user USER=user GOPATH=/home/user/go XDG_RUNTIME_DIR=/run/user/1000 TMPDIR=/home/user/.local/tmp go tool task goreleaser -- release --clean --verbose --timeout=6h --snapshot --skip=publish,validate
   artifacts:
     paths:
-      - "dist/$[[ inputs.target ]]/"
-      - "dist/release/$[[ inputs.package_name ]].tgz"
-      - "dist/release/*.tgz.sha256"
+      - ".cache/build/$[[ inputs.target ]]/"
+      - "dist/$[[ inputs.target ]]-$[[ inputs.package_name ]].tgz"
+      - "dist/$[[ inputs.target ]]-$[[ inputs.package_name ]].tgz.sha256"
     when: always
 
 "gitlab-static-release-$[[ inputs.target ]]":
@@ -65,11 +59,10 @@ spec:
     GORELEASER_FORCE_TOKEN: gitlab
     GORELEASER_CURRENT_TAG: "$[[ inputs.release_tag ]]"
     TAG: "$[[ inputs.release_tag ]]"
-    RELEASE_ARCHIVE: "dist/release-package/$[[ inputs.target ]]/$[[ inputs.release_tag ]].tgz"
   before_script:
     - sh .gitlab/ci/install-packages.sh ca-certificates git
   script:
-    - test "$(git rev-parse "refs/tags/$TAG^{commit}")" = "$(git rev-parse HEAD)"
-    - mkdir -p "dist/release-package/$TARGET"
-    - cp "dist/release/$TAG.tgz" "$RELEASE_ARCHIVE"
+    - RELEASE_ARCHIVE="$(mktemp -d)/$TARGET-$TAG.tgz"
+    - export RELEASE_ARCHIVE
+    - cp "dist/$TARGET-$TAG.tgz" "$RELEASE_ARCHIVE"
     - GITLAB_TOKEN="$CI_JOB_TOKEN" go tool task goreleaser -- release --clean --skip=before,archive,validate

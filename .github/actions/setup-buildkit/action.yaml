@@ -11,18 +11,3 @@ runs:
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends rootlesskit uidmap runc
         fi
-    - name: Install the module-selected BuildKit daemon
-      shell: sh
-      run: |-
-        version=$(go list -m -f '{{.Version}}' github.com/moby/buildkit)
-        directory="$RUNNER_TEMP/static-builds-buildkit"
-        mkdir -p "$directory"
-        curl --fail --location --retry 3 \
-          "https://github.com/moby/buildkit/releases/download/$version/buildkit-$version.linux-$(go env GOARCH).tar.gz" \
-          --output "$directory/buildkit.tar.gz"
-        tar -xzf "$directory/buildkit.tar.gz" -C "$directory" bin/buildkitd
-        echo "$directory/bin" >>"$GITHUB_PATH"
-        echo "ROOTLESSKIT=$(command -v rootlesskit)" >>"$GITHUB_ENV"
-        rootlesskit --version
-        rootlesskit true
-        "$directory/bin/buildkitd" --version

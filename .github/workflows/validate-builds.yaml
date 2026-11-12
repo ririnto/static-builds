@@ -78,7 +78,7 @@ jobs:
       GORELEASER_CURRENT_TAG: ${{ matrix.target }}-pr-${{ github.event.pull_request.number }}-${{ matrix.arch }}
       BUILDKIT_PLATFORM: linux/${{ matrix.arch }}
       BUILDKIT_CACHE_BACKEND: local
-      BUILD_OUTPUT_DEST: ${{ github.workspace }}/dist/${{ matrix.target }}
+      BUILD_OUTPUT_DEST: ${{ github.workspace }}/.cache/build/${{ matrix.target }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -103,8 +103,8 @@ jobs:
           RELEASE_FILES=$(go tool task manifest -- get-release-files "$TARGET")
           export RELEASE_FILES
           (
-            cd "dist/release"
-            echo "$(cat "$TAG.tgz.sha256")  $TAG.tgz" | sha256sum --check
+            cd dist
+            echo "$(cat "$TARGET-$TAG.tgz.sha256")  $TARGET-$TAG.tgz" | sha256sum --check
           )
           python3 - <<'PY'
           import os
@@ -114,8 +114,8 @@ jobs:
 
           expected = set(os.environ["RELEASE_FILES"].splitlines())
           output = Path(os.environ["BUILD_OUTPUT_DEST"])
-          release = Path("dist/release")
-          package = release / f"{os.environ['TAG']}.tgz"
+          release = Path("dist")
+          package = release / f"{os.environ['TARGET']}-{os.environ['TAG']}.tgz"
           report = [f"Verified {os.environ['TARGET']} on {os.environ['BUILDKIT_PLATFORM']}"]
           with tarfile.open(package, "r:gz") as archive:
               members = [member for member in archive.getmembers() if not member.isdir()]
@@ -142,8 +142,8 @@ jobs:
         with:
           name: validation-${{ matrix.target }}-${{ matrix.arch }}
           path: |-
-            dist/release/${{ env.TAG }}.tgz
-            dist/release/*.tgz.sha256
-            dist/release/package-verification.txt
+            dist/${{ env.TARGET }}-${{ env.TAG }}.tgz
+            dist/${{ env.TARGET }}-${{ env.TAG }}.tgz.sha256
+            dist/package-verification.txt
           if-no-files-found: error
           retention-days: 7

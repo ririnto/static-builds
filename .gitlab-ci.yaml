@@ -37,7 +37,6 @@ generate-package-pipeline:
     - |-
       target=
       if [ -n "${CI_COMMIT_TAG:-}" ]; then
-        test "$(git rev-parse "refs/tags/$CI_COMMIT_TAG^{commit}")" = "$(git rev-parse HEAD)"
         target=$(go tool task manifest -- get-target-from-tag "$CI_COMMIT_TAG")
       fi
       go tool task jsonnet -- -S --ext-str "branch=${CI_COMMIT_BRANCH:-}" --ext-str "target=$target" --ext-str "component_ref=${CI_SERVER_FQDN}/${CI_PROJECT_PATH}/static-release@${CI_COMMIT_REF_NAME}" --tla-str "release_tag=${CI_COMMIT_TAG:-}" >package-pipeline.gitlab-ci.yaml

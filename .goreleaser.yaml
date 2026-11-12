@@ -1,23 +1,8 @@
 version: 2
 
-dist: dist/release
-
 before:
   hooks:
-    - |-
-      sh -eu -c '
-        files=$(go tool task manifest -- get-release-files "$TARGET")
-        go tool task build -- "$TARGET"
-        staging="dist/release-files/$TARGET"
-        rm -rf "$staging"
-        mkdir -p "$staging"
-        while IFS= read -r file; do
-          mkdir -p "$staging/$(dirname "$file")"
-          cp -a "${BUILD_OUTPUT_DEST:-dist/$TARGET}/$file" "$staging/$file"
-        done <<EOF
-      $files
-      EOF
-      '
+    - env BUILD_OUTPUT_DEST=.cache/build/{{ .Env.TARGET }} go tool task build -- {{ .Env.TARGET }}
 
 builds:
   - skip: true
@@ -26,9 +11,13 @@ archives:
   - meta: true
     formats:
       - tgz
-    name_template: "{{ .Env.TAG }}"
+    name_template: "{{ .Env.TARGET }}-{{ .Env.TAG }}"
     files:
-      - src: "dist/release-files/{{ .Env.TARGET }}"
+      - src: '.cache/build/{{ .Env.TARGET }}/{ {{- replace (filter .Env.RELEASE_FILES "^bin/") "\n" "," -}} }'
+        dst: bin
+      - src: '.cache/build/{{ .Env.TARGET }}/{ {{- replace (filter .Env.RELEASE_FILES "^sbin/") "\n" "," -}} }'
+        dst: sbin
+      - src: '.cache/build/{{ .Env.TARGET }}/{ {{- replace (filter .Env.RELEASE_FILES "^[^/]+$") "\n" "," -}} }'
         dst: .
 
 checksum:
@@ -44,7 +33,7 @@ release:
   draft: false
   prerelease: "false"
   extra_files:
-    - glob: "dist/release-package/{{ .Env.TARGET }}/{{ .Env.TAG }}.tgz"
+    - glob: '{{ if isEnvSet "RELEASE_ARCHIVE" }}{{ .Env.RELEASE_ARCHIVE }}{{ end }}'
   replace_existing_artifacts: true
 
 gitlab_urls:
