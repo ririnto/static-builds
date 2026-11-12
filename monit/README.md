@@ -57,7 +57,7 @@ The source-backed commands below capture the same introspection surfaces, but do
 
 From the repository root, use the [GoReleaser configuration](../.goreleaser.yaml) to build and package the target selected by the current metadata, then run the capture commands on a compatible Linux host.
 The default build platform is `linux/amd64`.
-The GoReleaser before hook invokes Task to download the inputs and run Docker Buildx, including the Dockerfile verify stage.
+The GoReleaser before hook invokes Task to download the inputs and run rootless BuildKit, including the Dockerfile verify stage.
 These commands assume the default output directory and must be adjusted if `BUILD_OUTPUT_DEST` is overridden.
 
 ```bash

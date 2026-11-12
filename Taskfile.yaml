@@ -9,70 +9,62 @@ tasks:
       - "{{.TASK_EXE | shellQuote}} --list"
 
   build:
-    desc: Run the low-level Buildx backend (-- <target> [buildx args...])
+    desc: Run rootless BuildKit (-- <target> [buildctl args...])
     cmds:
       - |-
         set -e
+        if [ "$(id -u)" -eq 0 ]; then
+          echo "Error: BuildKit must run as a non-root user" >&2
+          exit 1
+        fi
         set -- {{range .CLI_ARGS_LIST}}{{. | shellQuote}} {{end}}
         go tool task download -- "${1:-}"
-        ROOT_DIR=$(pwd)
         TARGET="$1"
         shift
-        METADATA_ENV=$(go tool task manifest -- get-env "${TARGET}")
+        METADATA_ENV=$(go tool task manifest -- get-env "$TARGET")
+        CACHE_DIR="${CACHE_DIR:-.cache/$TARGET}"
+        BUILD_OUTPUT_DEST="${BUILD_OUTPUT_DEST:-dist/$TARGET}"
         case "${BUILDKIT_CACHE_BACKEND:-local}" in
           local)
-            CACHE_DIR="${CACHE_DIR:-${ROOT_DIR}/.cache/${TARGET}}"
-            mkdir -p "${CACHE_DIR}"
-            set -- "--cache-from=type=local,src=${CACHE_DIR}" "--cache-to=type=local,dest=${CACHE_DIR},mode=max" "$@"
+            mkdir -p "$CACHE_DIR"
+            set -- --import-cache "type=local,src=$CACHE_DIR" --export-cache "type=local,dest=$CACHE_DIR,mode=max" "$@"
             ;;
           gha)
-            set -- "--cache-from=type=gha,scope=${TARGET}" "--cache-to=type=gha,mode=max,scope=${TARGET}" "$@"
+            set -- --import-cache "type=gha,scope=$TARGET" --export-cache "type=gha,scope=$TARGET,mode=max" "$@"
             ;;
           *)
             echo "Error: Invalid BUILDKIT_CACHE_BACKEND '${BUILDKIT_CACHE_BACKEND}' (allowed: local, gha)" >&2
             exit 1
             ;;
         esac
-        BUILD_OUTPUT_DEST="${BUILD_OUTPUT_DEST:-${ROOT_DIR}/dist/${TARGET}}"
-        mkdir -p "${BUILD_OUTPUT_DEST}"
-        while IFS='=' read -r key value || [ -n "${key}" ]; do
+        case "${BUILDKIT_NETWORK:-default}" in
+          default) ;;
+          host | none)
+            set -- --opt "force-network-mode=$BUILDKIT_NETWORK" "$@"
+            ;;
+          *)
+            echo "Error: Invalid BUILDKIT_NETWORK '${BUILDKIT_NETWORK}' (allowed: default, host, none)" >&2
+            exit 1
+            ;;
+        esac
+        mkdir -p "$BUILD_OUTPUT_DEST"
+        while IFS='=' read -r key value || [ -n "$key" ]; do
           case "$key" in
             '' | \#* | *[!A-Z0-9_]*) ;;
             *)
               if [ -n "$value" ]; then
                 value=$(printf '%s' "$value" | tr -d '\r')
-                set -- "--build-arg=${key}=${value}" "$@"
+                set -- --opt "build-arg:$key=$value" "$@"
               fi
               ;;
           esac
         done <<EOF
         ${METADATA_ENV}
         EOF
-        cd "${ROOT_DIR}"
-        docker buildx build \
-          "--platform=${BUILDKIT_PLATFORM:-linux/amd64}" \
-          "--network=${BUILDKIT_NETWORK:-default}" \
-          "--output=type=local,dest=${BUILD_OUTPUT_DEST}" \
-          "$@" \
-          "--file=${ROOT_DIR}/${TARGET}/Dockerfile" \
-          "${ROOT_DIR}"
-
-  build-rootless:
-    desc: Run the low-level rootless BuildKit backend (-- <target> [buildctl args...])
-    cmds:
-      - |-
-        set -e
-        set -- {{range .CLI_ARGS_LIST}}{{. | shellQuote}} {{end}}
-        go tool task download -- "${1:-}"
-        TARGET="$1"
-        shift
-        METADATA_ENV=$(go tool task manifest -- get-env "$TARGET")
-        mkdir -p ".cache/$TARGET" "${BUILD_OUTPUT_DEST:-dist/$TARGET}"
-        while IFS='=' read -r key value; do
-          set -- --opt "build-arg:$key=$value" "$@"
-        done <<EOF
-        ${METADATA_ENV}
-        EOF
+        runtime=$(mktemp -d)
+        trap 'rm -rf "$runtime"' EXIT
+        export XDG_RUNTIME_DIR="$runtime"
+        export BUILDKITD_FLAGS="--root=${XDG_DATA_HOME:-$HOME/.local/share}/buildkit/$TARGET --oci-worker-snapshotter=native ${BUILDKITD_FLAGS:-}"
         go mod download github.com/moby/buildkit
         BUILDCTL="go tool buildctl" sh "$(go list -m -f '{{"{{.Dir}}"}}' github.com/moby/buildkit)/examples/buildctl-daemonless/buildctl-daemonless.sh" build \
           --frontend dockerfile.v0 \
@@ -80,9 +72,7 @@ tasks:
           --local dockerfile=. \
           --opt "filename=$TARGET/Dockerfile" \
           --opt "platform=${BUILDKIT_PLATFORM:-linux/amd64}" \
-          --output "type=local,dest=${BUILD_OUTPUT_DEST:-dist/$TARGET}" \
-          --import-cache "type=local,src=.cache/$TARGET" \
-          --export-cache "type=local,dest=.cache/$TARGET,mode=max" \
+          --output "type=local,dest=$BUILD_OUTPUT_DEST" \
           "$@"
 
   buildctl:
