@@ -71,6 +71,8 @@ The pnpm build script runs the same nonpublishing GoReleaser snapshot command.
 
 Each target owns its Dockerfile inputs, downloaded archives, mutable build caches, exported installation, release staging, and package directory.
 Dockerfile-specific ignore files admit only that target's source directory and complete download archives into its build context.
+The Buildx and rootless drivers both use the repository root as the context, so a target-local `.dockerignore` would not replace its `Dockerfile.dockerignore`.
+Docker uses the root `.dockerignore` only when no Dockerfile-specific ignore file applies.
 Neither nginx target reads the other's configuration, account files, examples, binaries, or packages.
 Both compile their own NGINX, njs, QuickJS-NG, and VTS sources using their own metadata entry.
 Common base images and the Go tools remain reusable infrastructure, not artifacts produced by another target.
@@ -96,6 +98,7 @@ Named volumes retain the Go tool module cache, Go tool compilation cache, and ta
 The service does not mount the Docker socket, publish ports, use host networking, or run in privileged mode.
 
 The image starts from `golang:alpine` and runs the upstream daemonless BuildKit script as a non-root user.
+The tooling image reuses architecture-specific APK download caches while refreshing repository indexes whenever its package installation step runs.
 Its native snapshotter avoids a FUSE device, and its default process sandbox remains enabled.
 Following the [BuildKit rootless Docker configuration](https://github.com/moby/buildkit/blob/v0.34.2/docs/rootless.md#docker), Compose relaxes seccomp and masked system paths inside this dedicated build container.
 Only run trusted build inputs in this container because these settings reduce its isolation.

@@ -4,18 +4,22 @@ services:
       context: .
       args:
         BUILDER_UID: ${BUILDER_UID:-1000}
-      dockerfile_inline: |
+      dockerfile_inline: |-
         FROM golang:alpine
+        ARG TARGETARCH
         ARG BUILDER_UID=1000
-        RUN apk add --no-cache ca-certificates git buildkit runc rootlesskit shadow-uidmap \
-            && adduser -D -u "$$BUILDER_UID" user \
-            && echo user:100000:65536 > /etc/subuid \
-            && echo user:100000:65536 > /etc/subgid \
-            && mkdir -p /run/user/$$BUILDER_UID /home/user/.local/tmp /home/user/.local/share/buildkit /home/user/.cache/go-build /home/user/go/pkg/mod \
-            && chown -R user:user /run/user/$$BUILDER_UID /home/user \
-            && chmod 700 /run/user/$$BUILDER_UID
-        ENV HOME=/home/user USER=user GOPATH=/home/user/go
-        ENV XDG_RUNTIME_DIR=/run/user/$$BUILDER_UID TMPDIR=/home/user/.local/tmp
+        RUN --mount=type=cache,id=static-builds-compose-apk-$$TARGETARCH,target=/var/cache/apk,sharing=locked apk --cache-dir=/var/cache/apk add --update-cache ca-certificates git buildkit runc rootlesskit shadow-uidmap
+        RUN adduser -D -u "$$BUILDER_UID" user
+        RUN echo user:100000:65536 > /etc/subuid
+        RUN echo user:100000:65536 > /etc/subgid
+        RUN mkdir -p /run/user/$$BUILDER_UID /home/user/.local/tmp /home/user/.local/share/buildkit /home/user/.cache/go-build /home/user/go/pkg/mod
+        RUN chown -R user:user /run/user/$$BUILDER_UID /home/user
+        RUN chmod 700 /run/user/$$BUILDER_UID
+        ENV HOME=/home/user
+        ENV USER=user
+        ENV GOPATH=/home/user/go
+        ENV XDG_RUNTIME_DIR=/run/user/$$BUILDER_UID
+        ENV TMPDIR=/home/user/.local/tmp
         USER user
         WORKDIR /workspace
     environment:
@@ -30,19 +34,17 @@ services:
       - seccomp=unconfined
       - systempaths=unconfined
     entrypoint:
-      [
-        go,
-        tool,
-        task,
-        goreleaser,
-        --,
-        release,
-        --clean,
-        --snapshot,
-        --verbose,
-        --timeout=6h,
-        "--skip=publish,validate"
-      ]
+      - go
+      - tool
+      - task
+      - goreleaser
+      - --
+      - release
+      - --clean
+      - --snapshot
+      - --verbose
+      - --timeout=6h
+      - "--skip=publish,validate"
     volumes:
       - type: bind
         source: .
