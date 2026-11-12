@@ -24,7 +24,6 @@ spec:
     TARGET: "$[[ inputs.target ]]"
     TAG: "$[[ inputs.package_name ]]"
     GORELEASER_CURRENT_TAG: "$[[ inputs.package_name ]]"
-    BUILD_BACKEND: rootless
     BUILDKITD_FLAGS: --oci-worker-no-process-sandbox
     RELEASE_TAG: "$[[ inputs.release_tag ]]"
     BUILD_OUTPUT_DEST: "$CI_PROJECT_DIR/dist/$[[ inputs.target ]]"

@@ -8,16 +8,8 @@ before:
       sh -eu -c '
         : "${TARGET:?build target is required}"
         : "${TAG:?release tag is required}"
-        case "${BUILD_BACKEND:-buildx}" in
-          buildx) backend=build ;;
-          rootless) backend=build-rootless ;;
-          *)
-            echo "Error: Invalid BUILD_BACKEND (allowed: buildx, rootless)" >&2
-            exit 1
-            ;;
-        esac
         files=$(go tool task manifest -- get-release-files "$TARGET")
-        go tool task "$backend" -- "$TARGET"
+        go tool task build -- "$TARGET"
         staging="dist/release-files/$TARGET"
         rm -rf "$staging"
         mkdir -p "$staging"

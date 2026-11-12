@@ -42,8 +42,8 @@ jobs:
           test "$(git rev-parse "refs/tags/$TAG^{commit}")" = "$(git rev-parse HEAD)"
           go tool task validate-release-tag -- "$TARGET" "$TAG"
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
+      - name: Set up rootless BuildKit
+        uses: ./.github/actions/setup-buildkit
 
       - name: Cache source downloads
         uses: actions/cache@v6
@@ -57,7 +57,6 @@ jobs:
 
       - name: Build and package with GoReleaser
         env:
-          BUILD_BACKEND: buildx
           BUILDKIT_CACHE_BACKEND: gha
           GORELEASER_CURRENT_TAG: ${{ inputs.tag }}
           TAG: ${{ inputs.tag }}

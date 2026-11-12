@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - ".github/workflows/validate-builds.yaml"
+      - ".github/actions/setup-buildkit/**"
+      - "compose.yaml"
       - ".goreleaser.yaml"
       - ".dockerignore"
       - "Taskfile.yaml"
@@ -74,7 +76,6 @@ jobs:
       TARGET: ${{ matrix.target }}
       TAG: ${{ matrix.target }}-pr-${{ github.event.pull_request.number }}-${{ matrix.arch }}
       GORELEASER_CURRENT_TAG: ${{ matrix.target }}-pr-${{ github.event.pull_request.number }}-${{ matrix.arch }}
-      BUILD_BACKEND: buildx
       BUILDKIT_PLATFORM: linux/${{ matrix.arch }}
       BUILDKIT_CACHE_BACKEND: local
       BUILD_OUTPUT_DEST: ${{ github.workspace }}/dist/${{ matrix.target }}
@@ -91,8 +92,8 @@ jobs:
           go-version-file: go.mod
           cache: false
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
+      - name: Set up rootless BuildKit
+        uses: ./.github/actions/setup-buildkit
 
       - name: Build and package without publishing
         run: go tool task goreleaser -- release --clean --snapshot --verbose --timeout=6h --skip=publish,validate

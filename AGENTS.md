@@ -44,14 +44,15 @@ Keep repository-owned Oxlint plugins and their focused tests under `plugins/`.
 - Manage Task, shfmt, Jsonnet, jsonnetfmt, golangci-lint, GoReleaser, and buildctl through the root Go module.
 - Invoke Go tests, formatting, and module maintenance through `go tool task test`, `go tool task fmt`, and `go tool task tidy`.
 - Use GoReleaser as the public local and CI entrypoint for build orchestration, release-file staging, archives, checksums, and publication.
-- Keep Taskfile build and build-rootless tasks as low-level Docker drivers invoked by GoReleaser OSS string before hooks.
-- Default to Buildx and select the rootless backend for Compose and configured native Linux or GitLab builds without Docker-in-Docker.
+- Keep the Taskfile build task as the rootless BuildKit driver invoked by GoReleaser OSS string before hooks.
+- Use rootless BuildKit for Compose, configured native Linux hosts, and both CI services without Docker-in-Docker.
 - Use compose.yaml for local container builds through the nonpublishing GoReleaser snapshot flow.
 - Require an explicit build target and never select a default target.
 - Use `golang:alpine` for GitLab Go jobs and invoke named Taskfile tasks with Go's default toolchain selection.
 - Follow EditorConfig with four-space indentation, except two spaces for shell and YAML files.
 - Keep custom Go commands only for source download and manifest queries.
-- Keep Buildx and daemonless BuildKit invocations in their named Taskfile tasks.
+- Keep daemonless BuildKit configuration and invocation in the named Taskfile build task.
+- Stage only the selected target source and complete target downloads in a private build context, and remove it after the daemon exits.
 - Include all maintained shell scripts in shfmt coverage.
 - Use pnpm catalogs with `^x.y.z` caret ranges for Node dependencies and required overrides.
 - Reference catalog entries from `package.json` and overrides instead of duplicating versions.

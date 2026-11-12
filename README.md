@@ -14,7 +14,7 @@ Build statically-linked binaries using Docker multi-stage builds for portable, m
 
 Local container builds require Docker Compose 2.17 or later and access to a running Linux Docker daemon.
 The Compose tooling image supplies Go and rootless BuildKit, so Go does not need to be installed on the host.
-Direct Buildx builds and contributor checks still require the Go version declared in `go.mod`.
+Direct rootless builds and contributor checks still require the Go version declared in `go.mod`.
 Local builds and both CI hosts use [.goreleaser.yaml](.goreleaser.yaml) to orchestrate building, metadata-selected staging, archiving, SHA-256 checksums, and release publication.
 See the [state machine inventory](.github/state-machines.md), [Taskfile](Taskfile.yaml), [download command](cmd/download/main.go), and [metadata command](cmd/metadata/main.go).
 
@@ -26,7 +26,9 @@ A clean build also requires builder network access to image registries and each 
 For example, the [nginx Dockerfile](nginx/Dockerfile) installs Alpine build packages.
 The [CoreDNS Dockerfile](coredns/Dockerfile) also compiles Go code, which can require access to Go module sources.
 
-Confirm that plugin with `docker buildx version` and inspect the active builder with `docker buildx inspect --bootstrap`.
+Direct builds require a configured native Linux host with `buildkitd`, `rootlesskit`, `runc`, subordinate UID/GID mappings, and permission to create unprivileged user namespaces.
+Run them as a non-root user; macOS and Windows hosts use Compose.
+GitHub installs the module-selected official BuildKit daemon and distribution-packaged `/usr/bin/rootlesskit`, `uidmap`, and `runc` without changing runner security settings.
 The selected worker must support local filesystem export, cache import/export, and execution of `BUILDKIT_PLATFORM`, which defaults to `linux/amd64`.
 Use a native worker or separately configured emulation when the worker architecture differs from the selected platform.
 The Taskfile writes artifacts to `dist/<target>/` and imports and exports local cache in `.cache/<target>/` by default.
@@ -70,9 +72,10 @@ The pnpm build script runs the same nonpublishing GoReleaser snapshot command.
 ### Independent targets
 
 Each target owns its Dockerfile inputs, downloaded archives, mutable build caches, exported installation, release staging, and package directory.
-Dockerfile-specific ignore files admit only that target's source directory and complete download archives into its build context.
-The Buildx and rootless drivers both use the repository root as the context, so a target-local `.dockerignore` would not replace its `Dockerfile.dockerignore`.
-Docker uses the root `.dockerignore` only when no Dockerfile-specific ignore file applies.
+The build task creates a private context containing only that target's source directory and nonempty completed archive files from its download directory.
+Lock files and temporary downloads are excluded, and copying preserves source modes and symbolic links without following them outside the selected inputs.
+The Dockerfile channel is limited to the same staged target directory.
+The temporary context is removed after the daemon exits, and the root `.dockerignore` remains for the Compose tooling-image build.
 Neither nginx target reads the other's configuration, account files, examples, binaries, or packages.
 Both compile their own NGINX, njs, QuickJS-NG, and VTS sources using their own metadata entry.
 Common base images and the Go tools remain reusable infrastructure, not artifacts produced by another target.
@@ -89,7 +92,7 @@ TARGET=dnsmasq docker compose run --rm build
 ```
 
 Replace `dnsmasq` with the required target.
-The service defaults to a nonpublishing GoReleaser snapshot with `BUILD_BACKEND=rootless` and `TAG=local`.
+The service defaults to a nonpublishing GoReleaser snapshot with `TAG=local`.
 Set `TAG=dnsmasq-local` alongside `TARGET` to name the archive `dist/release/dnsmasq/dnsmasq-local.tar.gz` and checksum `dist/release/dnsmasq/dnsmasq-local_checksums.txt`.
 No target is selected when it is omitted.
 The output remains under `dist/<target>/`, and source downloads and exported build cache remain under `.cache/downloads/<target>/` and `.cache/`.
@@ -125,7 +128,6 @@ GoReleaser and its low-level build drivers accept inherited environment values.
 | --- | --- | --- |
 | `TARGET` | None | Require an explicit metadata target. |
 | `TAG` | None; `local` in Compose | Name the archive and checksum file. |
-| `BUILD_BACKEND` | `buildx`; `rootless` in Compose and GitLab | Select the low-level Docker build driver. |
 | `BUILDKIT_PLATFORM` | `linux/amd64` | Select a target platform supported by the builder, such as `linux/arm64`. |
 | `BUILDKIT_NETWORK` | `default` | Select `default`, `host`, or `none` for RUN-step networking. |
 | `BUILDKIT_CACHE_BACKEND` | `local` | Select `local` or `gha` for cache import and export. |
@@ -137,21 +139,24 @@ Build invocation examples:
 - `TARGET=nginx TAG=nginx-local go tool task goreleaser -- release --clean --snapshot --verbose --timeout=6h --skip=publish,validate`
 - `BUILDKIT_PLATFORM=linux/arm64 TARGET=nginx TAG=nginx-local pnpm run build`
 - `BUILD_OUTPUT_DEST=dist/custom/nginx CACHE_DIR=.cache/custom/nginx TARGET=nginx TAG=nginx-local pnpm run build`
-- `BUILD_BACKEND=rootless TARGET=dnsmasq TAG=dnsmasq-local pnpm run build` on a configured native Linux host.
+- `TARGET=dnsmasq TAG=dnsmasq-local pnpm run build` on a configured native Linux host.
 
 ### Network and platform behavior
 
-Direct local builds and GitHub use the configured Docker Buildx builder.
-Compose and GitLab select `BUILD_BACKEND=rootless`, so the GoReleaser before hook invokes `go tool task build-rootless` with an ephemeral rootless BuildKit daemon.
+Every build uses the GoReleaser before hook and `go tool task build` to start an ephemeral rootless BuildKit daemon.
+Taskfile selects the native snapshotter and a persistent per-target state directory under `${XDG_DATA_HOME:-$HOME/.local/share}/buildkit/`.
+Each invocation creates a private temporary runtime directory for the daemon socket and removes it after the daemon exits.
+Existing `BUILDKITD_FLAGS` remain available for explicitly configured host requirements; GitLab retains its documented process-sandbox exception.
 `BUILDKIT_NETWORK=none` disables RUN-step networking.
 `BUILDKIT_NETWORK=host` requests host networking from the selected builder.
+The host request requires a daemon explicitly configured to allow `network.host` and the build client flag `--allow network.host`; the task does not grant either entitlement automatically.
 The build does not automatically configure a Linux VM or cross-platform emulation.
 A build always requires an explicit `TARGET` and fails without one.
 The nginx commands in this document are examples, not defaults.
-For low-level troubleshooting only, bypass GoReleaser with `go tool task build -- apache-exporter --builder my-builder --progress=plain` or `go tool task build-rootless -- dnsmasq --progress=plain`.
-These driver commands accept extra backend flags but do not stage release files, archive them, generate checksums, or publish releases.
+For low-level troubleshooting only, bypass GoReleaser with `go tool task build -- dnsmasq --progress=plain`.
+This driver command accepts extra BuildKit client flags but does not stage release files, archive them, generate checksums, or publish releases.
 Tool tasks also pass arguments through: `go tool task jsonnetfmt -- -i` formats the built-in pipeline file.
-`go tool task buildctl -- --help` exposes the Go-managed BuildKit client while builds continue to use Docker Buildx.
+`go tool task buildctl -- --help` exposes the same Go-managed BuildKit client used by the build task.
 `go tool task goreleaser -- <arguments>` runs the shared build and release configuration in [.goreleaser.yaml](.goreleaser.yaml).
 
 ### Build and package without publishing
@@ -243,7 +248,7 @@ Follow the [contribution guide](.github/CONTRIBUTING.md) for documentation style
 
 `metadata.json` defines source versions and build image versions for every target.
 Each target's `env` declares `"UBI10_MINIMAL_VERSION": "10.2"`.
-The Taskfile `build` task reads it with `go tool task manifest -- get-env <target>` and passes it to Docker Buildx as `--build-arg=UBI10_MINIMAL_VERSION=10.2`.
+The Taskfile `build` task reads it with `go tool task manifest -- get-env <target>` and passes it to BuildKit as `--opt build-arg:UBI10_MINIMAL_VERSION=10.2`.
 Each Dockerfile declares `ARG UBI10_MINIMAL_VERSION` and consumes the value in `FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify`.
 The registry-implicit `redhat/ubi10-minimal` reference resolves through Docker Hub.
 Use the latest supported LTS release when upstream provides an LTS series.
@@ -475,7 +480,7 @@ Invalid examples:
 ## How It Works
 
 1. GoReleaser runs its before hook, which selects the Task build driver and runs `go tool task download -- <target>` to resolve the target's download resources from `metadata.json` before starting the build.
-2. The selected Task invokes Docker Buildx directly or the upstream daemonless rootless BuildKit script to execute the multi-stage Dockerfile.
+2. The build task invokes the upstream daemonless rootless BuildKit script to execute the multi-stage Dockerfile.
 3. Built artifacts go to `dist/<target>/` for both local builds and CI.
 4. Each target verifies built artifacts in its Dockerfile before exporting its `scratch` stage.
 5. The GoReleaser hook stages only metadata-selected release files, then GoReleaser creates the archive and SHA-256 checksum.
@@ -527,7 +532,7 @@ Selected release contents:
 - Tag pipelines resolve one target from metadata and validate the official version and numeric revision before generating the child pipeline.
 - The tag child pipeline runs automatically and publishes only after its package job succeeds.
 - The parent trigger mirrors child pipeline status so failed builds or publication fail the parent pipeline.
-- The package component uses `golang:alpine` and invokes GoReleaser with `BUILD_BACKEND=rootless`.
+- The package component uses `golang:alpine` and invokes the shared GoReleaser rootless build flow.
 - When `curl` is absent, `go tool task download -- <target>` uses the image's BusyBox `wget` and `timeout` fallback.
 - Contributor validation and pipeline generation use `golang:alpine` with Go's default `GOTOOLCHAIN=auto` behavior honoring the `go.mod` directive.
 - The prepare job exports the rendered child pipeline, and package jobs invoke named Taskfile tasks without a separate toolchain download.
