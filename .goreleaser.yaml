@@ -6,7 +6,6 @@ before:
   hooks:
     - |-
       sh -eu -c '
-        : "${TAG:?release tag is required}"
         files=$(go tool task manifest -- get-release-files "$TARGET")
         go tool task build -- "$TARGET"
         staging="dist/release-files/$TARGET"
