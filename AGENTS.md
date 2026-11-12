@@ -52,6 +52,7 @@ Keep repository-owned Oxlint plugins and their focused tests under `plugins/`.
 - Follow EditorConfig with four-space indentation, except two spaces for shell and YAML files.
 - Keep custom Go commands only for source download and manifest queries.
 - Keep daemonless BuildKit configuration and invocation in the named Taskfile build task.
+- Stage only the selected target source and complete target downloads in a private build context, and remove it after the daemon exits.
 - Include all maintained shell scripts in shfmt coverage.
 - Use pnpm catalogs with `^x.y.z` caret ranges for Node dependencies and required overrides.
 - Reference catalog entries from `package.json` and overrides instead of duplicating versions.

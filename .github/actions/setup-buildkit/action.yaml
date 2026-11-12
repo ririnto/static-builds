@@ -5,25 +5,25 @@ runs:
   using: composite
   steps:
     - name: Install rootless BuildKit dependencies
-      shell: bash
+      shell: sh
       run: |-
-        packages=()
+        set --
         if [ ! -x /usr/bin/rootlesskit ]; then
-          packages+=(rootlesskit)
+          set -- "$@" rootlesskit
         fi
-        if ! command -v newuidmap >/dev/null || ! command -v newgidmap >/dev/null; then
-          packages+=(uidmap)
+        if ! command -v newuidmap || ! command -v newgidmap; then
+          set -- "$@" uidmap
         fi
-        if ! command -v runc >/dev/null; then
-          packages+=(runc)
+        if ! command -v runc; then
+          set -- "$@" runc
         fi
-        if [ "${#packages[@]}" -gt 0 ]; then
+        if [ "$#" -gt 0 ]; then
           sudo apt-get update
-          sudo apt-get install --yes --no-install-recommends "${packages[@]}"
+          sudo apt-get install --yes --no-install-recommends "$@"
         fi
 
     - name: Install the module-selected BuildKit daemon
-      shell: bash
+      shell: sh
       run: |-
         version=$(go list -m -f '{{.Version}}' github.com/moby/buildkit)
         directory="$RUNNER_TEMP/static-builds-buildkit"

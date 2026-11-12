@@ -72,9 +72,10 @@ The pnpm build script runs the same nonpublishing GoReleaser snapshot command.
 ### Independent targets
 
 Each target owns its Dockerfile inputs, downloaded archives, mutable build caches, exported installation, release staging, and package directory.
-Dockerfile-specific ignore files admit only that target's source directory and complete download archives into its build context.
-The rootless driver uses the repository root as the context, so a target-local `.dockerignore` would not replace its `Dockerfile.dockerignore`.
-Docker uses the root `.dockerignore` only when no Dockerfile-specific ignore file applies.
+The build task creates a private context containing only that target's source directory and nonempty completed archive files from its download directory.
+Lock files and temporary downloads are excluded, and copying preserves source modes and symbolic links without following them outside the selected inputs.
+The Dockerfile channel is limited to the same staged target directory.
+The temporary context is removed after the daemon exits, and the root `.dockerignore` remains for the Compose tooling-image build.
 Neither nginx target reads the other's configuration, account files, examples, binaries, or packages.
 Both compile their own NGINX, njs, QuickJS-NG, and VTS sources using their own metadata entry.
 Common base images and the Go tools remain reusable infrastructure, not artifacts produced by another target.
