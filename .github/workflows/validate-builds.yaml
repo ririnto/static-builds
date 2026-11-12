@@ -61,7 +61,7 @@ jobs:
             if $target != "vector" then
               {target: $target, arch: "arm64", runner: "ubuntu-26.04-arm"}
             else empty end]}' metadata.json)
-          printf 'builds=%s\n' "$builds" >>"$GITHUB_OUTPUT"
+          echo "builds=$builds" >>"$GITHUB_OUTPUT"
 
   build:
     name: Build ${{ matrix.target }} (${{ matrix.arch }})
@@ -104,7 +104,7 @@ jobs:
           export RELEASE_FILES
           (
             cd "dist/release"
-            printf '%s  %s\n' "$(cat "$TAG.tgz.sha256")" "$TAG.tgz" | sha256sum --check
+            echo "$(cat "$TAG.tgz.sha256")  $TAG.tgz" | sha256sum --check
           )
           python3 - <<'PY'
           import os
