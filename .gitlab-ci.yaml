@@ -9,7 +9,7 @@ stages:
   - prepare
   - package
 
-validate-contributor-checks:
+check:
   stage: checks
   image: golang:alpine
   cache:
