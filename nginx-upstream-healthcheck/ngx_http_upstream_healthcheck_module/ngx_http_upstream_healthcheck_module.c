@@ -748,14 +748,11 @@ ngx_http_upstream_healthcheck_create_main_conf(ngx_conf_t *cf)
 {
     ngx_http_upstream_healthcheck_main_conf_t  *conf;
     conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_upstream_healthcheck_main_conf_t));
-    if (conf != NULL
-        && ngx_array_init(&conf->upstreams, cf->pool, 4,
-                          sizeof(ngx_http_upstream_healthcheck_conf_t *))
-           != NGX_OK)
-    {
-        conf = NULL;
-    }
-    return conf;
+    return conf != NULL
+           && ngx_array_init(&conf->upstreams, cf->pool, 4,
+                             sizeof(ngx_http_upstream_healthcheck_conf_t *))
+              == NGX_OK
+           ? conf : NULL;
 }
 
 static void *
@@ -2449,14 +2446,11 @@ ngx_stream_upstream_healthcheck_create_main_conf(ngx_conf_t *cf)
     ngx_stream_upstream_healthcheck_main_conf_t  *conf;
     conf = ngx_pcalloc(cf->pool,
                        sizeof(ngx_stream_upstream_healthcheck_main_conf_t));
-    if (conf != NULL
-        && ngx_array_init(&conf->upstreams, cf->pool, 4,
-                          sizeof(ngx_stream_upstream_healthcheck_conf_t *))
-           != NGX_OK)
-    {
-        conf = NULL;
-    }
-    return conf;
+    return conf != NULL
+           && ngx_array_init(&conf->upstreams, cf->pool, 4,
+                             sizeof(ngx_stream_upstream_healthcheck_conf_t *))
+              == NGX_OK
+           ? conf : NULL;
 }
 
 static void *
