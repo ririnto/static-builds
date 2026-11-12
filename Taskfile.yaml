@@ -48,16 +48,8 @@ tasks:
             ;;
         esac
         mkdir -p "$BUILD_OUTPUT_DEST"
-        while IFS='=' read -r key value || [ -n "$key" ]; do
-          case "$key" in
-            '' | \#* | *[!A-Z0-9_]*) ;;
-            *)
-              if [ -n "$value" ]; then
-                value=$(printf '%s' "$value" | tr -d '\r')
-                set -- --opt "build-arg:$key=$value" "$@"
-              fi
-              ;;
-          esac
+        while IFS='=' read -r key value; do
+          set -- --opt "build-arg:$key=$value" "$@"
         done <<EOF
         ${METADATA_ENV}
         EOF
