@@ -93,7 +93,7 @@ TARGET=dnsmasq docker compose run --rm build
 
 Replace `dnsmasq` with the required target.
 The service defaults to a nonpublishing GoReleaser snapshot with `TAG=local`.
-Set `TAG=dnsmasq-local` alongside `TARGET` to name the archive `dist/release/dnsmasq/dnsmasq-local.tar.gz` and checksum `dist/release/dnsmasq/dnsmasq-local_checksums.txt`.
+Set `TAG=dnsmasq-local` alongside `TARGET` to name the archive `dist/release/dnsmasq/dnsmasq-local.tgz` and checksum `dist/release/dnsmasq/dnsmasq-local.tgz.sha256`.
 No target is selected when it is omitted.
 The output remains under `dist/<target>/`, and source downloads and exported build cache remain under `.cache/downloads/<target>/` and `.cache/`.
 The checkout is read-only inside the service except for the cache and distribution directories.
@@ -127,7 +127,7 @@ GoReleaser and its low-level build drivers accept inherited environment values.
 | Variable | Default | Values and purpose |
 | --- | --- | --- |
 | `TARGET` | None | Require an explicit metadata target. |
-| `TAG` | None; `local` in Compose | Name the archive and checksum file. |
+| `TAG` | None; `local` in Compose | Name the archive. |
 | `BUILDKIT_PLATFORM` | `linux/amd64` | Select a target platform supported by the builder, such as `linux/arm64`. |
 | `BUILDKIT_NETWORK` | `default` | Select `default`, `host`, or `none` for RUN-step networking. |
 | `BUILDKIT_CACHE_BACKEND` | `local` | Select `local` or `gha` for cache import and export. |
@@ -167,10 +167,11 @@ Build one target, stage only its metadata-selected release paths, and create its
 TARGET=dnsmasq TAG=dnsmasq-local go tool task goreleaser -- release --clean --snapshot --verbose --timeout=6h --skip=publish,validate
 ```
 
-GoReleaser writes `dist/release/<TARGET>/<TAG>.tar.gz` and `dist/release/<TARGET>/<TAG>_checksums.txt`.
+GoReleaser writes `dist/release/<TARGET>/<TAG>.tgz` and `dist/release/<TARGET>/<TAG>.tgz.sha256`.
 The command cleans only that target's GoReleaser output directory, preserving other targets' packages.
 Serialize builds of the same target because its output, staging, and package directories are shared between invocations.
-Generated SHA-256 checksums describe the distributed archive and do not enforce checksums on downloaded upstream sources.
+Each archive has a `.sha256` sidecar containing its SHA-256 checksum, not a cryptographic signature.
+These checksums describe the distributed archive and do not enforce checksums on downloaded upstream sources.
 Snapshot mode neither creates a tag nor publishes a release.
 Build-producing entrypoints enable verbose hook output and use a six-hour GoReleaser timeout.
 Use `--timeout` to choose a different limit, and remember that this cannot extend a CI runner or project timeout.
@@ -357,7 +358,7 @@ Each target must follow this structure:
 
 6. Extend the tag trigger filter in [.github/workflows/release-from-tag.yaml](.github/workflows/release-from-tag.yaml) with the target's `tag_prefix` followed by `-*`.
    The `resolve-target` job derives target selection from `metadata.json` through `go tool task manifest -- get-target-from-tag <tag>`.
-   The reusable release workflow validates the tag against the manifest-selected prefix and official version.
+   The tag workflow selects the target by its manifest-defined prefix; the reusable workflow verifies that the tag points at the checked-out commit.
    Keep that resolution job and its reusable release call unchanged.
    Release file selection and official versions also come from `metadata.json`.
 
@@ -403,10 +404,10 @@ Releases are triggered by Git tags following the pattern `<target>-<version>[-<p
 
 - Format: `{target}-{official_version}[-{prerelease}].{revision}`
 - Example: `nginx-1.28.2.18` (target: nginx, version: 1.28.2, revision: 18)
-- Validation: Release tags are validated against `metadata.json`
+- Target mapping: Release tag prefixes are resolved through `metadata.json`
 
 Release tag event filters remain static in `.github/workflows/release-from-tag.yaml` as required by GitHub.
-Target selection, tag-prefix exceptions, release-file selection, and tag-version validation use `metadata.json`.
+Target selection, tag-prefix exceptions, and release-file selection use `metadata.json`.
 
 ### Steps to Release
 
@@ -449,7 +450,7 @@ Target selection, tag-prefix exceptions, release-file selection, and tag-version
    - Runs GoReleaser to build the target, stage release files, archive them, and generate SHA-256 checksums.
    - Scans for vulnerabilities (Trivy).
    - Uploads artifacts to GitHub Actions.
-   - Publishes the existing `.tar.gz` archive and checksum with GoReleaser in a separate job.
+   - Publishes the existing `.tgz` archive and checksum with GoReleaser in a separate job.
 
 ### Release Tag Format
 
@@ -496,10 +497,10 @@ Compose and GitLab package builds use daemonless rootless BuildKit and retain lo
 - Each isolated job runs the GoReleaser snapshot flow, including Dockerfile verification, then checks the generated SHA-256 checksum and exact metadata-selected archive files, bytes, and modes before uploading an architecture-named package artifact.
 - Build validation uses read-only repository access and ephemeral local caches, without release credentials, shared release caches, tag creation, or publication.
 - Archive upload includes selected release files as a workflow artifact.
-- GoReleaser creates one `.tar.gz` and SHA-256 checksum per tag during the build job, with publication handled separately.
+- GoReleaser creates one `.tgz` and SHA-256 checksum per tag during the build job, with publication handled separately.
 - Tag push release uses unified workflow `.github/workflows/release-from-tag.yaml`.
 - Workflow automatically determines the target from tag pattern and calls reusable template `.github/workflows/template-release.yaml`.
-- Template builds the mapped target, scans for vulnerabilities, uploads the full `dist/<target>/` tree as an artifact, then uploads `${tag}.tar.gz` and `${tag}_checksums.txt`.
+- Template builds the mapped target, scans for vulnerabilities, uploads the full `dist/<target>/` tree as an artifact, then uploads `${tag}.tgz` and `${tag}.tgz.sha256`.
 
 Selected release contents:
 
@@ -524,14 +525,14 @@ Selected release contents:
 ## GitLab CI
 
 - Configure the GitLab project to use `.gitlab-ci.yaml` as its custom CI/CD configuration path after merge.
-- The GitLab check job runs Go-managed contributor checks before package generation and retains the manual parent trigger.
+- The GitLab check job runs Go-managed contributor checks before automatic package pipeline generation.
 - GitLab rejects merge-request pipelines at the workflow boundary and keeps existing branch and tag pipelines.
 - A branch push with an open merge request runs only its branch pipeline.
 - GitLab pipelines on `main` and `feature/*` generate a child configuration with `.gitlab/ci/package-pipeline.gitlab-ci.jsonnet`.
-- One manual parent trigger starts branch child pipelines, which build selected targets and retain their artifacts.
-- Tag pipelines resolve one target from metadata and validate the official version and numeric revision before generating the child pipeline.
+- The parent trigger starts branch child pipelines automatically. Each target build is an optional manual job, so you can run only the builds you need and retain their artifacts.
+- Tag pipelines resolve one target from metadata and verify the tagged commit before generating the child pipeline.
 - The tag child pipeline runs automatically and publishes only after its package job succeeds.
-- The parent trigger mirrors child pipeline status so failed builds or publication fail the parent pipeline.
+- The parent trigger mirrors child pipeline status. Branch builds are optional manual jobs, so their failures do not fail the parent; automatic tag build and publication failures do.
 - The package component uses `golang:alpine` and invokes the shared GoReleaser rootless build flow.
 - When `curl` is absent, `go tool task download -- <target>` uses the image's BusyBox `wget` and `timeout` fallback.
 - Contributor validation and pipeline generation use `golang:alpine` with Go's default `GOTOOLCHAIN=auto` behavior honoring the `go.mod` directive.
@@ -560,4 +561,4 @@ GitHub publishing uses GoReleaser with `GITHUB_TOKEN`.
 GoReleaser creates the release or replaces its existing archive asset.
 The configuration uses the tag as the release title and publishes releases with `draft: false` and `prerelease: "false"`.
 Reruns apply this configuration to existing releases.
-The workflow validates the repository tag format before using GoReleaser with `--skip=validate` for target-prefixed tags.
+The workflow resolves the target from the tag prefix and verifies the tagged commit before using GoReleaser with `--skip=validate` for target-prefixed tags.

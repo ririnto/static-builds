@@ -7,21 +7,10 @@ runs:
     - name: Install rootless BuildKit dependencies
       shell: sh
       run: |-
-        set --
-        if [ ! -x /usr/bin/rootlesskit ]; then
-          set -- "$@" rootlesskit
-        fi
-        if ! command -v newuidmap || ! command -v newgidmap; then
-          set -- "$@" uidmap
-        fi
-        if ! command -v runc; then
-          set -- "$@" runc
-        fi
-        if [ "$#" -gt 0 ]; then
+        if [ ! -x /usr/bin/rootlesskit ] || ! command -v newuidmap || ! command -v newgidmap || ! command -v runc; then
           sudo apt-get update
-          sudo apt-get install --yes --no-install-recommends "$@"
+          sudo apt-get install --yes --no-install-recommends rootlesskit uidmap runc
         fi
-
     - name: Install the module-selected BuildKit daemon
       shell: sh
       run: |-

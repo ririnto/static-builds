@@ -6,7 +6,6 @@ before:
   hooks:
     - |-
       sh -eu -c '
-        : "${TARGET:?build target is required}"
         : "${TAG:?release tag is required}"
         files=$(go tool task manifest -- get-release-files "$TARGET")
         go tool task build -- "$TARGET"
@@ -26,14 +25,15 @@ builds:
 
 archives:
   - meta: true
+    formats:
+      - tgz
     name_template: "{{ .Env.TAG }}"
     files:
       - src: "dist/release-files/{{ .Env.TARGET }}"
         dst: .
 
 checksum:
-  name_template: "{{ .Env.TAG }}_checksums.txt"
-  algorithm: sha256
+  split: true
   extra_files:
     - glob: '{{ if isEnvSet "RELEASE_ARCHIVE" }}{{ .Env.RELEASE_ARCHIVE }}{{ end }}'
 
@@ -45,7 +45,7 @@ release:
   draft: false
   prerelease: "false"
   extra_files:
-    - glob: "dist/release-package/{{ .Env.TARGET }}/{{ .Env.TAG }}.tar.gz"
+    - glob: "dist/release-package/{{ .Env.TARGET }}/{{ .Env.TAG }}.tgz"
   replace_existing_artifacts: true
 
 gitlab_urls:

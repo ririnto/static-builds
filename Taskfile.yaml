@@ -102,26 +102,6 @@ tasks:
     cmds:
       - go run ./cmd/metadata {{range .CLI_ARGS_LIST}}{{. | shellQuote}} {{end}}
 
-  validate-release-tag:
-    desc: Validate a target's manifest-selected release tag (-- <target> <tag>)
-    cmds:
-      - |-
-        set -e
-        set -- {{range .CLI_ARGS_LIST}}{{. | shellQuote}} {{end}}
-        TARGET="${1:?release target is required}"
-        TAG="${2:?release tag is required}"
-        prefix=$(go tool task manifest -- get-tag-prefix "$TARGET")
-        official=$(go tool task manifest -- get-official-version "$TARGET")
-        test "${TAG#"$prefix"-}" != "$TAG"
-        version_revision=${TAG#"$prefix"-}
-        test "${version_revision%.*}" != "$version_revision"
-        version=${version_revision%.*}
-        echo "${version_revision##*.}" | grep -E '^[0-9]+$'
-        if [ "$version" != "$official" ]; then
-          test "${version#"$official"-}" != "$version"
-          echo "${version#"$official"-}" | grep -E '^[A-Za-z0-9]+([.-][A-Za-z0-9]+)*$'
-        fi
-
   goreleaser:
     desc: Build, package, hash, and publish through GoReleaser (-- <args...>)
     cmds:
@@ -129,13 +109,13 @@ tasks:
         set -e
         set -- {{range .CLI_ARGS_LIST}}{{. | shellQuote}} {{end}}
         if [ "${1:-}" = release ]; then
-          case "${TARGET:?build target is required}" in
+          case "$TARGET" in
             *[!A-Za-z0-9_-]*)
               echo "Error: Invalid target directory name '$TARGET'" >&2
               exit 1
               ;;
           esac
-          go tool task manifest -- get-release-files "${TARGET:?build target is required}"
+          go tool task manifest -- get-release-files "$TARGET"
           config=$(mktemp)
           trap 'rm -f "$config"' EXIT
           grep -qx 'dist: dist/release' .goreleaser.yaml

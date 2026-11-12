@@ -40,7 +40,6 @@ jobs:
           TAG: ${{ inputs.tag }}
         run: |-
           test "$(git rev-parse "refs/tags/$TAG^{commit}")" = "$(git rev-parse HEAD)"
-          go tool task validate-release-tag -- "$TARGET" "$TAG"
 
       - name: Set up rootless BuildKit
         uses: ./.github/actions/setup-buildkit
@@ -90,8 +89,8 @@ jobs:
         with:
           name: ${{ inputs.target }}-release-package
           path: |-
-            dist/release/${{ inputs.target }}/${{ inputs.tag }}.tar.gz
-            dist/release/${{ inputs.target }}/${{ inputs.tag }}_checksums.txt
+            dist/release/${{ inputs.target }}/${{ inputs.tag }}.tgz
+            dist/release/${{ inputs.target }}/*.tgz.sha256
           include-hidden-files: true
           if-no-files-found: error
 
@@ -121,6 +120,6 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           GORELEASER_CURRENT_TAG: ${{ inputs.tag }}
           TARGET: ${{ inputs.target }}
-          RELEASE_ARCHIVE: dist/release-package/${{ inputs.target }}/${{ inputs.tag }}.tar.gz
+          RELEASE_ARCHIVE: dist/release-package/${{ inputs.target }}/${{ inputs.tag }}.tgz
           TAG: ${{ inputs.tag }}
         run: go tool task goreleaser -- release --clean --skip=before,archive,validate

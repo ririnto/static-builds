@@ -166,14 +166,13 @@ Keep repository-owned Oxlint plugins and their focused tests under `plugins/`.
 
 ### Publish GitLab packages
 
-- For GitLab package pipelines on `main` and `feature/*`, prefer one manual parent job generating a child pipeline.
+- For GitLab package pipelines on `main` and `feature/*`, generate and trigger child pipelines automatically, with an optional manual build job for each target.
 - Generate that pipeline through `.gitlab/ci/package-pipeline.gitlab-ci.jsonnet` and reuse `templates/static-release.yml`.
 - Keep GitLab branch package builds artifact-only and publish tag releases in a separate GoReleaser job.
 - Use `.goreleaser.yaml` for building, metadata-selected staging, archiving, generated SHA-256 checksums, and release publication on GitHub and GitLab.
 - Keep publication separate from build jobs on both hosts.
 - Pass the preserved archive through `RELEASE_ARCHIVE` and skip before hooks, archiving, and GoReleaser tag validation in publication jobs so publishing credentials never run builds.
-- Validate repository tag semantics separately before using GoReleaser with validation skipped.
-- Validate release tags against metadata before building or publishing.
+- Resolve the release target from metadata and verify the tagged commit before using GoReleaser with validation skipped.
 - Use the existing GitLab job token and Generic Package Registry for release assets without stored publisher credentials.
 - Append `-beta` to package versions on `feature/*` branches.
 

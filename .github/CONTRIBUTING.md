@@ -15,7 +15,9 @@ Use the repository's `.markdownlint-cli2.jsonc` when running Markdown lint.
 The [GitHub validation workflow](workflows/markdown-validation.yaml) runs Go-managed tooling checks on every pull request without building targets or publishing releases.
 The separate [build validation workflow](workflows/validate-builds.yaml) runs nonpublishing GoReleaser snapshots on build-relevant pull requests, using native amd64 for every metadata target and native arm64 for all except Vector's fixed x86_64 archive.
 Each matrix job has an isolated checkout and distribution directory, checks package SHA-256 and metadata-selected files, bytes, and modes, and uploads an architecture-named package without sharing release caches or credentials.
-GitLab invokes Go tests, golangci-lint, shell formatting, and Jsonnet checks through `go tool task` before its manual branch-package trigger or automatic tag-release pipeline.
+GitLab invokes Go tests, golangci-lint, shell formatting, and Jsonnet formatting through `go tool task` before generating its package pipeline.
+Branch child pipelines start automatically and offer an optional manual build for each target; tag releases run automatically.
+Local hooks and the GitHub tooling workflow check main, feature, and release-tag Jsonnet rendering.
 Its Go jobs use `golang:alpine` with Go's default `GOTOOLCHAIN=auto` behavior honoring the `go.mod` directive.
 The GitLab package component invokes GoReleaser, whose before hook calls the shared rootless Task driver without Docker-in-Docker.
 GitLab reuses signed APK downloads by Alpine release and architecture while refreshing repository indexes on every job.
@@ -94,7 +96,7 @@ Only the supported `customRules` spelling loads packages through the installed C
 The lowercase `customrules` spelling does not register rules through this entrypoint.
 All checks exclude ignored build outputs and source caches.
 These checks run without building targets or invoking release jobs.
-Validate tag handling with `go tool task validate-release-tag -- <target> <tag>` without creating a tag.
+Check target mapping with `go tool task manifest -- get-target-from-tag <tag>` without creating a tag.
 Render a tag child pipeline with the Jsonnet `--tla-str release_tag=<tag>` argument and one explicit target.
 Use `TARGET=<target> TAG=<target>-local go tool task goreleaser -- release --clean --snapshot --verbose --timeout=6h --skip=publish,validate` for nonpublishing build, staging, archive, and checksum checks.
 Run one target at a time because `--clean` removes the previous GoReleaser distribution output.
