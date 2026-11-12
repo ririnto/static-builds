@@ -52,7 +52,7 @@ Run `mkdir -p .cache dist`, `docker compose build build`, and `TARGET=<target> d
 The dedicated container relaxes seccomp and masked system paths as described in the [official rootless Docker guidance](https://github.com/moby/buildkit/blob/v0.34.2/docs/rootless.md#docker).
 It keeps BuildKit's process sandbox, uses the native snapshotter without a FUSE device, and never mounts the Docker socket.
 Direct local builds require a non-root user on a configured Linux host with BuildKit, RootlessKit, runc, subordinate UID/GID mappings, and unprivileged user namespaces.
-GitHub installs the official module-selected BuildKit daemon and distribution-packaged `/usr/bin/rootlesskit`, `uidmap`, and `runc` without changing host security controls.
+GitHub installs the official module-selected BuildKit daemon and distribution-packaged `rootlesskit`, `uidmap`, and `runc` without changing host security controls.
 Use Compose on macOS and Windows.
 GitLab builds use a non-root user with subordinate UID and GID ranges of `100000:65536`.
 The runner must permit unprivileged user namespaces and rootless mounts.

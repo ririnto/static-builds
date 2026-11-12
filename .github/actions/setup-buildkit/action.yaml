@@ -7,7 +7,7 @@ runs:
     - name: Install rootless BuildKit dependencies
       shell: sh
       run: |-
-        if [ ! -x /usr/bin/rootlesskit ] || ! command -v newuidmap || ! command -v newgidmap || ! command -v runc; then
+        if ! command -v rootlesskit || ! command -v newuidmap || ! command -v newgidmap || ! command -v runc; then
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends rootlesskit uidmap runc
         fi
@@ -22,7 +22,7 @@ runs:
           --output "$directory/buildkit.tar.gz"
         tar -xzf "$directory/buildkit.tar.gz" -C "$directory" bin/buildkitd
         echo "$directory/bin" >>"$GITHUB_PATH"
-        echo 'ROOTLESSKIT=/usr/bin/rootlesskit' >>"$GITHUB_ENV"
-        /usr/bin/rootlesskit --version
-        /usr/bin/rootlesskit true
+        echo "ROOTLESSKIT=$(command -v rootlesskit)" >>"$GITHUB_ENV"
+        rootlesskit --version
+        rootlesskit true
         "$directory/bin/buildkitd" --version
