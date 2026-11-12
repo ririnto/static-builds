@@ -4,6 +4,9 @@ workflow:
       when: never
     - when: always
 
+variables:
+  APK_CACHE_DIR: .cache/apk
+
 stages:
   - checks
   - prepare
@@ -15,12 +18,10 @@ check:
   cache:
     key: "apk-golang-alpine-${CI_RUNNER_ID}"
     paths:
-      - .cache/apk/**/*.apk
+      - "$APK_CACHE_DIR/*.apk"
   before_script:
-    - |-
-      cache_dir=".cache/apk/$(cat /etc/alpine-release)/$(apk --print-arch)"
-      mkdir -p "$cache_dir"
-      apk --cache-dir "$cache_dir" add --update-cache ca-certificates git
+    - mkdir -p "$APK_CACHE_DIR"
+    - apk --cache-dir "$APK_CACHE_DIR" add --update-cache ca-certificates git
   script:
     - go tool task test
     - go tool task golangci-lint -- run ./...
@@ -33,12 +34,10 @@ generate-package-pipeline:
   cache:
     key: "apk-golang-alpine-${CI_RUNNER_ID}"
     paths:
-      - .cache/apk/**/*.apk
+      - "$APK_CACHE_DIR/*.apk"
   before_script:
-    - |-
-      cache_dir=".cache/apk/$(cat /etc/alpine-release)/$(apk --print-arch)"
-      mkdir -p "$cache_dir"
-      apk --cache-dir "$cache_dir" add --update-cache ca-certificates git
+    - mkdir -p "$APK_CACHE_DIR"
+    - apk --cache-dir "$APK_CACHE_DIR" add --update-cache ca-certificates git
   script:
     - |-
       target=

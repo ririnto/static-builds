@@ -539,7 +539,7 @@ Selected release contents:
 - GitLab contributor validation invokes Go tests, golangci-lint, shell formatting, and Jsonnet checks through `go tool task`.
 - The Node, pnpm, and Java contributor checks run in local hooks only.
 - The package component installs fuse-overlayfs, runc, RootlessKit, and UID mapping helpers from Alpine packages.
-- GitLab caches signed APK files under `.cache/apk/<Alpine-release>/<architecture>/` with a runner-isolated cache key.
+- GitLab declares `APK_CACHE_DIR` in CI variables and caches signed APK files under `.cache/apk/` with a runner-isolated cache key.
 - Each job refreshes repository indexes while installing packages, and caches neither indexes nor installed system directories.
 - GitHub retains the existing Go module cache and BuildKit GHA layer cache; it does not install APK packages on its Ubuntu host or persist APK cache mounts.
 - It creates user 1000 and maps `user:100000:65536` in both `/etc/subuid` and `/etc/subgid`.

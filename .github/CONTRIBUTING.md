@@ -20,7 +20,7 @@ Branch child pipelines start automatically and offer an optional manual build fo
 Local hooks and the GitHub tooling workflow check main, feature, and release-tag Jsonnet rendering.
 Its Go jobs use `golang:alpine` with Go's default `GOTOOLCHAIN=auto` behavior honoring the `go.mod` directive.
 The GitLab package component invokes GoReleaser, whose before hook calls the shared rootless Task driver without Docker-in-Docker.
-GitLab reuses signed APK downloads by Alpine release and architecture while refreshing repository indexes on every job.
+GitLab reuses signed APK downloads in its declared `APK_CACHE_DIR`, isolated by runner, while refreshing repository indexes on every job.
 Node, pnpm, and Java checks run through local contributor hooks.
 It also supports manual runs.
 The GitHub job runs Go tests, golangci-lint, shell formatting, and Jsonnet checks.
