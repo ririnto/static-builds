@@ -748,14 +748,12 @@ ngx_http_upstream_healthcheck_create_main_conf(ngx_conf_t *cf)
 {
     ngx_http_upstream_healthcheck_main_conf_t  *conf;
     conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_upstream_healthcheck_main_conf_t));
-    if (conf == NULL) {
-        return NULL;
-    }
-    if (ngx_array_init(&conf->upstreams, cf->pool, 4,
-                       sizeof(ngx_http_upstream_healthcheck_conf_t *))
-        != NGX_OK)
+    if (conf != NULL
+        && ngx_array_init(&conf->upstreams, cf->pool, 4,
+                          sizeof(ngx_http_upstream_healthcheck_conf_t *))
+           != NGX_OK)
     {
-        return NULL;
+        conf = NULL;
     }
     return conf;
 }
@@ -765,17 +763,16 @@ ngx_http_upstream_healthcheck_create_srv_conf(ngx_conf_t *cf)
 {
     ngx_http_upstream_healthcheck_conf_t  *conf;
     conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_upstream_healthcheck_conf_t));
-    if (conf == NULL) {
-        return NULL;
+    if (conf != NULL) {
+        conf->interval = 5000;
+        conf->timeout = 1000;
+        conf->shm_size = 1024 * 1024;
+        conf->fall = 3;
+        conf->rise = 2;
+        conf->concurrency = 16;
+        conf->type = NGX_HTTP_UPSTREAM_HEALTHCHECK_HTTP;
+        ngx_str_set(&conf->uri, "/");
     }
-    conf->interval = 5000;
-    conf->timeout = 1000;
-    conf->shm_size = 1024 * 1024;
-    conf->fall = 3;
-    conf->rise = 2;
-    conf->concurrency = 16;
-    conf->type = NGX_HTTP_UPSTREAM_HEALTHCHECK_HTTP;
-    ngx_str_set(&conf->uri, "/");
     return conf;
 }
 
@@ -1683,31 +1680,30 @@ ngx_http_upstream_healthcheck_add_peer_locked(
     state = conf->state;
     peer_state = ngx_slab_calloc_locked(state->shpool,
                                         sizeof(ngx_http_upstream_healthcheck_peer_t));
-    if (peer_state == NULL) {
-        return NULL;
-    }
-    peer_state->group = group;
-    peer_state->peer = peer;
-    peer_state->id = ++state->next_peer_id;
-    if (peer_state->id == 0) {
+    if (peer_state != NULL) {
+        peer_state->group = group;
+        peer_state->peer = peer;
         peer_state->id = ++state->next_peer_id;
-    }
-    peer_state->backup = backup;
-    peer_state->admin_down = ngx_http_upstream_healthcheck_admin_down(
-                                 conf, peer, backup);
-    peer_state->last_result = (ngx_uint_t) -1;
-    peer_state->last_classification = NGX_UPSTREAM_HEALTHCHECK_RESULT_UNKNOWN;
-    peer_state->last_change = ngx_time();
-    ngx_http_upstream_rr_peer_ref(group, peer);
-    if (state->tail == NULL) {
-        state->peers = peer_state;
-    } else {
-        state->tail->next = peer_state;
-    }
-    state->tail = peer_state;
-    state->peer_count++;
-    if (!peer_state->admin_down) {
-        ngx_http_upstream_healthcheck_set_down(group, peer);
+        if (peer_state->id == 0) {
+            peer_state->id = ++state->next_peer_id;
+        }
+        peer_state->backup = backup;
+        peer_state->admin_down = ngx_http_upstream_healthcheck_admin_down(
+                                     conf, peer, backup);
+        peer_state->last_result = (ngx_uint_t) -1;
+        peer_state->last_classification = NGX_UPSTREAM_HEALTHCHECK_RESULT_UNKNOWN;
+        peer_state->last_change = ngx_time();
+        ngx_http_upstream_rr_peer_ref(group, peer);
+        if (state->tail == NULL) {
+            state->peers = peer_state;
+        } else {
+            state->tail->next = peer_state;
+        }
+        state->tail = peer_state;
+        state->peer_count++;
+        if (!peer_state->admin_down) {
+            ngx_http_upstream_healthcheck_set_down(group, peer);
+        }
     }
     return peer_state;
 }
@@ -2453,14 +2449,12 @@ ngx_stream_upstream_healthcheck_create_main_conf(ngx_conf_t *cf)
     ngx_stream_upstream_healthcheck_main_conf_t  *conf;
     conf = ngx_pcalloc(cf->pool,
                        sizeof(ngx_stream_upstream_healthcheck_main_conf_t));
-    if (conf == NULL) {
-        return NULL;
-    }
-    if (ngx_array_init(&conf->upstreams, cf->pool, 4,
-                       sizeof(ngx_stream_upstream_healthcheck_conf_t *))
-        != NGX_OK)
+    if (conf != NULL
+        && ngx_array_init(&conf->upstreams, cf->pool, 4,
+                          sizeof(ngx_stream_upstream_healthcheck_conf_t *))
+           != NGX_OK)
     {
-        return NULL;
+        conf = NULL;
     }
     return conf;
 }
@@ -2470,17 +2464,16 @@ ngx_stream_upstream_healthcheck_create_srv_conf(ngx_conf_t *cf)
 {
     ngx_stream_upstream_healthcheck_conf_t  *conf;
     conf = ngx_pcalloc(cf->pool, sizeof(ngx_stream_upstream_healthcheck_conf_t));
-    if (conf == NULL) {
-        return NULL;
+    if (conf != NULL) {
+        conf->interval = 5000;
+        conf->timeout = 1000;
+        conf->shm_size = 1024 * 1024;
+        conf->max_response = 4096;
+        conf->fall = 3;
+        conf->rise = 2;
+        conf->concurrency = 16;
+        conf->type = NGX_STREAM_UPSTREAM_HEALTHCHECK_TCP;
     }
-    conf->interval = 5000;
-    conf->timeout = 1000;
-    conf->shm_size = 1024 * 1024;
-    conf->max_response = 4096;
-    conf->fall = 3;
-    conf->rise = 2;
-    conf->concurrency = 16;
-    conf->type = NGX_STREAM_UPSTREAM_HEALTHCHECK_TCP;
     return conf;
 }
 
@@ -3504,30 +3497,29 @@ ngx_stream_upstream_healthcheck_add_peer_locked(
     state = conf->state;
     peer_state = ngx_slab_calloc_locked(state->shpool,
                                         sizeof(ngx_stream_upstream_healthcheck_peer_t));
-    if (peer_state == NULL) {
-        return NULL;
-    }
-    peer_state->group = group;
-    peer_state->peer = peer;
-    peer_state->id = ++state->next_peer_id;
-    if (peer_state->id == 0) {
+    if (peer_state != NULL) {
+        peer_state->group = group;
+        peer_state->peer = peer;
         peer_state->id = ++state->next_peer_id;
-    }
-    peer_state->backup = backup;
-    peer_state->admin_down = ngx_stream_upstream_healthcheck_admin_down(
-                                 conf, peer, backup);
-    peer_state->last_classification = NGX_UPSTREAM_HEALTHCHECK_RESULT_UNKNOWN;
-    peer_state->last_change = ngx_time();
-    ngx_stream_upstream_rr_peer_ref(group, peer);
-    if (state->tail == NULL) {
-        state->peers = peer_state;
-    } else {
-        state->tail->next = peer_state;
-    }
-    state->tail = peer_state;
-    state->peer_count++;
-    if (!peer_state->admin_down) {
-        ngx_stream_upstream_healthcheck_set_down(group, peer);
+        if (peer_state->id == 0) {
+            peer_state->id = ++state->next_peer_id;
+        }
+        peer_state->backup = backup;
+        peer_state->admin_down = ngx_stream_upstream_healthcheck_admin_down(
+                                     conf, peer, backup);
+        peer_state->last_classification = NGX_UPSTREAM_HEALTHCHECK_RESULT_UNKNOWN;
+        peer_state->last_change = ngx_time();
+        ngx_stream_upstream_rr_peer_ref(group, peer);
+        if (state->tail == NULL) {
+            state->peers = peer_state;
+        } else {
+            state->tail->next = peer_state;
+        }
+        state->tail = peer_state;
+        state->peer_count++;
+        if (!peer_state->admin_down) {
+            ngx_stream_upstream_healthcheck_set_down(group, peer);
+        }
     }
     return peer_state;
 }
