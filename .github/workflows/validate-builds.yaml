@@ -103,7 +103,7 @@ jobs:
           RELEASE_FILES=$(go tool task manifest -- get-release-files "$TARGET")
           export RELEASE_FILES
           (
-            cd "dist/release/$TARGET"
+            cd "dist/release"
             printf '%s  %s\n' "$(cat "$TAG.tgz.sha256")" "$TAG.tgz" | sha256sum --check
           )
           python3 - <<'PY'
@@ -114,7 +114,7 @@ jobs:
 
           expected = set(os.environ["RELEASE_FILES"].splitlines())
           output = Path(os.environ["BUILD_OUTPUT_DEST"])
-          release = Path("dist/release") / os.environ["TARGET"]
+          release = Path("dist/release")
           package = release / f"{os.environ['TAG']}.tgz"
           report = [f"Verified {os.environ['TARGET']} on {os.environ['BUILDKIT_PLATFORM']}"]
           with tarfile.open(package, "r:gz") as archive:
@@ -142,8 +142,8 @@ jobs:
         with:
           name: validation-${{ matrix.target }}-${{ matrix.arch }}
           path: |-
-            dist/release/${{ env.TARGET }}/${{ env.TAG }}.tgz
-            dist/release/${{ env.TARGET }}/*.tgz.sha256
-            dist/release/${{ env.TARGET }}/package-verification.txt
+            dist/release/${{ env.TAG }}.tgz
+            dist/release/*.tgz.sha256
+            dist/release/package-verification.txt
           if-no-files-found: error
           retention-days: 7

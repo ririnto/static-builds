@@ -89,8 +89,8 @@ jobs:
         with:
           name: ${{ inputs.target }}-release-package
           path: |-
-            dist/release/${{ inputs.target }}/${{ inputs.tag }}.tgz
-            dist/release/${{ inputs.target }}/*.tgz.sha256
+            dist/release/${{ inputs.tag }}.tgz
+            dist/release/*.tgz.sha256
           include-hidden-files: true
           if-no-files-found: error
 

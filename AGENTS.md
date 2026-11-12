@@ -140,7 +140,7 @@ Keep repository-owned Oxlint plugins and their focused tests under `plugins/`.
 - Write local and CI build artifacts under `dist/<target>/...`.
 - Stage metadata-selected release paths under `dist/release-files/<target>/` outside the GoReleaser distribution directory.
 - Clear target staging only after validation and a successful build.
-- Write GoReleaser archives and SHA-256 checksum files under `dist/release/<target>/` and serialize builds of the same target.
+- Write GoReleaser archives and SHA-256 sidecars under `dist/release/`. Serialize releases per checkout and preserve needed packages elsewhere before `--clean`.
 - Use `.github/workflows/release-from-tag.yaml` as the only GitHub tag-triggered release entrypoint.
 - Route GitLab release tags through the parent pipeline and the shared static-release component.
 - Delegate build and release logic to `.github/workflows/template-release.yaml`.

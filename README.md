@@ -66,7 +66,8 @@ TARGET=nginx TAG=nginx-local pnpm run build
 
 Build artifacts are written to `dist/<target>/` by default for both local and CI builds.
 You can override this with `BUILD_OUTPUT_DEST`.
-Archives and checksum files are written separately under `dist/release/<target>/`.
+Archives and checksum files are written under `dist/release/`.
+Run one release at a time per checkout. `--clean` replaces the prior contents of that directory, so copy any packages you want to keep elsewhere first.
 The pnpm build script runs the same nonpublishing GoReleaser snapshot command.
 
 ### Independent targets
@@ -93,7 +94,7 @@ TARGET=dnsmasq docker compose run --rm build
 
 Replace `dnsmasq` with the required target.
 The service defaults to a nonpublishing GoReleaser snapshot with `TAG=local`.
-Set `TAG=dnsmasq-local` alongside `TARGET` to name the archive `dist/release/dnsmasq/dnsmasq-local.tgz` and checksum `dist/release/dnsmasq/dnsmasq-local.tgz.sha256`.
+Set `TAG=dnsmasq-local` alongside `TARGET` to name the archive `dist/release/dnsmasq-local.tgz` and checksum `dist/release/dnsmasq-local.tgz.sha256`.
 No target is selected when it is omitted.
 The output remains under `dist/<target>/`, and source downloads and exported build cache remain under `.cache/downloads/<target>/` and `.cache/`.
 The checkout is read-only inside the service except for the cache and distribution directories.
@@ -167,7 +168,7 @@ Build one target, stage only its metadata-selected release paths, and create its
 TARGET=dnsmasq TAG=dnsmasq-local go tool task goreleaser -- release --clean --snapshot --verbose --timeout=6h --skip=publish,validate
 ```
 
-GoReleaser writes `dist/release/<TARGET>/<TAG>.tgz` and `dist/release/<TARGET>/<TAG>.tgz.sha256`.
+GoReleaser writes `dist/release/<TAG>.tgz` and `dist/release/<TAG>.tgz.sha256`.
 The command cleans only that target's GoReleaser output directory, preserving other targets' packages.
 Serialize builds of the same target because its output, staging, and package directories are shared between invocations.
 Each archive has a `.sha256` sidecar containing its SHA-256 checksum, not a cryptographic signature.
@@ -180,15 +181,12 @@ Verbose Git diagnostics can include credentialed remote URLs, so do not save or 
 
 GoReleaser OSS supports [build orchestration through before hooks](https://goreleaser.com/customization/general/hooks/), [archive checksums](https://goreleaser.com/customization/package/checksum/), and [GitHub or GitLab releases](https://goreleaser.com/customization/publish/scm/).
 The configuration's string before hook validates the target and backend, invokes the selected Task driver, and stages the manifest-selected release paths after a successful build.
-Task owns the low-level Docker invocation, while target Dockerfiles remain authoritative for compilation and artifact verification.
+Task owns the low-level BuildKit invocation, while target Dockerfiles remain authoritative for compilation and artifact verification.
 Staging uses `dist/release-files/<TARGET>/` outside GoReleaser's distribution directory because before hooks run before distribution initialization.
 The hook clears that target's staging directory only after validation and a successful build.
 GoReleaser then archives the staged files and generates their archive checksum.
 Its mixed-language targets do not use GoReleaser's native Go builder or the Pro-only prebuilt builder.
-The pinned GoReleaser OSS version does not template its distribution directory.
-The Task entrypoint validates the target, renders only the distribution path into a temporary copy of the shared configuration, and removes that copy on exit.
-This also runs before publication with hooks skipped, so missing or unknown targets cannot clean another target's distribution directory.
-Use the named Task entrypoint rather than invoking GoReleaser release directly against the shared configuration.
+The Task entrypoint forwards arguments directly to GoReleaser.
 
 Both hosts invoke GoReleaser once in the build job instead of separate build and package commands.
 Their separate publication jobs receive the built archive, set `RELEASE_ARCHIVE` to its preserved copy, and run GoReleaser with `--skip=before,archive,validate` to recompute the checksum and publish.

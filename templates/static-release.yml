@@ -43,8 +43,8 @@ spec:
   artifacts:
     paths:
       - "dist/$[[ inputs.target ]]/"
-      - "dist/release/$[[ inputs.target ]]/$[[ inputs.package_name ]].tgz"
-      - "dist/release/$[[ inputs.target ]]/*.tgz.sha256"
+      - "dist/release/$[[ inputs.package_name ]].tgz"
+      - "dist/release/*.tgz.sha256"
     when: always
 
 "gitlab-static-release-$[[ inputs.target ]]":
@@ -71,5 +71,5 @@ spec:
   script:
     - test "$(git rev-parse "refs/tags/$TAG^{commit}")" = "$(git rev-parse HEAD)"
     - mkdir -p "dist/release-package/$TARGET"
-    - cp "dist/release/$TARGET/$TAG.tgz" "$RELEASE_ARCHIVE"
+    - cp "dist/release/$TAG.tgz" "$RELEASE_ARCHIVE"
     - GITLAB_TOKEN="$CI_JOB_TOKEN" go tool task goreleaser -- release --clean --skip=before,archive,validate
