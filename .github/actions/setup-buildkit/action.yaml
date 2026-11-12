@@ -29,7 +29,7 @@ runs:
         directory="$RUNNER_TEMP/static-builds-buildkit"
         mkdir -p "$directory"
         curl --fail --location --retry 3 \
-          "https://github.com/moby/buildkit/releases/download/$version/buildkit.$version.linux-$(go env GOARCH).tar.gz" \
+          "https://github.com/moby/buildkit/releases/download/$version/buildkit-$version.linux-$(go env GOARCH).tar.gz" \
           --output "$directory/buildkit.tar.gz"
         tar -xzf "$directory/buildkit.tar.gz" -C "$directory" bin/buildkitd
         echo "$directory/bin" >>"$GITHUB_PATH"
