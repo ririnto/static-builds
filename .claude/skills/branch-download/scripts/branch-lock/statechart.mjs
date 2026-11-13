@@ -1,3 +1,4 @@
+/** @type {Record<string, string>} */
 export const actions = {
   Acquire: "Parent acquires the lock",
   Close: "Parent closes its descriptor",
