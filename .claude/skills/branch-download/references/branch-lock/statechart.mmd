@@ -1,0 +1,18 @@
+stateDiagram-v2
+  s0: Parent and transport hold the lock
+  s1: Parent holds the lock
+  s2: Parent stopped, no descriptor remains
+  s3: Parent stopped, transport holds the lock
+  s4: Parent waits for the lock
+  s5: Transport stopped, parent holds the lock
+  [*] --> s4
+  s0 --> s3: Parent exits
+  s0 --> s5: Transport closes its descriptor
+  s1 --> s0: Transport inherits the descriptor
+  s1 --> s2: Parent closes its descriptor
+  s1 --> s2: Parent exits
+  s3 --> s2: Transport closes its descriptor
+  s4 --> s1: Parent acquires the lock
+  s4 --> s2: Parent exits
+  s5 --> s2: Parent closes its descriptor
+  s5 --> s2: Parent exits
