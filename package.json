@@ -14,7 +14,7 @@
     "check:jsonnetfmt": "go tool task jsonnetfmt -- --test",
     "check:markdownlint-cli2": "markdownlint-cli2",
     "check:shfmt": "go tool task shfmt -- -d",
-    "check:test": "run-s check:test:*",
+    "check:test": "run-p check:test:*",
     "check:test:go": "go tool task test",
     "check:test:node": "node --test \"**/*.test.ts\"",
     "check:typescript": "tsc --noEmit",
