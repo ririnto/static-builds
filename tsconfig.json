@@ -3,12 +3,15 @@
   "compilerOptions": {
     "allowImportingTsExtensions": true,
     "noEmit": true,
-    "types": ["node"]
+    "types": ["node"],
+    "allowJs": true,
+    "checkJs": true
   },
   "include": [
     "plugins/**/*.ts",
     "rules/**/*.ts",
     "oxfmt.config.ts",
-    "oxlint.config.ts"
+    "oxlint.config.ts",
+    ".claude/skills/branch-download/scripts/**/*.mjs"
   ]
 }

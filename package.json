@@ -5,7 +5,7 @@
   "scripts": {
     "build": "go tool task goreleaser -- release --clean --snapshot --verbose --timeout=6h --skip=publish,validate",
     "check": "run-p check:*",
-    "check:branch-lock": "java -XX:+UseParallelGC -cp node_modules/tla-chaos-loop/tools/tla2tools.jar tlc2.TLC -workers 1 -metadir \"$(mktemp -d)\" -config .claude/skills/branch-download/references/model/BranchLock.cfg .claude/skills/branch-download/references/model/BranchLock.tla",
+    "check:branch-lock": "node .claude/skills/branch-download/scripts/run.mjs --check",
     "check:golangci-lint": "go tool task golangci-lint -- run ./...",
     "check:jsonnet": "run-p check:jsonnet:*",
     "check:jsonnet:feature": "go tool task jsonnet -- -S --ext-str branch=feature/tooling-check --ext-str target= --ext-str component_ref=example.invalid/group/static-builds/static-release@feature/tooling-check",
@@ -28,7 +28,8 @@
     "pre-commit": "run-s check",
     "pre-push": "run-s check",
     "prepare": "husky",
-    "tasks": "go tool task"
+    "tasks": "go tool task",
+    "generate:statechart": "node .claude/skills/branch-download/scripts/run.mjs --write"
   },
   "devDependencies": {
     "@oxlint/plugins": "catalog:",
