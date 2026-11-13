@@ -61,7 +61,7 @@ jobs:
             if $target != "vector" then
               {target: $target, arch: "arm64", runner: "ubuntu-26.04-arm"}
             else empty end]}' metadata.json)
-          printf 'builds=%s\n' "$builds" >>"$GITHUB_OUTPUT"
+          echo "builds=$builds" >>"$GITHUB_OUTPUT"
 
   build:
     name: Build ${{ matrix.target }} (${{ matrix.arch }})
@@ -78,7 +78,6 @@ jobs:
       GORELEASER_CURRENT_TAG: ${{ matrix.target }}-pr-${{ github.event.pull_request.number }}-${{ matrix.arch }}
       BUILDKIT_PLATFORM: linux/${{ matrix.arch }}
       BUILDKIT_CACHE_BACKEND: local
-      BUILD_OUTPUT_DEST: ${{ github.workspace }}/dist/${{ matrix.target }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -103,8 +102,8 @@ jobs:
           RELEASE_FILES=$(go tool task manifest -- get-release-files "$TARGET")
           export RELEASE_FILES
           (
-            cd "dist/release/$TARGET"
-            sha256sum --check "${TAG}_checksums.txt"
+            cd dist
+            echo "$(cat "$TARGET-$TAG.tgz.sha256")  $TARGET-$TAG.tgz" | sha256sum --check
           )
           python3 - <<'PY'
           import os
@@ -113,9 +112,9 @@ jobs:
           from pathlib import Path
 
           expected = set(os.environ["RELEASE_FILES"].splitlines())
-          output = Path(os.environ["BUILD_OUTPUT_DEST"])
-          release = Path("dist/release") / os.environ["TARGET"]
-          package = release / f"{os.environ['TAG']}.tar.gz"
+          output = Path(".cache/build") / os.environ["TARGET"]
+          release = Path("dist")
+          package = release / f"{os.environ['TARGET']}-{os.environ['TAG']}.tgz"
           report = [f"Verified {os.environ['TARGET']} on {os.environ['BUILDKIT_PLATFORM']}"]
           with tarfile.open(package, "r:gz") as archive:
               members = [member for member in archive.getmembers() if not member.isdir()]
@@ -142,8 +141,8 @@ jobs:
         with:
           name: validation-${{ matrix.target }}-${{ matrix.arch }}
           path: |-
-            dist/release/${{ env.TARGET }}/${{ env.TAG }}.tar.gz
-            dist/release/${{ env.TARGET }}/${{ env.TAG }}_checksums.txt
-            dist/release/${{ env.TARGET }}/package-verification.txt
+            dist/${{ env.TARGET }}-${{ env.TAG }}.tgz
+            dist/${{ env.TARGET }}-${{ env.TAG }}.tgz.sha256
+            dist/package-verification.txt
           if-no-files-found: error
           retention-days: 7

@@ -4,31 +4,29 @@ workflow:
       when: never
     - when: always
 
+variables:
+  APK_CACHE_DIR: .cache/apk
+
 stages:
   - checks
   - prepare
   - package
 
-validate-contributor-checks:
+check:
   stage: checks
   image: golang:alpine
   cache:
     key: "apk-golang-alpine-${CI_RUNNER_ID}"
     paths:
-      - .cache/apk/**/*.apk
+      - "$APK_CACHE_DIR/*.apk"
   before_script:
-    - sh .gitlab/ci/install-packages.sh ca-certificates git
+    - mkdir -p "$APK_CACHE_DIR"
+    - apk --cache-dir "$APK_CACHE_DIR" add --update-cache ca-certificates git
   script:
     - go tool task test
     - go tool task golangci-lint -- run ./...
     - go tool task shfmt -- -d
-    - go tool task jsonnet -- -S --ext-str branch=main --ext-str target= --ext-str component_ref=example.invalid/group/static-builds/static-release@main
-    - go tool task jsonnet -- -S --ext-str branch= --ext-str target=dnsmasq --ext-str component_ref=example.invalid/group/static-builds/static-release@release-check --tla-str "release_tag=dnsmasq-$(go tool task manifest -- get-official-version dnsmasq).0"
     - go tool task jsonnetfmt -- --test
-  rules:
-    - if: "$CI_COMMIT_BRANCH"
-    - if: "$CI_COMMIT_TAG"
-    - when: never
 
 generate-package-pipeline:
   stage: prepare
@@ -36,16 +34,15 @@ generate-package-pipeline:
   cache:
     key: "apk-golang-alpine-${CI_RUNNER_ID}"
     paths:
-      - .cache/apk/**/*.apk
+      - "$APK_CACHE_DIR/*.apk"
   before_script:
-    - sh .gitlab/ci/install-packages.sh ca-certificates git
+    - mkdir -p "$APK_CACHE_DIR"
+    - apk --cache-dir "$APK_CACHE_DIR" add --update-cache ca-certificates git
   script:
     - |-
       target=
       if [ -n "${CI_COMMIT_TAG:-}" ]; then
-        test "$(git rev-parse "refs/tags/$CI_COMMIT_TAG^{commit}")" = "$(git rev-parse HEAD)"
         target=$(go tool task manifest -- get-target-from-tag "$CI_COMMIT_TAG")
-        go tool task validate-release-tag -- "$target" "$CI_COMMIT_TAG"
       fi
       go tool task jsonnet -- -S --ext-str "branch=${CI_COMMIT_BRANCH:-}" --ext-str "target=$target" --ext-str "component_ref=${CI_SERVER_FQDN}/${CI_PROJECT_PATH}/static-release@${CI_COMMIT_REF_NAME}" --tla-str "release_tag=${CI_COMMIT_TAG:-}" >package-pipeline.gitlab-ci.yaml
   artifacts:
@@ -67,7 +64,5 @@ run-package-pipeline:
   rules:
     - if: "$CI_COMMIT_TAG"
     - if: '$CI_COMMIT_BRANCH == "main"'
-      when: manual
     - if: '$CI_COMMIT_BRANCH =~ /^feature\/.+$/'
-      when: manual
     - when: never

@@ -15,7 +15,7 @@ Build statically-linked binaries using Docker multi-stage builds for portable, m
 Local container builds require Docker Compose 2.17 or later and access to a running Linux Docker daemon.
 The Compose tooling image supplies Go and rootless BuildKit, so Go does not need to be installed on the host.
 Direct rootless builds and contributor checks still require the Go version declared in `go.mod`.
-Local builds and both CI hosts use [.goreleaser.yaml](.goreleaser.yaml) to orchestrate building, metadata-selected staging, archiving, SHA-256 checksums, and release publication.
+Local builds and both CI hosts use [.goreleaser.yaml](.goreleaser.yaml) to orchestrate building, metadata-selected files, archiving, SHA-256 checksums, and release publication.
 See the [state machine inventory](.github/state-machines.md), [Taskfile](Taskfile.yaml), [download command](cmd/download/main.go), and [metadata command](cmd/metadata/main.go).
 
 Install `curl` or `wget` to download target sources, and allow network access to their upstream hosts.
@@ -26,9 +26,9 @@ A clean build also requires builder network access to image registries and each 
 For example, the [nginx Dockerfile](nginx/Dockerfile) installs Alpine build packages.
 The [CoreDNS Dockerfile](coredns/Dockerfile) also compiles Go code, which can require access to Go module sources.
 
-Direct builds require a configured native Linux host with `buildkitd`, `rootlesskit`, `runc`, subordinate UID/GID mappings, and permission to create unprivileged user namespaces.
+Direct builds require a configured native Linux host with `rootlesskit`, `runc`, subordinate UID/GID mappings, and permission to create unprivileged user namespaces.
 Run them as a non-root user; macOS and Windows hosts use Compose.
-GitHub installs the module-selected official BuildKit daemon and distribution-packaged `/usr/bin/rootlesskit`, `uidmap`, and `runc` without changing runner security settings.
+Go manages both BuildKit client and daemon through `go.mod`. GitHub installs distribution-packaged `rootlesskit`, `uidmap`, and `runc` without changing runner security settings.
 The selected worker must support local filesystem export, cache import/export, and execution of `BUILDKIT_PLATFORM`, which defaults to `linux/amd64`.
 Use a native worker or separately configured emulation when the worker architecture differs from the selected platform.
 The Taskfile writes artifacts to `dist/<target>/` and imports and exports local cache in `.cache/<target>/` by default.
@@ -64,14 +64,15 @@ pnpm run download -- nginx
 TARGET=nginx TAG=nginx-local pnpm run build
 ```
 
-Build artifacts are written to `dist/<target>/` by default for both local and CI builds.
-You can override this with `BUILD_OUTPUT_DEST`.
-Archives and checksum files are written separately under `dist/release/<target>/`.
+The direct Task build writes to `dist/<target>/` by default; `BUILD_OUTPUT_DEST` overrides that path.
+GoReleaser builds use `.cache/build/<target>/` for intermediate binaries.
+Archives and checksum files are written as `dist/<target>-<tag>.tgz` and the matching `.tgz.sha256`.
+Run one release at a time per checkout. `--clean` replaces the prior contents of `dist/`, so copy any packages you want to keep elsewhere first.
 The pnpm build script runs the same nonpublishing GoReleaser snapshot command.
 
 ### Independent targets
 
-Each target owns its Dockerfile inputs, downloaded archives, mutable build caches, exported installation, release staging, and package directory.
+Each target owns its Dockerfile inputs, downloaded archives, mutable build caches, exported installation, release-file selection, and package names.
 The build task creates a private context containing only that target's source directory and nonempty completed archive files from its download directory.
 Lock files and temporary downloads are excluded, and copying preserves source modes and symbolic links without following them outside the selected inputs.
 The Dockerfile channel is limited to the same staged target directory.
@@ -93,9 +94,9 @@ TARGET=dnsmasq docker compose run --rm build
 
 Replace `dnsmasq` with the required target.
 The service defaults to a nonpublishing GoReleaser snapshot with `TAG=local`.
-Set `TAG=dnsmasq-local` alongside `TARGET` to name the archive `dist/release/dnsmasq/dnsmasq-local.tar.gz` and checksum `dist/release/dnsmasq/dnsmasq-local_checksums.txt`.
+Set `TAG=dnsmasq-local` alongside `TARGET` to name the archive `dist/dnsmasq-dnsmasq-local.tgz` and checksum `dist/dnsmasq-dnsmasq-local.tgz.sha256`.
 No target is selected when it is omitted.
-The output remains under `dist/<target>/`, and source downloads and exported build cache remain under `.cache/downloads/<target>/` and `.cache/`.
+Packages are written to `dist/`, intermediate binaries to `.cache/build/<target>/`, and downloads and build caches remain under `.cache/`.
 The checkout is read-only inside the service except for the cache and distribution directories.
 Named volumes retain the Go tool module cache, Go tool compilation cache, and target-specific BuildKit state directories.
 The service does not mount the Docker socket, publish ports, use host networking, or run in privileged mode.
@@ -127,7 +128,7 @@ GoReleaser and its low-level build drivers accept inherited environment values.
 | Variable | Default | Values and purpose |
 | --- | --- | --- |
 | `TARGET` | None | Require an explicit metadata target. |
-| `TAG` | None; `local` in Compose | Name the archive and checksum file. |
+| `TAG` | None; `local` in Compose | Name the archive. |
 | `BUILDKIT_PLATFORM` | `linux/amd64` | Select a target platform supported by the builder, such as `linux/arm64`. |
 | `BUILDKIT_NETWORK` | `default` | Select `default`, `host`, or `none` for RUN-step networking. |
 | `BUILDKIT_CACHE_BACKEND` | `local` | Select `local` or `gha` for cache import and export. |
@@ -154,23 +155,24 @@ The build does not automatically configure a Linux VM or cross-platform emulatio
 A build always requires an explicit `TARGET` and fails without one.
 The nginx commands in this document are examples, not defaults.
 For low-level troubleshooting only, bypass GoReleaser with `go tool task build -- dnsmasq --progress=plain`.
-This driver command accepts extra BuildKit client flags but does not stage release files, archive them, generate checksums, or publish releases.
+This driver command accepts extra BuildKit client flags but does not select release files, archive them, generate checksums, or publish releases.
 Tool tasks also pass arguments through: `go tool task jsonnetfmt -- -i` formats the built-in pipeline file.
 `go tool task buildctl -- --help` exposes the same Go-managed BuildKit client used by the build task.
 `go tool task goreleaser -- <arguments>` runs the shared build and release configuration in [.goreleaser.yaml](.goreleaser.yaml).
 
 ### Build and package without publishing
 
-Build one target, stage only its metadata-selected release paths, and create its archive and checksum without publishing:
+Build one target, select only its metadata-listed release files, and create its archive and checksum without publishing:
 
 ```sh
 TARGET=dnsmasq TAG=dnsmasq-local go tool task goreleaser -- release --clean --snapshot --verbose --timeout=6h --skip=publish,validate
 ```
 
-GoReleaser writes `dist/release/<TARGET>/<TAG>.tar.gz` and `dist/release/<TARGET>/<TAG>_checksums.txt`.
-The command cleans only that target's GoReleaser output directory, preserving other targets' packages.
-Serialize builds of the same target because its output, staging, and package directories are shared between invocations.
-Generated SHA-256 checksums describe the distributed archive and do not enforce checksums on downloaded upstream sources.
+GoReleaser writes `dist/<TARGET>-<TAG>.tgz` and `dist/<TARGET>-<TAG>.tgz.sha256`.
+The command cleans the shared GoReleaser output directory.
+Run one release per checkout and copy packages you want to keep elsewhere first.
+Each archive has a `.sha256` sidecar containing its SHA-256 checksum, not a cryptographic signature.
+These checksums describe the distributed archive and do not enforce checksums on downloaded upstream sources.
 Snapshot mode neither creates a tag nor publishes a release.
 Build-producing entrypoints enable verbose hook output and use a six-hour GoReleaser timeout.
 Use `--timeout` to choose a different limit, and remember that this cannot extend a CI runner or project timeout.
@@ -178,20 +180,15 @@ Publication-only jobs remain non-verbose and skip before hooks.
 Verbose Git diagnostics can include credentialed remote URLs, so do not save or share unredacted logs from local credentialed checkouts.
 
 GoReleaser OSS supports [build orchestration through before hooks](https://goreleaser.com/customization/general/hooks/), [archive checksums](https://goreleaser.com/customization/package/checksum/), and [GitHub or GitLab releases](https://goreleaser.com/customization/publish/scm/).
-The configuration's string before hook validates the target and backend, invokes the selected Task driver, and stages the manifest-selected release paths after a successful build.
-Task owns the low-level Docker invocation, while target Dockerfiles remain authoritative for compilation and artifact verification.
-Staging uses `dist/release-files/<TARGET>/` outside GoReleaser's distribution directory because before hooks run before distribution initialization.
-The hook clears that target's staging directory only after validation and a successful build.
-GoReleaser then archives the staged files and generates their archive checksum.
+The before hook invokes the rootless BuildKit task.
+Task owns the low-level BuildKit invocation, while target Dockerfiles remain authoritative for compilation and artifact verification.
+GoReleaser filters the metadata-listed files from the build output into the archive and generates its checksum.
 Its mixed-language targets do not use GoReleaser's native Go builder or the Pro-only prebuilt builder.
-The pinned GoReleaser OSS version does not template its distribution directory.
-The Task entrypoint validates the target, renders only the distribution path into a temporary copy of the shared configuration, and removes that copy on exit.
-This also runs before publication with hooks skipped, so missing or unknown targets cannot clean another target's distribution directory.
-Use the named Task entrypoint rather than invoking GoReleaser release directly against the shared configuration.
+The Task entrypoint supplies the metadata file list as `RELEASE_FILES` and forwards arguments to GoReleaser.
 
 Both hosts invoke GoReleaser once in the build job instead of separate build and package commands.
 Their separate publication jobs receive the built archive, set `RELEASE_ARCHIVE` to its preserved copy, and run GoReleaser with `--skip=before,archive,validate` to recompute the checksum and publish.
-No build or staging hook runs under publishing credentials.
+No build hook runs under publishing credentials.
 GitLab branch jobs use the same nonpublishing snapshot flow and retain artifacts without creating GitLab Releases.
 GitLab release-tag pipelines build one manifest-selected target, then publish its archive and checksum in a separate GoReleaser job.
 The publisher uses the existing `CI_JOB_TOKEN` with [GoReleaser's job-token authentication](https://goreleaser.com/customization/publish/scm/gitlab/) and stores assets in the Generic Package Registry.
@@ -228,10 +225,10 @@ docker run --rm \
 |   +-- static-release.yml
 +-- .cache/                 # Reusable build and source caches (gitignored)
 |   +-- downloads/          # Source archives and transfer locks
+|   +-- build/<target>/     # GoReleaser intermediate binaries
 +-- dist/                   # Build outputs (gitignored)
-|   +-- <target>/           # Local artifacts (for example `sbin/`, `bin/`)
-|   +-- release-files/      # Metadata-selected staging, outside GoReleaser dist
-|   +-- release/            # Archives and SHA-256 checksums
+|   +-- <target>-<tag>.tgz  # Archive and matching .tgz.sha256 sidecar
+|   +-- <target>/           # Direct Task build output
 +-- nginx/                  # nginx Dockerfile and scripting examples
 +-- <target>/               # Build target directory
     +-- Dockerfile          # Multi-stage build definition
@@ -357,7 +354,7 @@ Each target must follow this structure:
 
 6. Extend the tag trigger filter in [.github/workflows/release-from-tag.yaml](.github/workflows/release-from-tag.yaml) with the target's `tag_prefix` followed by `-*`.
    The `resolve-target` job derives target selection from `metadata.json` through `go tool task manifest -- get-target-from-tag <tag>`.
-   The reusable release workflow validates the tag against the manifest-selected prefix and official version.
+   The tag workflow selects the target by its manifest-defined prefix.
    Keep that resolution job and its reusable release call unchanged.
    Release file selection and official versions also come from `metadata.json`.
 
@@ -403,10 +400,10 @@ Releases are triggered by Git tags following the pattern `<target>-<version>[-<p
 
 - Format: `{target}-{official_version}[-{prerelease}].{revision}`
 - Example: `nginx-1.28.2.18` (target: nginx, version: 1.28.2, revision: 18)
-- Validation: Release tags are validated against `metadata.json`
+- Target mapping: Release tag prefixes are resolved through `metadata.json`
 
 Release tag event filters remain static in `.github/workflows/release-from-tag.yaml` as required by GitHub.
-Target selection, tag-prefix exceptions, release-file selection, and tag-version validation use `metadata.json`.
+Target selection, tag-prefix exceptions, and release-file selection use `metadata.json`.
 
 ### Steps to Release
 
@@ -445,11 +442,11 @@ Target selection, tag-prefix exceptions, release-file selection, and tag-version
    ```
 
 5. CI automation: GitHub Actions automatically:
-   - Validates tag format and version.
-   - Runs GoReleaser to build the target, stage release files, archive them, and generate SHA-256 checksums.
+   - Maps the tag prefix to its target.
+   - Runs GoReleaser to build the target, select release files, archive them, and generate SHA-256 checksums.
    - Scans for vulnerabilities (Trivy).
    - Uploads artifacts to GitHub Actions.
-   - Publishes the existing `.tar.gz` archive and checksum with GoReleaser in a separate job.
+   - Publishes the existing `.tgz` archive and checksum with GoReleaser in a separate job.
 
 ### Release Tag Format
 
@@ -481,9 +478,9 @@ Invalid examples:
 
 1. GoReleaser runs its before hook, which selects the Task build driver and runs `go tool task download -- <target>` to resolve the target's download resources from `metadata.json` before starting the build.
 2. The build task invokes the upstream daemonless rootless BuildKit script to execute the multi-stage Dockerfile.
-3. Built artifacts go to `dist/<target>/` for both local builds and CI.
+3. GoReleaser builds export binaries to `.cache/build/<target>/`; direct Task builds default to `dist/<target>/`.
 4. Each target verifies built artifacts in its Dockerfile before exporting its `scratch` stage.
-5. The GoReleaser hook stages only metadata-selected release files, then GoReleaser creates the archive and SHA-256 checksum.
+5. GoReleaser selects the metadata-listed files directly from the build output and creates the archive and SHA-256 checksum.
 6. Separate CI publication jobs use GoReleaser to publish the existing archive without rebuilding.
 
 Local build caching uses the root `.cache/<target>/` directories by default.
@@ -496,10 +493,10 @@ Compose and GitLab package builds use daemonless rootless BuildKit and retain lo
 - Each isolated job runs the GoReleaser snapshot flow, including Dockerfile verification, then checks the generated SHA-256 checksum and exact metadata-selected archive files, bytes, and modes before uploading an architecture-named package artifact.
 - Build validation uses read-only repository access and ephemeral local caches, without release credentials, shared release caches, tag creation, or publication.
 - Archive upload includes selected release files as a workflow artifact.
-- GoReleaser creates one `.tar.gz` and SHA-256 checksum per tag during the build job, with publication handled separately.
+- GoReleaser creates one `.tgz` and SHA-256 checksum per tag during the build job, with publication handled separately.
 - Tag push release uses unified workflow `.github/workflows/release-from-tag.yaml`.
 - Workflow automatically determines the target from tag pattern and calls reusable template `.github/workflows/template-release.yaml`.
-- Template builds the mapped target, scans for vulnerabilities, uploads the full `dist/<target>/` tree as an artifact, then uploads `${tag}.tar.gz` and `${tag}_checksums.txt`.
+- Template builds the mapped target, scans for vulnerabilities, uploads the full `.cache/build/<target>/` tree as an artifact, then uploads `${target}-${tag}.tgz` and `${target}-${tag}.tgz.sha256`.
 
 Selected release contents:
 
@@ -524,14 +521,14 @@ Selected release contents:
 ## GitLab CI
 
 - Configure the GitLab project to use `.gitlab-ci.yaml` as its custom CI/CD configuration path after merge.
-- The GitLab check job runs Go-managed contributor checks before package generation and retains the manual parent trigger.
+- The GitLab check job runs Go-managed contributor checks before automatic package pipeline generation.
 - GitLab rejects merge-request pipelines at the workflow boundary and keeps existing branch and tag pipelines.
 - A branch push with an open merge request runs only its branch pipeline.
 - GitLab pipelines on `main` and `feature/*` generate a child configuration with `.gitlab/ci/package-pipeline.gitlab-ci.jsonnet`.
-- One manual parent trigger starts branch child pipelines, which build selected targets and retain their artifacts.
-- Tag pipelines resolve one target from metadata and validate the official version and numeric revision before generating the child pipeline.
+- The parent trigger starts branch child pipelines automatically. Each target build is an optional manual job, so you can run only the builds you need and retain their artifacts.
+- Tag pipelines resolve one target from metadata before generating the child pipeline.
 - The tag child pipeline runs automatically and publishes only after its package job succeeds.
-- The parent trigger mirrors child pipeline status so failed builds or publication fail the parent pipeline.
+- The parent trigger mirrors child pipeline status. Branch builds are optional manual jobs, so their failures do not fail the parent; automatic tag build and publication failures do.
 - The package component uses `golang:alpine` and invokes the shared GoReleaser rootless build flow.
 - When `curl` is absent, `go tool task download -- <target>` uses the image's BusyBox `wget` and `timeout` fallback.
 - Contributor validation and pipeline generation use `golang:alpine` with Go's default `GOTOOLCHAIN=auto` behavior honoring the `go.mod` directive.
@@ -541,23 +538,23 @@ Selected release contents:
 - GoReleaser uploads the archive and checksum as generic packages and links them from the GitLab Release.
 - GitLab contributor validation invokes Go tests, golangci-lint, shell formatting, and Jsonnet checks through `go tool task`.
 - The Node, pnpm, and Java contributor checks run in local hooks only.
-- The package component installs BuildKit, fuse-overlayfs, runc, RootlessKit, and UID mapping helpers from Alpine packages.
-- GitLab caches signed APK files under `.cache/apk/<Alpine-release>/<architecture>/` with a runner-isolated cache key.
-- The shared installer refreshes repository indexes before each install, and caches neither indexes nor installed system directories.
+- The package component installs fuse-overlayfs, runc, RootlessKit, and UID mapping helpers from Alpine packages.
+- GitLab declares `APK_CACHE_DIR` in CI variables and caches signed APK files under `.cache/apk/` with a runner-isolated cache key.
+- Each job refreshes repository indexes while installing packages, and caches neither indexes nor installed system directories.
 - GitHub retains the existing Go module cache and BuildKit GHA layer cache; it does not install APK packages on its Ubuntu host or persist APK cache mounts.
 - It creates user 1000 and maps `user:100000:65536` in both `/etc/subuid` and `/etc/subgid`.
 - It invokes the upstream daemonless script as that user without Docker services.
 - The runner must permit unprivileged user namespaces and rootless mounts.
 - `feature/*` branches append `-beta` to the package version.
-- Build orchestration, release-file staging, packaging, generated archive checksums, and tag-triggered publication use GoReleaser on both hosts.
+- Build orchestration, release-file selection, packaging, generated archive checksums, and tag-triggered publication use GoReleaser on both hosts.
 - The generated child pipeline includes the local component at `templates/static-release.yml`.
 - GitLab component discovery requires the conventional `templates/*.yml` filename, so `templates/static-release.yml` remains the supported exception to the `.yaml` filename rule.
 - The parent configuration uses the supported custom configuration path documented by [GitLab](https://docs.gitlab.com/ci/pipelines/settings/#specify-a-custom-cicd-configuration-file), while the local component follows [GitLab's component discovery convention](https://docs.gitlab.com/ci/components/).
-- The GoReleaser before hook queries `go tool task manifest -- get-release-files <target>` for selected paths.
+- The Task entrypoint queries `go tool task manifest -- get-release-files <target>`; native GoReleaser file filters preserve the root, `bin`, and `sbin` paths.
 - Both hosts export the GoReleaser archive and its SHA-256 checksum file.
 
 GitHub publishing uses GoReleaser with `GITHUB_TOKEN`.
 GoReleaser creates the release or replaces its existing archive asset.
 The configuration uses the tag as the release title and publishes releases with `draft: false` and `prerelease: "false"`.
 Reruns apply this configuration to existing releases.
-The workflow validates the repository tag format before using GoReleaser with `--skip=validate` for target-prefixed tags.
+The workflow resolves the target from its tag prefix and uses GoReleaser with `--skip=validate` for target-prefixed tags.

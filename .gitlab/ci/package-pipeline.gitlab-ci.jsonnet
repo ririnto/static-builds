@@ -19,7 +19,7 @@ function(release_tag='')
       {
         component: std.extVar('component_ref'),
         inputs:
-          { stage: 'build', target: t, package_name: if release_tag != '' then release_tag else '%s-%s%s' % [t, metadata[t].env[metadata[t].version_env_var], versionSuffix], release_tag: release_tag },
+          { stage: 'build', target: t, package_name: if release_tag != '' then release_tag else '%s-%s%s' % [t, metadata[t].env[metadata[t].version_env_var], versionSuffix], release_tag: release_tag, run_policy: if release_tag != '' then 'on_success' else 'manual' },
       }
       for t in targets
     ] },

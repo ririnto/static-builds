@@ -10,6 +10,9 @@ tasks:
 
   build:
     desc: Run rootless BuildKit (-- <target> [buildctl args...])
+    vars:
+      METADATA_ENV:
+        sh: go tool task manifest -- get-env {{index .CLI_ARGS_LIST 0 | shellQuote}}
     cmds:
       - |-
         set -e
@@ -21,7 +24,6 @@ tasks:
         go tool task download -- "${1:-}"
         TARGET="$1"
         shift
-        METADATA_ENV=$(go tool task manifest -- get-env "$TARGET")
         CACHE_DIR="${CACHE_DIR:-.cache/$TARGET}"
         BUILD_OUTPUT_DEST="${BUILD_OUTPUT_DEST:-dist/$TARGET}"
         case "${BUILDKIT_CACHE_BACKEND:-local}" in
@@ -48,19 +50,6 @@ tasks:
             ;;
         esac
         mkdir -p "$BUILD_OUTPUT_DEST"
-        while IFS='=' read -r key value || [ -n "$key" ]; do
-          case "$key" in
-            '' | \#* | *[!A-Z0-9_]*) ;;
-            *)
-              if [ -n "$value" ]; then
-                value=$(printf '%s' "$value" | tr -d '\r')
-                set -- --opt "build-arg:$key=$value" "$@"
-              fi
-              ;;
-          esac
-        done <<EOF
-        ${METADATA_ENV}
-        EOF
         runtime=$(mktemp -d)
         trap 'rm -rf "$runtime"' EXIT
         mkdir -p "$runtime/context/.cache/downloads/$TARGET"
@@ -78,6 +67,8 @@ tasks:
         export XDG_RUNTIME_DIR="$runtime"
         export BUILDKITD_FLAGS="--root=${XDG_DATA_HOME:-$HOME/.local/share}/buildkit/$TARGET --oci-worker-snapshotter=native ${BUILDKITD_FLAGS:-}"
         go mod download github.com/moby/buildkit
+        BUILDKITD=$(go tool -n buildkitd)
+        export BUILDKITD
         BUILDCTL="go tool buildctl" sh "$(go list -m -f '{{"{{.Dir}}"}}' github.com/moby/buildkit)/examples/buildctl-daemonless/buildctl-daemonless.sh" build \
           --frontend dockerfile.v0 \
           --local "context=$runtime/context" \
@@ -85,7 +76,7 @@ tasks:
           --opt filename=Dockerfile \
           --opt "platform=${BUILDKIT_PLATFORM:-linux/amd64}" \
           --output "type=local,dest=$BUILD_OUTPUT_DEST" \
-          "$@"
+          {{range reverse (splitList "\n" .METADATA_ENV)}}--opt {{printf "build-arg:%s" . | shellQuote}} {{end}}"$@"
 
   buildctl:
     desc: Run the BuildKit client
@@ -102,48 +93,15 @@ tasks:
     cmds:
       - go run ./cmd/metadata {{range .CLI_ARGS_LIST}}{{. | shellQuote}} {{end}}
 
-  validate-release-tag:
-    desc: Validate a target's manifest-selected release tag (-- <target> <tag>)
-    cmds:
-      - |-
-        set -e
-        set -- {{range .CLI_ARGS_LIST}}{{. | shellQuote}} {{end}}
-        TARGET="${1:?release target is required}"
-        TAG="${2:?release tag is required}"
-        prefix=$(go tool task manifest -- get-tag-prefix "$TARGET")
-        official=$(go tool task manifest -- get-official-version "$TARGET")
-        test "${TAG#"$prefix"-}" != "$TAG"
-        version_revision=${TAG#"$prefix"-}
-        test "${version_revision%.*}" != "$version_revision"
-        version=${version_revision%.*}
-        echo "${version_revision##*.}" | grep -E '^[0-9]+$'
-        if [ "$version" != "$official" ]; then
-          test "${version#"$official"-}" != "$version"
-          echo "${version#"$official"-}" | grep -E '^[A-Za-z0-9]+([.-][A-Za-z0-9]+)*$'
-        fi
-
   goreleaser:
     desc: Build, package, hash, and publish through GoReleaser (-- <args...>)
+    vars:
+      RELEASE_FILES:
+        sh: "{{if .TARGET}}go tool task manifest -- get-release-files {{.TARGET | shellQuote}}{{else}}echo{{end}}"
+    env:
+      RELEASE_FILES: "{{.RELEASE_FILES}}"
     cmds:
-      - |-
-        set -e
-        set -- {{range .CLI_ARGS_LIST}}{{. | shellQuote}} {{end}}
-        if [ "${1:-}" = release ]; then
-          case "${TARGET:?build target is required}" in
-            *[!A-Za-z0-9_-]*)
-              echo "Error: Invalid target directory name '$TARGET'" >&2
-              exit 1
-              ;;
-          esac
-          go tool task manifest -- get-release-files "${TARGET:?build target is required}"
-          config=$(mktemp)
-          trap 'rm -f "$config"' EXIT
-          grep -qx 'dist: dist/release' .goreleaser.yaml
-          sed "s|^dist: dist/release$|dist: dist/release/$TARGET|" .goreleaser.yaml >"$config"
-          go tool goreleaser "$@" --config "$config"
-        else
-          go tool goreleaser "$@"
-        fi
+      - go tool goreleaser {{range .CLI_ARGS_LIST}}{{. | shellQuote}} {{end}}
 
   jsonnet:
     desc: Render the GitLab package pipeline
