@@ -34,14 +34,6 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Validate release tag
-        env:
-          TARGET: ${{ inputs.target }}
-          TAG: ${{ inputs.tag }}
-        run: |-
-          test "$(git rev-parse "refs/tags/$TAG^{commit}")" = "$(git rev-parse HEAD)"
-          go tool task validate-release-tag -- "$TARGET" "$TAG"
-
       - name: Set up rootless BuildKit
         uses: ./.github/actions/setup-buildkit
 
@@ -60,7 +52,6 @@ jobs:
           BUILDKIT_CACHE_BACKEND: gha
           GORELEASER_CURRENT_TAG: ${{ inputs.tag }}
           TAG: ${{ inputs.tag }}
-          BUILD_OUTPUT_DEST: ${{ github.workspace }}/dist/${{ inputs.target }}
           TARGET: ${{ inputs.target }}
         run: go tool task goreleaser -- release --clean --verbose --timeout=6h --skip=publish,validate
 
@@ -68,7 +59,7 @@ jobs:
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: "fs"
-          scan-ref: "dist/${{ inputs.target }}"
+          scan-ref: ".cache/build/${{ inputs.target }}"
           format: "sarif"
           output: "trivy-results.sarif"
           severity: "CRITICAL,HIGH"
@@ -82,7 +73,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: ${{ inputs.target }}-static-build
-          path: dist/${{ inputs.target }}
+          path: .cache/build/${{ inputs.target }}
           include-hidden-files: true
 
       - name: Upload release package
@@ -90,8 +81,8 @@ jobs:
         with:
           name: ${{ inputs.target }}-release-package
           path: |-
-            dist/release/${{ inputs.target }}/${{ inputs.tag }}.tar.gz
-            dist/release/${{ inputs.target }}/${{ inputs.tag }}_checksums.txt
+            dist/${{ inputs.target }}-${{ inputs.tag }}.tgz
+            dist/${{ inputs.target }}-${{ inputs.tag }}.tgz.sha256
           include-hidden-files: true
           if-no-files-found: error
 
@@ -114,13 +105,13 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           name: ${{ inputs.target }}-release-package
-          path: dist/release-package/${{ inputs.target }}
+          path: ${{ runner.temp }}/${{ inputs.target }}
 
       - name: Publish assets to release
         env:
           GITHUB_TOKEN: ${{ github.token }}
           GORELEASER_CURRENT_TAG: ${{ inputs.tag }}
           TARGET: ${{ inputs.target }}
-          RELEASE_ARCHIVE: dist/release-package/${{ inputs.target }}/${{ inputs.tag }}.tar.gz
+          RELEASE_ARCHIVE: ${{ runner.temp }}/${{ inputs.target }}/${{ inputs.target }}-${{ inputs.tag }}.tgz
           TAG: ${{ inputs.tag }}
         run: go tool task goreleaser -- release --clean --skip=before,archive,validate

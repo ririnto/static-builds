@@ -15,10 +15,12 @@ Use the repository's `.markdownlint-cli2.jsonc` when running Markdown lint.
 The [GitHub validation workflow](workflows/markdown-validation.yaml) runs Go-managed tooling checks on every pull request without building targets or publishing releases.
 The separate [build validation workflow](workflows/validate-builds.yaml) runs nonpublishing GoReleaser snapshots on build-relevant pull requests, using native amd64 for every metadata target and native arm64 for all except Vector's fixed x86_64 archive.
 Each matrix job has an isolated checkout and distribution directory, checks package SHA-256 and metadata-selected files, bytes, and modes, and uploads an architecture-named package without sharing release caches or credentials.
-GitLab invokes Go tests, golangci-lint, shell formatting, and Jsonnet checks through `go tool task` before its manual branch-package trigger or automatic tag-release pipeline.
+GitLab invokes Go tests, golangci-lint, shell formatting, and Jsonnet formatting through `go tool task` before generating its package pipeline.
+Branch child pipelines start automatically and offer an optional manual build for each target; tag releases run automatically.
+Local hooks and the GitHub tooling workflow check main, feature, and release-tag Jsonnet rendering.
 Its Go jobs use `golang:alpine` with Go's default `GOTOOLCHAIN=auto` behavior honoring the `go.mod` directive.
 The GitLab package component invokes GoReleaser, whose before hook calls the shared rootless Task driver without Docker-in-Docker.
-GitLab reuses signed APK downloads by Alpine release and architecture while refreshing repository indexes on every job.
+GitLab reuses signed APK downloads in its declared `APK_CACHE_DIR`, isolated by runner, while refreshing repository indexes on every job.
 Node, pnpm, and Java checks run through local contributor hooks.
 It also supports manual runs.
 The GitHub job runs Go tests, golangci-lint, shell formatting, and Jsonnet checks.
@@ -50,7 +52,7 @@ Run `mkdir -p .cache dist`, `docker compose build build`, and `TARGET=<target> d
 The dedicated container relaxes seccomp and masked system paths as described in the [official rootless Docker guidance](https://github.com/moby/buildkit/blob/v0.34.2/docs/rootless.md#docker).
 It keeps BuildKit's process sandbox, uses the native snapshotter without a FUSE device, and never mounts the Docker socket.
 Direct local builds require a non-root user on a configured Linux host with BuildKit, RootlessKit, runc, subordinate UID/GID mappings, and unprivileged user namespaces.
-GitHub installs the official module-selected BuildKit daemon and distribution-packaged `/usr/bin/rootlesskit`, `uidmap`, and `runc` without changing host security controls.
+Go manages the BuildKit client and daemon through `go.mod`; GitHub installs distribution-packaged `rootlesskit`, `uidmap`, and `runc` without changing host security controls.
 Use Compose on macOS and Windows.
 GitLab builds use a non-root user with subordinate UID and GID ranges of `100000:65536`.
 The runner must permit unprivileged user namespaces and rootless mounts.
@@ -94,9 +96,9 @@ Only the supported `customRules` spelling loads packages through the installed C
 The lowercase `customrules` spelling does not register rules through this entrypoint.
 All checks exclude ignored build outputs and source caches.
 These checks run without building targets or invoking release jobs.
-Validate tag handling with `go tool task validate-release-tag -- <target> <tag>` without creating a tag.
+Check target mapping with `go tool task manifest -- get-target-from-tag <tag>` without creating a tag.
 Render a tag child pipeline with the Jsonnet `--tla-str release_tag=<tag>` argument and one explicit target.
-Use `TARGET=<target> TAG=<target>-local go tool task goreleaser -- release --clean --snapshot --verbose --timeout=6h --skip=publish,validate` for nonpublishing build, staging, archive, and checksum checks.
+Use `TARGET=<target> TAG=<target>-local go tool task goreleaser -- release --clean --snapshot --verbose --timeout=6h --skip=publish,validate` for nonpublishing build, archive, and checksum checks.
 Run one target at a time because `--clean` removes the previous GoReleaser distribution output.
 The Compose service and `TARGET=<target> TAG=<target>-local pnpm run build` use this same snapshot flow.
 Compose defaults `TAG` to `local`, but never supplies a default target.
