@@ -78,7 +78,6 @@ jobs:
       GORELEASER_CURRENT_TAG: ${{ matrix.target }}-pr-${{ github.event.pull_request.number }}-${{ matrix.arch }}
       BUILDKIT_PLATFORM: linux/${{ matrix.arch }}
       BUILDKIT_CACHE_BACKEND: local
-      BUILD_OUTPUT_DEST: ${{ github.workspace }}/.cache/build/${{ matrix.target }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -113,7 +112,7 @@ jobs:
           from pathlib import Path
 
           expected = set(os.environ["RELEASE_FILES"].splitlines())
-          output = Path(os.environ["BUILD_OUTPUT_DEST"])
+          output = Path(".cache/build") / os.environ["TARGET"]
           release = Path("dist")
           package = release / f"{os.environ['TARGET']}-{os.environ['TAG']}.tgz"
           report = [f"Verified {os.environ['TARGET']} on {os.environ['BUILDKIT_PLATFORM']}"]

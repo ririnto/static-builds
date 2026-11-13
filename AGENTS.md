@@ -137,8 +137,8 @@ Keep repository-owned Oxlint plugins and their focused tests under `plugins/`.
 ### Define build outputs and release workflows
 
 - Keep `metadata.json` as the single source of target mapping, release-file selection, environment values, downloads, and tag-prefix exceptions.
-- Keep direct Task build output under `dist/<target>/...` and GoReleaser intermediate binaries under `.cache/build/<target>/...`.
-- Write GoReleaser archives and SHA-256 sidecars as `dist/<target>-<tag>.tgz` and `.tgz.sha256`. Serialize releases per checkout and preserve needed packages elsewhere before `--clean`.
+- Keep intermediate build output outside GoReleaser's distribution directory because distribution initialization follows before hooks.
+- Serialize releases per checkout and preserve needed packages elsewhere before cleaning the distribution directory.
 - Use `.github/workflows/release-from-tag.yaml` as the only GitHub tag-triggered release entrypoint.
 - Route GitLab release tags through the parent pipeline and the shared static-release component.
 - Delegate build and release logic to `.github/workflows/template-release.yaml`.

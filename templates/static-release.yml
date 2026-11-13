@@ -25,7 +25,6 @@ spec:
     TAG: "$[[ inputs.package_name ]]"
     GORELEASER_CURRENT_TAG: "$[[ inputs.package_name ]]"
     BUILDKITD_FLAGS: --oci-worker-no-process-sandbox
-    BUILD_OUTPUT_DEST: "$CI_PROJECT_DIR/.cache/build/$[[ inputs.target ]]"
   before_script:
     - mkdir -p "$APK_CACHE_DIR"
     - apk --cache-dir "$APK_CACHE_DIR" add --update-cache ca-certificates git fuse3 fuse-overlayfs runc rootlesskit shadow-uidmap su-exec

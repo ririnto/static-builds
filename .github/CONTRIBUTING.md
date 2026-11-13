@@ -88,7 +88,7 @@ Static Builds keeps the stricter table HTML exception by allowing only `br` insi
 The local `docs/table-separators` rule requires exactly three hyphens in each table delimiter cell.
 It preserves alignment colons and fixes only the delimiter hyphens.
 The Markdownlint rule tests exercise owned behavior through Markdownlint's public API.
-`check:test` runs the Go command tests followed by Node's native `**/*.test.ts` discovery.
+`check:test` runs the Go command tests and Node's native `**/*.test.ts` discovery in parallel.
 Focused Oxlint tests use its official RuleTester API without retesting the upstream preset or formatter.
 The direct `markdown-it` dependency supplies the parser used by the token-based rules.
 The CLI configuration respects Git ignore files.

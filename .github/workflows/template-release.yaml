@@ -52,7 +52,6 @@ jobs:
           BUILDKIT_CACHE_BACKEND: gha
           GORELEASER_CURRENT_TAG: ${{ inputs.tag }}
           TAG: ${{ inputs.tag }}
-          BUILD_OUTPUT_DEST: ${{ github.workspace }}/.cache/build/${{ inputs.target }}
           TARGET: ${{ inputs.target }}
         run: go tool task goreleaser -- release --clean --verbose --timeout=6h --skip=publish,validate
 
