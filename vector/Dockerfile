@@ -15,7 +15,7 @@ RUN mkdir -p ${TARGET_PREFIX}/bin
 RUN mv vector-x86_64-unknown-linux-musl/bin/vector ${TARGET_PREFIX}/bin/
 
 FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
-SHELL ["/bin/bash", "-e", "-o", "pipefail", "-c"]
+SHELL ["/bin/bash", "-eo", "pipefail", "-c"]
 ARG TARGETARCH
 ARG BUILD_TARGET=vector
 ARG TARGET_PREFIX

@@ -24,7 +24,7 @@ RUN --mount=type=cache,id=coredns-go-build-${TARGETARCH},sharing=locked,target=/
         BUILDOPTS="-v -trimpath"
 
 FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
-SHELL ["/bin/bash", "-e", "-o", "pipefail", "-c"]
+SHELL ["/bin/bash", "-eo", "pipefail", "-c"]
 ARG TARGETARCH
 ARG BUILD_TARGET=coredns
 ARG COREDNS_VERSION

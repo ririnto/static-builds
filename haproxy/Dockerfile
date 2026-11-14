@@ -234,7 +234,7 @@ RUN make install \
     PREFIX=${TARGET_PREFIX}
 
 FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
-SHELL ["/bin/bash", "-e", "-o", "pipefail", "-c"]
+SHELL ["/bin/bash", "-eo", "pipefail", "-c"]
 ARG TARGETARCH
 ARG BUILD_TARGET=haproxy
 ARG TARGET_PREFIX

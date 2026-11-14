@@ -81,7 +81,7 @@ RUN make "-j$(nproc)"
 RUN make install
 
 FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
-SHELL ["/bin/bash", "-e", "-o", "pipefail", "-c"]
+SHELL ["/bin/bash", "-eo", "pipefail", "-c"]
 ARG TARGETARCH
 ARG BUILD_TARGET=apache-httpd
 ARG TARGET_PREFIX
