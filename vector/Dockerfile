@@ -19,11 +19,15 @@ ARG TARGETARCH
 ARG BUILD_TARGET=vector
 ARG TARGET_PREFIX
 RUN --mount=type=cache,id=vector-dnf-${TARGETARCH},sharing=locked,target=/var/cache/dnf \
-    microdnf -y install file
+    microdnf -y install file binutils strace
 COPY --from=download ${TARGET_PREFIX} ${TARGET_PREFIX}
 RUN test "$TARGETARCH" = amd64
 RUN test -x "${TARGET_PREFIX}/bin/vector"
 RUN file -b "${TARGET_PREFIX}/bin/vector" | grep -Eq '^ELF .* (statically linked|static-pie linked)(,|$)'
+RUN readelf -l "${TARGET_PREFIX}/bin/vector" > /tmp/program-headers && test "$(grep -c INTERP /tmp/program-headers)" -eq 0
+RUN readelf -d "${TARGET_PREFIX}/bin/vector" > /tmp/dynamic-section && test "$(grep -c '(NEEDED)' /tmp/dynamic-section)" -eq 0
+
+RUN timeout --kill-after=5s 30s strace "${TARGET_PREFIX}/bin/vector" --version
 
 FROM scratch
 

@@ -31,7 +31,8 @@ The model does not prove download integrity, retry liveness, or concurrent publi
 
 Static verification checks metadata-selected release executables, including Apache HTTPd's `rotatelogs`.
 Each released executable must have executable permissions and be identified as a statically linked ELF artifact.
-Build verification does not execute packaged applications or repeat upstream functional tests.
+Build verification checks executable startup under strace and rejects ELF interpreters or shared-library dependencies with readelf.
+It does not repeat upstream functional tests.
 The workflow descriptions reflect source inspection rather than hosted execution evidence.
 
 ## Custom healthcheck

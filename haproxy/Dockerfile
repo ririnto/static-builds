@@ -238,10 +238,14 @@ ARG TARGETARCH
 ARG BUILD_TARGET=haproxy
 ARG TARGET_PREFIX
 RUN --mount=type=cache,id=haproxy-dnf-${TARGETARCH},sharing=locked,target=/var/cache/dnf \
-    microdnf -y install file
+    microdnf -y install file binutils strace
 COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
 RUN test -x "${TARGET_PREFIX}/sbin/haproxy"
 RUN file -b "${TARGET_PREFIX}/sbin/haproxy" | grep -Eq '^ELF .* (statically linked|static-pie linked)(,|$)'
+RUN readelf -l "${TARGET_PREFIX}/sbin/haproxy" > /tmp/program-headers && test "$(grep -c INTERP /tmp/program-headers)" -eq 0
+RUN readelf -d "${TARGET_PREFIX}/sbin/haproxy" > /tmp/dynamic-section && test "$(grep -c '(NEEDED)' /tmp/dynamic-section)" -eq 0
+
+RUN timeout --kill-after=5s 30s strace "${TARGET_PREFIX}/sbin/haproxy" -vv
 
 FROM scratch
 

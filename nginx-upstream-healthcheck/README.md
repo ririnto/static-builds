@@ -248,7 +248,7 @@ The NGINX results classify the point where each probe succeeded or failed while 
 ## Build and contributor checks
 
 Build this target with `TARGET=nginx-upstream-healthcheck TAG=nginx-upstream-healthcheck-local go tool task goreleaser -- release --clean --snapshot --verbose --timeout=6h --skip=publish,validate`.
-The Dockerfile checks static linking and executable permissions before exporting the binary, configurations, and runtime identity files.
-Build verification does not execute the packaged application.
+The Dockerfile checks static linking, executable permissions, and startup under strace before exporting the binary, configurations, and runtime identity files.
+Build verification exercises startup only, without duplicating upstream functional tests.
 Run `go tool task test` and `pnpm check` from the repository root for Go command tests and contributor tooling checks.
 These checks do not establish runtime healthcheck acceptance.
