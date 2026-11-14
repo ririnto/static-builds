@@ -54,7 +54,7 @@ These commands assume the GoReleaser artifact directory.
 Adjust the paths when invoking the low-level Task build with a different `--output` destination.
 
 ```bash
-TARGET=coredns TAG=coredns-local go tool task goreleaser -- release --clean --snapshot --verbose --timeout=6h --skip=publish,validate
+TAG=coredns-local go tool task snapshot -- coredns
 ./dist/coredns/coredns -version
 ./dist/coredns/coredns -plugins
 ```

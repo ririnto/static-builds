@@ -62,7 +62,7 @@ These commands assume the GoReleaser artifact directory.
 Adjust the paths when invoking the low-level Task build with a different `--output` destination.
 
 ```bash
-TARGET=monit TAG=monit-local go tool task goreleaser -- release --clean --snapshot --verbose --timeout=6h --skip=publish,validate
+TAG=monit-local go tool task snapshot -- monit
 ./dist/monit/bin/monit -V
 ./dist/monit/bin/monit -h
 ```
@@ -127,7 +127,7 @@ procmatch <pattern>   - Test process matching pattern
 Build monit and inspect the feature set:
 
 ```bash
-CI= GITHUB_ACTIONS= TARGET=monit TAG=monit-local go tool task goreleaser -- release --clean --snapshot --verbose --timeout=6h --skip=publish,validate
+CI= GITHUB_ACTIONS= TAG=monit-local go tool task snapshot -- monit
 ./dist/monit/bin/monit -V
 ./dist/monit/bin/monit -h
 ```

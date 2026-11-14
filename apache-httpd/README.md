@@ -57,7 +57,7 @@ These commands assume the GoReleaser artifact directory.
 Adjust the paths when invoking the low-level Task build with a different `--output` destination.
 
 ```bash
-TARGET=apache-httpd TAG=apache-httpd-local go tool task goreleaser -- release --clean --snapshot --verbose --timeout=6h --skip=publish,validate
+TAG=apache-httpd-local go tool task snapshot -- apache-httpd
 ./dist/apache-httpd/bin/httpd -V 2>&1
 ./dist/apache-httpd/bin/httpd -l 2>&1
 ./dist/apache-httpd/bin/httpd -d "$PWD/dist/apache-httpd" -M 2>&1

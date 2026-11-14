@@ -90,7 +90,7 @@ These commands assume the GoReleaser artifact directory.
 Adjust the paths when invoking the low-level Task build with a different `--output` destination.
 
 ```bash
-TARGET=nginx TAG=nginx-local go tool task goreleaser -- release --clean --snapshot --verbose --timeout=6h --skip=publish,validate
+TAG=nginx-local go tool task snapshot -- nginx
 ./dist/nginx/sbin/nginx -V 2>&1
 ```
 

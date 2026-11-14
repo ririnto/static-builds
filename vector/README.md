@@ -58,7 +58,7 @@ These commands assume the GoReleaser artifact directory.
 Adjust the paths when invoking the low-level Task build with a different `--output` destination.
 
 ```bash
-TARGET=vector TAG=vector-local go tool task goreleaser -- release --clean --snapshot --verbose --timeout=6h --skip=publish,validate
+TAG=vector-local go tool task snapshot -- vector
 ./dist/vector/bin/vector --version
 ./dist/vector/bin/vector list
 ```
