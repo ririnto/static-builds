@@ -489,7 +489,7 @@ Invalid examples:
 5. GoReleaser selects the metadata-listed files directly from the build output and creates the archive and SHA-256 checksum.
 6. Separate CI publication jobs use GoReleaser to publish the existing archive without rebuilding.
 
-Local build caching uses the root `.cache/<target>/` directories by default.
+Compose supplies explicit local cache options for the root `.cache/<target>/` directories.
 GitHub release builds use the GitHub Actions cache backend with a separate scope for each target.
 Compose and GitLab package builds use daemonless rootless BuildKit and retain local-cache behavior.
 
