@@ -24,7 +24,7 @@ RUN --mount=type=cache,id=coredns-go-build-${TARGETARCH},sharing=locked,target=/
         BUILDOPTS="-v -trimpath"
 
 FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
-SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+SHELL ["/bin/bash", "-e", "-o", "pipefail", "-c"]
 ARG TARGETARCH
 ARG BUILD_TARGET=coredns
 ARG COREDNS_VERSION
@@ -38,6 +38,8 @@ RUN readelf -l "${TARGET_PREFIX}/coredns" | ( ! grep -q INTERP )
 RUN readelf -d "${TARGET_PREFIX}/coredns" | ( ! grep -q '(NEEDED)' )
 
 RUN timeout --kill-after=5s 30s strace "${TARGET_PREFIX}/coredns" -version
+
+RUN "${TARGET_PREFIX}/coredns" -plugins
 
 FROM scratch
 

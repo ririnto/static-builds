@@ -389,7 +389,7 @@ Targets share the same root contract, but some targets vary in builder image, re
 
 Run `go tool task test` and `pnpm check` for the surviving Go commands and contributor tools.
 Go lint uses `go tool task golangci-lint -- run ./...` checks, and shell formatting uses `go tool task shfmt -- -d` through Task.
-Builds verify static linking with readelf and executable startup with strace in Dockerfile stages without per-target verify scripts or upstream functional test duplication.
+Builds verify static linking with readelf and executable startup with strace, plus module, plugin, and feature listings in Dockerfile stages without per-target verify scripts or upstream functional test duplication.
 Contributor checks do not establish runtime acceptance of the custom healthcheck module.
 
 ## Release Process

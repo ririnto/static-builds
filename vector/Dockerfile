@@ -15,7 +15,7 @@ RUN mkdir -p ${TARGET_PREFIX}/bin
 RUN mv vector-x86_64-unknown-linux-musl/bin/vector ${TARGET_PREFIX}/bin/
 
 FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
-SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+SHELL ["/bin/bash", "-e", "-o", "pipefail", "-c"]
 ARG TARGETARCH
 ARG BUILD_TARGET=vector
 ARG TARGET_PREFIX
@@ -29,6 +29,8 @@ RUN readelf -l "${TARGET_PREFIX}/bin/vector" | ( ! grep -q INTERP )
 RUN readelf -d "${TARGET_PREFIX}/bin/vector" | ( ! grep -q '(NEEDED)' )
 
 RUN timeout --kill-after=5s 30s strace "${TARGET_PREFIX}/bin/vector" --version
+
+RUN "${TARGET_PREFIX}/bin/vector" list
 
 FROM scratch
 

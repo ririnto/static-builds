@@ -74,7 +74,7 @@ RUN mkdir -p "${TARGET_PREFIX}/config/conf.d"
 COPY nginx/config/nginx.conf ${TARGET_PREFIX}/config/nginx.conf
 
 FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
-SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+SHELL ["/bin/bash", "-e", "-o", "pipefail", "-c"]
 ARG TARGETARCH
 ARG BUILD_TARGET=nginx
 ARG TARGET_PREFIX

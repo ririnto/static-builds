@@ -36,7 +36,7 @@ RUN gcc -static -static-pie -o ${TARGET_PREFIX}/bin/monit \
         -lpthread -lresolv -ldl -lm
 
 FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
-SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+SHELL ["/bin/bash", "-e", "-o", "pipefail", "-c"]
 ARG TARGETARCH
 ARG BUILD_TARGET=monit
 ARG TARGET_PREFIX

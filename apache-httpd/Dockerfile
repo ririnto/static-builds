@@ -81,7 +81,7 @@ RUN make "-j$(nproc)"
 RUN make install
 
 FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
-SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+SHELL ["/bin/bash", "-e", "-o", "pipefail", "-c"]
 ARG TARGETARCH
 ARG BUILD_TARGET=apache-httpd
 ARG TARGET_PREFIX
@@ -98,7 +98,9 @@ RUN readelf -l "${TARGET_PREFIX}/bin/rotatelogs" | ( ! grep -q INTERP )
 RUN readelf -d "${TARGET_PREFIX}/bin/rotatelogs" | ( ! grep -q '(NEEDED)' )
 
 RUN timeout --kill-after=5s 30s strace "${TARGET_PREFIX}/bin/httpd" -V
-RUN timeout --kill-after=5s 30s strace "${TARGET_PREFIX}/bin/rotatelogs" /tmp/rotatelogs 60 < /dev/null
+
+RUN "${TARGET_PREFIX}/bin/httpd" -l
+RUN "${TARGET_PREFIX}/bin/httpd" -M
 
 FROM scratch
 

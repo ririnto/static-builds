@@ -24,7 +24,7 @@ RUN --mount=type=cache,id=apache-exporter-go-build-${TARGETARCH},sharing=locked,
         -o ${TARGET_PREFIX}/bin/apache-exporter .
 
 FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
-SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+SHELL ["/bin/bash", "-e", "-o", "pipefail", "-c"]
 ARG TARGETARCH
 ARG BUILD_TARGET=apache-exporter
 ARG TARGET_PREFIX
