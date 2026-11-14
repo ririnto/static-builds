@@ -43,10 +43,10 @@ Review the [official njs 1.0.2 release notes](https://nginx.org/en/docs/njs/chan
 On a compatible Linux host, run the repository example explicitly with the built binary from the repository root:
 
 ```sh
-mkdir -p dist/nginx/logs
-./dist/nginx/sbin/nginx -p "$PWD/dist/nginx/" -c "$PWD/nginx/examples/njs/scripting.conf"
+mkdir -p .cache/build/nginx/logs
+./.cache/build/nginx/sbin/nginx -p "$PWD/.cache/build/nginx/" -c "$PWD/nginx/examples/njs/scripting.conf"
 curl http://127.0.0.1:18081/njs
-./dist/nginx/sbin/nginx -p "$PWD/dist/nginx/" -c "$PWD/nginx/examples/njs/scripting.conf" -s quit
+./.cache/build/nginx/sbin/nginx -p "$PWD/.cache/build/nginx/" -c "$PWD/nginx/examples/njs/scripting.conf" -s quit
 ```
 
 The Dockerfile performs these checks before exporting the built installation:
@@ -62,11 +62,11 @@ Run `go tool task shfmt -- -d -i 2 -ci` from the repository root to check mainta
 
 > [!NOTE]
 >
-> Outputs are under `dist/nginx/`.
-> Override with `BUILD_OUTPUT_DEST`.
+> Outputs are under `.cache/build/nginx/`.
+> The GoReleaser hook selects this directory with an explicit `--output` argument.
 
 ```bash
-./dist/nginx/sbin/nginx -V
+./.cache/build/nginx/sbin/nginx -V
 ```
 
 ## Runtime Introspection Output
@@ -85,11 +85,12 @@ The source-backed commands below capture the same introspection surfaces, but do
 From the repository root, use the [GoReleaser configuration](../.goreleaser.yaml) to build and package the target selected by the current metadata, then run the capture commands on a compatible Linux host.
 The default build platform is `linux/amd64`.
 The GoReleaser before hook invokes Task to download the inputs and run rootless BuildKit, including the Dockerfile verify stage.
-These commands assume the default output directory and must be adjusted if `BUILD_OUTPUT_DEST` is overridden.
+These commands assume the GoReleaser artifact directory.
+Adjust the paths when invoking the low-level Task build with a different `--output` destination.
 
 ```bash
 TARGET=nginx TAG=nginx-local go tool task goreleaser -- release --clean --snapshot --verbose --timeout=6h --skip=publish,validate
-./dist/nginx/sbin/nginx -V 2>&1
+./.cache/build/nginx/sbin/nginx -V 2>&1
 ```
 
 Record the capture date, repository revision, selected metadata versions, build platform, build environment, exact commands, and results with any replacement output.

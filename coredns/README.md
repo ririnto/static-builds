@@ -27,11 +27,11 @@ This target builds a static CoreDNS binary from source using Go.
 
 > [!NOTE]
 >
-> Outputs are under `dist/coredns/`.
-> Override with `BUILD_OUTPUT_DEST`.
+> Outputs are under `.cache/build/coredns/`.
+> The GoReleaser hook selects this directory with an explicit `--output` argument.
 
 ```bash
-./dist/coredns/coredns -plugins
+./.cache/build/coredns/coredns -plugins
 ```
 
 ## Runtime Introspection Output
@@ -50,12 +50,13 @@ The source-backed commands below capture the same introspection surfaces, but do
 From the repository root, use the [GoReleaser configuration](../.goreleaser.yaml) to build and package the target selected by the current metadata, then run the capture commands on a compatible Linux host.
 The default build platform is `linux/amd64`.
 The GoReleaser before hook invokes Task to download the inputs and run rootless BuildKit, including the Dockerfile verify stage.
-These commands assume the default output directory and must be adjusted if `BUILD_OUTPUT_DEST` is overridden.
+These commands assume the GoReleaser artifact directory.
+Adjust the paths when invoking the low-level Task build with a different `--output` destination.
 
 ```bash
 TARGET=coredns TAG=coredns-local go tool task goreleaser -- release --clean --snapshot --verbose --timeout=6h --skip=publish,validate
-./dist/coredns/coredns -version
-./dist/coredns/coredns -plugins
+./.cache/build/coredns/coredns -version
+./.cache/build/coredns/coredns -plugins
 ```
 
 Record the capture date, repository revision, selected metadata versions, build platform, build environment, exact commands, and results with any replacement output.

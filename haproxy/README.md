@@ -78,11 +78,11 @@ This build-profile change does not change HAProxy's HTTP/2 proxying of applicati
 
 > [!NOTE]
 >
-> Outputs are under `dist/haproxy/`.
-> Override with `BUILD_OUTPUT_DEST`.
+> Outputs are under `.cache/build/haproxy/`.
+> The GoReleaser hook selects this directory with an explicit `--output` argument.
 
 ```bash
-./dist/haproxy/sbin/haproxy -vv
+./.cache/build/haproxy/sbin/haproxy -vv
 ```
 
 ## Runtime Introspection Output

@@ -151,6 +151,7 @@ Every build uses the GoReleaser before hook and `go tool task build` to start an
 Compose and CI configure the daemon command, native snapshotter, persistent state path, and runtime directory.
 Each Task invocation creates a private source context and removes it only after the daemon exits.
 Direct Linux callers must set `XDG_RUNTIME_DIR`, `BUILDCTL="go tool buildctl"`, and `BUILDKITD="go tool buildkitd"` before invoking the build.
+Use a distinct `XDG_RUNTIME_DIR` for concurrent direct builds because the daemon uses a fixed socket path beneath it.
 The Go-managed tools are compiled before starting the daemonless connection loop.
 Existing `BUILDKITD_FLAGS` remain available for explicitly configured host requirements; GitLab retains its documented process-sandbox exception.
 `BUILDKIT_ARGS="--opt force-network-mode=none"` disables RUN-step networking.

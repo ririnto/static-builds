@@ -30,11 +30,11 @@ For plaintext destinations, explicitly specify `http://` in `address` or `routin
 
 > [!NOTE]
 >
-> Outputs are under `dist/vector/`.
-> Override with `BUILD_OUTPUT_DEST`.
+> Outputs are under `.cache/build/vector/`.
+> The GoReleaser hook selects this directory with an explicit `--output` argument.
 
 ```bash
-./dist/vector/bin/vector list
+./.cache/build/vector/bin/vector list
 ```
 
 ## Runtime Introspection Output
@@ -54,12 +54,13 @@ The source-backed commands below capture the same introspection surfaces, but do
 From the repository root, use the [GoReleaser configuration](../.goreleaser.yaml) to build and package the target selected by the current metadata, then run the capture commands on a compatible Linux host.
 The default build platform is `linux/amd64`.
 The GoReleaser before hook invokes Task to download the inputs and run rootless BuildKit, including the Dockerfile verify stage.
-These commands assume the default output directory and must be adjusted if `BUILD_OUTPUT_DEST` is overridden.
+These commands assume the GoReleaser artifact directory.
+Adjust the paths when invoking the low-level Task build with a different `--output` destination.
 
 ```bash
 TARGET=vector TAG=vector-local go tool task goreleaser -- release --clean --snapshot --verbose --timeout=6h --skip=publish,validate
-./dist/vector/bin/vector --version
-./dist/vector/bin/vector list
+./.cache/build/vector/bin/vector --version
+./.cache/build/vector/bin/vector list
 ```
 
 Record the capture date, repository revision, selected metadata versions, build platform, build environment, exact commands, and results with any replacement output.

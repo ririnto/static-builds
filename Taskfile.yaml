@@ -16,10 +16,6 @@ tasks:
     cmds:
       - |-
         set -e
-        if [ "$(id -u)" -eq 0 ]; then
-          echo "Error: BuildKit must run as a non-root user" >&2
-          exit 1
-        fi
         set -- {{range .CLI_ARGS_LIST}}{{. | shellQuote}} {{end}}
         go tool task download -- "${1:-}"
         TARGET="$1"
