@@ -15,6 +15,7 @@ RUN mkdir -p ${TARGET_PREFIX}/bin
 RUN mv vector-x86_64-unknown-linux-musl/bin/vector ${TARGET_PREFIX}/bin/
 
 FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ARG TARGETARCH
 ARG BUILD_TARGET=vector
 ARG TARGET_PREFIX
@@ -24,8 +25,8 @@ COPY --from=download ${TARGET_PREFIX} ${TARGET_PREFIX}
 RUN test "$TARGETARCH" = amd64
 RUN test -x "${TARGET_PREFIX}/bin/vector"
 RUN file -b "${TARGET_PREFIX}/bin/vector" | grep -Eq '^ELF .* (statically linked|static-pie linked)(,|$)'
-RUN readelf -l "${TARGET_PREFIX}/bin/vector" > /tmp/program-headers && test "$(grep -c INTERP /tmp/program-headers)" -eq 0
-RUN readelf -d "${TARGET_PREFIX}/bin/vector" > /tmp/dynamic-section && test "$(grep -c '(NEEDED)' /tmp/dynamic-section)" -eq 0
+RUN readelf -l "${TARGET_PREFIX}/bin/vector" | ( ! grep -q INTERP )
+RUN readelf -d "${TARGET_PREFIX}/bin/vector" | ( ! grep -q '(NEEDED)' )
 
 RUN timeout --kill-after=5s 30s strace "${TARGET_PREFIX}/bin/vector" --version
 

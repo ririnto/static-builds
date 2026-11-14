@@ -76,6 +76,7 @@ RUN mkdir -p "${TARGET_PREFIX}/config/conf.d"
 COPY nginx-upstream-healthcheck/config/nginx.conf ${TARGET_PREFIX}/config/nginx.conf
 
 FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ARG TARGETARCH
 ARG BUILD_TARGET=nginx-upstream-healthcheck
 ARG TARGET_PREFIX
@@ -84,8 +85,8 @@ RUN --mount=type=cache,id=nginx-upstream-healthcheck-dnf-${TARGETARCH},sharing=l
 COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
 RUN test -x "${TARGET_PREFIX}/sbin/nginx"
 RUN file -b "${TARGET_PREFIX}/sbin/nginx" | grep -Eq '^ELF .* (statically linked|static-pie linked)(,|$)'
-RUN readelf -l "${TARGET_PREFIX}/sbin/nginx" > /tmp/program-headers && test "$(grep -c INTERP /tmp/program-headers)" -eq 0
-RUN readelf -d "${TARGET_PREFIX}/sbin/nginx" > /tmp/dynamic-section && test "$(grep -c '(NEEDED)' /tmp/dynamic-section)" -eq 0
+RUN readelf -l "${TARGET_PREFIX}/sbin/nginx" | ( ! grep -q INTERP )
+RUN readelf -d "${TARGET_PREFIX}/sbin/nginx" | ( ! grep -q '(NEEDED)' )
 
 RUN timeout --kill-after=5s 30s strace "${TARGET_PREFIX}/sbin/nginx" -V
 

@@ -36,6 +36,7 @@ RUN gcc -static -static-pie -o ${TARGET_PREFIX}/bin/monit \
         -lpthread -lresolv -ldl -lm
 
 FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ARG TARGETARCH
 ARG BUILD_TARGET=monit
 ARG TARGET_PREFIX
@@ -44,8 +45,8 @@ RUN --mount=type=cache,id=monit-dnf-${TARGETARCH},sharing=locked,target=/var/cac
 COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
 RUN test -x "${TARGET_PREFIX}/bin/monit"
 RUN file -b "${TARGET_PREFIX}/bin/monit" | grep -Eq '^ELF .* (statically linked|static-pie linked)(,|$)'
-RUN readelf -l "${TARGET_PREFIX}/bin/monit" > /tmp/program-headers && test "$(grep -c INTERP /tmp/program-headers)" -eq 0
-RUN readelf -d "${TARGET_PREFIX}/bin/monit" > /tmp/dynamic-section && test "$(grep -c '(NEEDED)' /tmp/dynamic-section)" -eq 0
+RUN readelf -l "${TARGET_PREFIX}/bin/monit" | ( ! grep -q INTERP )
+RUN readelf -d "${TARGET_PREFIX}/bin/monit" | ( ! grep -q '(NEEDED)' )
 
 RUN timeout --kill-after=5s 30s strace "${TARGET_PREFIX}/bin/monit" -V
 

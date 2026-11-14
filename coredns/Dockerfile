@@ -24,6 +24,7 @@ RUN --mount=type=cache,id=coredns-go-build-${TARGETARCH},sharing=locked,target=/
         BUILDOPTS="-v -trimpath"
 
 FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ARG TARGETARCH
 ARG BUILD_TARGET=coredns
 ARG COREDNS_VERSION
@@ -33,8 +34,8 @@ RUN --mount=type=cache,id=coredns-dnf-${TARGETARCH},sharing=locked,target=/var/c
 COPY --from=build /build/coredns-${COREDNS_VERSION}/coredns ${TARGET_PREFIX}/coredns
 RUN test -x "${TARGET_PREFIX}/coredns"
 RUN file -b "${TARGET_PREFIX}/coredns" | grep -Eq '^ELF .* (statically linked|static-pie linked)(,|$)'
-RUN readelf -l "${TARGET_PREFIX}/coredns" > /tmp/program-headers && test "$(grep -c INTERP /tmp/program-headers)" -eq 0
-RUN readelf -d "${TARGET_PREFIX}/coredns" > /tmp/dynamic-section && test "$(grep -c '(NEEDED)' /tmp/dynamic-section)" -eq 0
+RUN readelf -l "${TARGET_PREFIX}/coredns" | ( ! grep -q INTERP )
+RUN readelf -d "${TARGET_PREFIX}/coredns" | ( ! grep -q '(NEEDED)' )
 
 RUN timeout --kill-after=5s 30s strace "${TARGET_PREFIX}/coredns" -version
 

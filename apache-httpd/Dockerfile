@@ -81,6 +81,7 @@ RUN make "-j$(nproc)"
 RUN make install
 
 FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ARG TARGETARCH
 ARG BUILD_TARGET=apache-httpd
 ARG TARGET_PREFIX
@@ -90,11 +91,11 @@ COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
 RUN test -x "${TARGET_PREFIX}/bin/httpd"
 RUN test -x "${TARGET_PREFIX}/bin/rotatelogs"
 RUN file -b "${TARGET_PREFIX}/bin/httpd" | grep -Eq '^ELF .* (statically linked|static-pie linked)(,|$)'
-RUN readelf -l "${TARGET_PREFIX}/bin/httpd" > /tmp/program-headers && test "$(grep -c INTERP /tmp/program-headers)" -eq 0
-RUN readelf -d "${TARGET_PREFIX}/bin/httpd" > /tmp/dynamic-section && test "$(grep -c '(NEEDED)' /tmp/dynamic-section)" -eq 0
+RUN readelf -l "${TARGET_PREFIX}/bin/httpd" | ( ! grep -q INTERP )
+RUN readelf -d "${TARGET_PREFIX}/bin/httpd" | ( ! grep -q '(NEEDED)' )
 RUN file -b "${TARGET_PREFIX}/bin/rotatelogs" | grep -Eq '^ELF .* (statically linked|static-pie linked)(,|$)'
-RUN readelf -l "${TARGET_PREFIX}/bin/rotatelogs" > /tmp/program-headers && test "$(grep -c INTERP /tmp/program-headers)" -eq 0
-RUN readelf -d "${TARGET_PREFIX}/bin/rotatelogs" > /tmp/dynamic-section && test "$(grep -c '(NEEDED)' /tmp/dynamic-section)" -eq 0
+RUN readelf -l "${TARGET_PREFIX}/bin/rotatelogs" | ( ! grep -q INTERP )
+RUN readelf -d "${TARGET_PREFIX}/bin/rotatelogs" | ( ! grep -q '(NEEDED)' )
 
 RUN timeout --kill-after=5s 30s strace "${TARGET_PREFIX}/bin/httpd" -V
 RUN timeout --kill-after=5s 30s strace "${TARGET_PREFIX}/bin/rotatelogs" /tmp/rotatelogs 60 < /dev/null
