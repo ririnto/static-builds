@@ -117,7 +117,6 @@ The test spacing rule recognizes registrations imported from Vitest, Jest global
 `check:typescript` checks those TypeScript files through `tsconfig.json` and the Node LTS compiler preset.
 Ultracite checks the optional njs examples in each nginx target's `examples/njs/scripting.js` for lint and formatting.
 The njs example is not copied into runtime images or release archives.
-The custom healthcheck target checks its health transitions through a local proxy.
 The njs example uses upstream `njs-types` declarations through its own TypeScript configuration.
 That separate configuration preserves the njs runtime globals, which differ from Node's Buffer and module types.
 

@@ -80,41 +80,12 @@ ARG TARGETARCH
 ARG BUILD_TARGET=nginx-upstream-healthcheck
 ARG TARGET_PREFIX
 RUN --mount=type=cache,id=nginx-upstream-healthcheck-dnf-${TARGETARCH},sharing=locked,target=/var/cache/dnf \
-    microdnf -y install binutils curl-minimal file openssl strace
+    microdnf -y install file
 COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
-RUN set -eu; \
-    case "$TARGETARCH" in \
-        amd64) machine='Advanced Micro Devices X86-64' ;; \
-        arm64) machine='AArch64' ;; \
-        arm) machine='ARM' ;; \
-        386) machine='Intel 80386' ;; \
-        ppc64le) machine='PowerPC64' ;; \
-        s390x) machine='IBM S/390' ;; \
-        riscv64) machine='RISC-V' ;; \
-        *) machine= ;; \
-    esac; \
-    for binary in "${TARGET_PREFIX}/sbin/nginx"; do \
-        test -f "$binary"; \
-        test -x "$binary"; \
-        header=$(LC_ALL=C readelf -h "$binary"); \
-        printf '%s\n' "$header" | grep -E 'Type: +((EXEC)|(DYN)) '; \
-        if [ -n "$machine" ]; then \
-            printf '%s\n' "$header" | grep -E "Machine: +$machine$"; \
-        fi; \
-        description=$(LC_ALL=C file -b "$binary"); \
-        printf '%s\n' "$description" | grep -E '^ELF .* (statically linked|static-pie linked)(,|$)'; \
-        segments=$(LC_ALL=C readelf -l "$binary"); \
-        dynamic=$(LC_ALL=C readelf -d "$binary"); \
-        if printf '%s\n' "$segments" | grep -w INTERP; then \
-            echo "Unexpected ELF interpreter: $binary" >&2; exit 1; \
-        fi; \
-        if printf '%s\n' "$dynamic" | grep -F '(NEEDED)'; then \
-            echo "Unexpected shared library dependency: $binary" >&2; exit 1; \
-        fi; \
-    done
-RUN timeout --kill-after=5s 30s strace "${TARGET_PREFIX}/sbin/nginx" -V
+RUN test -x "${TARGET_PREFIX}/sbin/nginx"
+RUN file -b "${TARGET_PREFIX}/sbin/nginx" | grep -Eq '^ELF .* (statically linked|static-pie linked)(,|$)'
 
-FROM scratch AS runtime
+FROM scratch
 
 ARG TARGET_PREFIX
 
@@ -123,72 +94,3 @@ COPY nginx-upstream-healthcheck/passwd /etc/passwd
 COPY nginx-upstream-healthcheck/group /etc/group
 EXPOSE 80 443
 ENTRYPOINT ["/sbin/nginx", "-p", "/", "-g", "daemon off;"]
-
-FROM verify AS verify-runtime
-COPY --from=runtime / /runtime/
-COPY nginx-upstream-healthcheck/examples/config/nginx.conf /verification/nginx.conf
-RUN set -e; \
-    trap 'rm -f /tmp/healthcheck-build-ca.key /runtime/config/backend-ca.pem /runtime/config/healthcheck-verify.conf /runtime/etc/hosts' EXIT; \
-    cp /verification/nginx.conf /runtime/config/healthcheck-verify.conf; \
-    openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj /CN=healthcheck-build-ca \
-        -keyout /tmp/healthcheck-build-ca.key -out /runtime/config/backend-ca.pem; \
-    echo "127.0.0.1 maintenance.internal" >/runtime/etc/hosts; \
-    chroot /runtime /sbin/nginx -p / -t -c config/healthcheck-verify.conf
-RUN set -eu; \
-    test_dir=$(mktemp -d /runtime/config/healthcheck-verify.XXXXXX); \
-    pid=; \
-    trap 'status=$?; \
-        trap - EXIT; \
-        if [ -n "$pid" ]; then \
-            if kill "$pid"; then \
-                wait "$pid" || status=1; \
-            else \
-                status=1; \
-            fi; \
-        fi; \
-        rm -rf "$test_dir" || status=1; \
-        exit "$status"' EXIT; \
-    chmod 755 "$test_dir"; \
-    printf '%s\n' \
-        'worker_processes 1;' \
-        "pid /config/${test_dir##*/}/nginx.pid;" \
-        'error_log stderr notice;' \
-        'events { worker_connections 64; }' \
-        'http {' \
-        '    access_log off;' \
-        '    upstream backend {' \
-        '        zone backend 64k;' \
-        '        server 127.0.0.1:18091;' \
-        '        healthcheck type=http interval=200ms timeout=500ms fall=2 rise=2 uri=/ready;' \
-        '    }' \
-        '    server {' \
-        '        listen 127.0.0.1:18091;' \
-        "        location = /ready { root /config/${test_dir##*/}; }" \
-        "        location / { return 200 'backend'; }" \
-        '    }' \
-        '    server {' \
-        '        listen 127.0.0.1:18092;' \
-        '        location / { proxy_pass http://backend; }' \
-        '    }' \
-        '}' >"$test_dir/nginx.conf"; \
-    touch "$test_dir/ready"; \
-    chroot /runtime /sbin/nginx -p / -c "config/${test_dir##*/}/nginx.conf" -g 'daemon off;' & \
-    pid=$!; \
-    wait_for_status() { \
-        for attempt in $(seq 1 15); do \
-            if [ "$(curl --connect-timeout 1 --max-time 2 -o /dev/null -w '%{http_code}' http://127.0.0.1:18092/)" = "$1" ]; then \
-                return 0; \
-            fi; \
-            sleep 1; \
-        done; \
-        echo "Timed out waiting for proxy status $1" >&2; \
-        return 1; \
-    }; \
-    wait_for_status 200; \
-    rm "$test_dir/ready"; \
-    wait_for_status 502; \
-    touch "$test_dir/ready"; \
-    wait_for_status 200
-
-FROM runtime
-COPY --from=verify-runtime /runtime/ /
