@@ -34,8 +34,13 @@ services:
     security_opt:
       - seccomp=unconfined
       - systempaths=unconfined
-    entrypoint: [go, tool, task, snapshot, --]
-    command: []
+    entrypoint:
+      - go
+      - tool
+      - task
+      - snapshot
+      - --
+    command: ""
     volumes:
       - type: bind
         source: .
