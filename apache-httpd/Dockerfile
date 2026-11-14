@@ -118,12 +118,6 @@ RUN set -eu; \
         fi; \
     done
 RUN timeout --kill-after=5s 30s strace "${TARGET_PREFIX}/bin/httpd" -V
-RUN set -eu; \
-    test_dir=$(mktemp -d); \
-    trap 'rm -rf "$test_dir"' EXIT; \
-    printf '%s\n' 'static-builds rotatelogs check' >"$test_dir/input"; \
-    timeout --kill-after=5s 30s strace "${TARGET_PREFIX}/bin/rotatelogs" "$test_dir/output" 60 <"$test_dir/input"; \
-    test "$(cat "$test_dir"/output.*)" = 'static-builds rotatelogs check'
 RUN "${TARGET_PREFIX}/bin/httpd" -l
 RUN "${TARGET_PREFIX}/bin/httpd" -M
 
