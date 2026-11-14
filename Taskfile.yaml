@@ -97,3 +97,8 @@ tasks:
     desc: Lint Go source
     cmds:
       - go tool golangci-lint {{range .CLI_ARGS_LIST}}{{. | shellQuote}} {{end}}
+
+  nilaway:
+    desc: Analyze repository Go packages for potential nil dereferences
+    cmds:
+      - go tool nilaway {{range .CLI_ARGS_LIST}}{{. | shellQuote}} {{end}}

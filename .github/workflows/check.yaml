@@ -27,6 +27,9 @@ jobs:
       - name: Lint Go source
         run: go tool task golangci-lint -- run ./...
 
+      - name: Check nil safety
+        run: go tool task nilaway -- ./...
+
       - name: Check shell formatting
         run: go tool task shfmt -- -d
 

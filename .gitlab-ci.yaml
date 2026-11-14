@@ -25,6 +25,7 @@ check:
   script:
     - go tool task test
     - go tool task golangci-lint -- run ./...
+    - go tool task nilaway -- ./...
     - go tool task shfmt -- -d
     - go tool task jsonnetfmt -- --test
 

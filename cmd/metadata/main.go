@@ -6,35 +6,40 @@ import (
 	"os"
 	"slices"
 
+	"github.com/alecthomas/kong"
+
 	"github.com/ririnto/static-builds/internal/metadata"
 )
 
 func run(args []string) error {
-	if len(args) != 2 {
-		return fmt.Errorf("usage: metadata <command> <argument>")
+	var cli struct {
+		Command  string `arg:"" enum:"get-env,get-official-version,get-tag-prefix,get-target-from-tag,get-release-files,get-downloads" help:"Metadata query to execute."`
+		Argument string `arg:"" help:"Target name, or release tag for get-target-from-tag."`
 	}
-	switch args[0] {
-	case "get-env", "get-official-version", "get-tag-prefix", "get-target-from-tag", "get-release-files", "get-downloads":
-	default:
-		return fmt.Errorf("usage: metadata <command> <argument>")
+	parser, err := kong.New(&cli, kong.Name("metadata"))
+	if err != nil {
+		return err
+	}
+	if _, err := parser.Parse(args); err != nil {
+		return err
 	}
 	data, err := metadata.LoadDefault()
 	if err != nil {
 		return err
 	}
-	if args[0] == "get-target-from-tag" {
-		target, err := data.TargetFromTag(args[1])
+	if cli.Command == "get-target-from-tag" {
+		target, err := data.TargetFromTag(cli.Argument)
 		if err != nil {
 			return err
 		}
 		fmt.Println(target.Name)
 		return nil
 	}
-	target, err := data.Target(args[1])
+	target, err := data.Target(cli.Argument)
 	if err != nil {
 		return err
 	}
-	switch args[0] {
+	switch cli.Command {
 	case "get-env":
 		entries, err := target.Environment()
 		if err != nil {

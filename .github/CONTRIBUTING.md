@@ -12,10 +12,10 @@ Use the repository's `.markdownlint-cli2.jsonc` when running Markdown lint.
 
 ### Contributor validation
 
-The [GitHub validation workflow](workflows/markdown-validation.yaml) runs Go-managed tooling checks on every pull request without building targets or publishing releases.
+The [GitHub validation workflow](workflows/check.yaml) runs Go-managed tooling checks on every pull request without building targets or publishing releases.
 The separate [build validation workflow](workflows/validate-builds.yaml) runs nonpublishing GoReleaser snapshots on build-relevant pull requests, using native amd64 for every metadata target and native arm64 for all except Vector's fixed x86_64 archive.
-Each matrix job has an isolated checkout and distribution directory, checks package SHA-256 and metadata-selected files, bytes, and modes, and uploads an architecture-named package without sharing release caches or credentials.
-GitLab invokes Go tests, golangci-lint, shell formatting, and Jsonnet formatting through `go tool task` before generating its package pipeline.
+Each matrix job downloads sources, builds and packages them in an isolated checkout and distribution directory, then uploads an architecture-named package without sharing release caches or credentials.
+GitLab invokes Go tests, golangci-lint, NilAway, shell formatting, and Jsonnet formatting through `go tool task` before generating its package pipeline.
 Branch child pipelines start automatically and offer an optional manual build for each target.
 Tag releases run automatically.
 Local hooks and the GitHub tooling workflow check main, feature, and release-tag Jsonnet rendering.
@@ -24,7 +24,7 @@ The GitLab package component invokes GoReleaser, after the shared rootless Task 
 GitLab reuses signed APK downloads in its declared `APK_CACHE_DIR`, isolated by runner, while refreshing repository indexes on every job.
 Node, pnpm, and Java checks run through local contributor hooks.
 It also supports manual runs.
-The GitHub job runs Go tests, golangci-lint, shell formatting, and Jsonnet checks.
+The GitHub job runs Go tests, golangci-lint, NilAway, shell formatting, and Jsonnet checks.
 
 Install the Node.js version supported by `package.json` and the pnpm version declared there for Node-side tooling.
 Install the Go version declared in `go.mod` for repository tasks and Go-managed contributor tools.
@@ -40,8 +40,12 @@ The following tools are managed through `go.mod`:
 - Jsonnet
 - jsonnetfmt
 - golangci-lint
+- NilAway
 - GoReleaser
 - buildctl
+
+Kong parses the download and metadata command arguments and provides their help output.
+NilAway checks repository packages through `go tool task nilaway -- ./...`.
 
 The Taskfile selects tracked shell scripts and contributor hooks with NUL-delimited Git output and invokes shfmt through typed-list Task iteration.
 The shfmt task owns the shared two-space indentation and case indentation flags, while callers select check or write mode.
@@ -73,7 +77,7 @@ pnpm run fix
 The root package manifest references Node-side tooling through the pnpm workspace catalog.
 `pnpm-workspace.yaml` defines the catalog-backed `katex` development override required by `micromark-extension-math`.
 The lockfile records the resolved dependency graph.
-`check` runs markdownlint-cli2, rule tests, TypeScript validation, Ultracite, download and manifest Go tests, golangci-lint, shell formatting, Jsonnet evaluation, and Jsonnet formatting checks.
+`check` runs markdownlint-cli2, rule tests, TypeScript validation, Ultracite, download and manifest Go tests, golangci-lint, NilAway, shell formatting, Jsonnet evaluation, and Jsonnet formatting checks.
 Markdown validation uses pnpm and markdownlint-cli2, including the `code-block-style` rule for fenced code blocks.
 `fix` applies the following changes:
 
@@ -182,5 +186,5 @@ The custom healthcheck module remains maintained production source.
 
 For build changes, run the nonpublishing GoReleaser snapshot command for each affected target and inspect its exported binaries, archive members, and checksum before creating release tags.
 The release workflows run on release tags or reusable workflow calls.
-The separate Markdown validation workflow runs on pull requests or manual requests with read-only repository access.
+The contributor check workflow runs on pull requests or manual requests with read-only repository access.
 Do not create release tags to validate documentation changes.

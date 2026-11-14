@@ -9,6 +9,7 @@
     "check": "run-p check:*",
     "check:branch-lock": "node .claude/skills/branch-download/scripts/run.mjs --check",
     "check:golangci-lint": "go tool task golangci-lint -- run ./...",
+    "check:nilaway": "go tool task nilaway -- ./...",
     "check:jsonnet": "run-p check:jsonnet:*",
     "check:jsonnet:feature": "go tool task jsonnet -- -S --ext-str branch=feature/tooling-check --ext-str target= --ext-str component_ref=example.invalid/group/static-builds/static-release@feature/tooling-check",
     "check:jsonnet:main": "go tool task jsonnet -- -S --ext-str branch=main --ext-str target= --ext-str component_ref=example.invalid/group/static-builds/static-release@main",

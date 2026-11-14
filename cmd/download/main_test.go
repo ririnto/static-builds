@@ -406,3 +406,11 @@ func TestInsecureRefreshPreservesSource(t *testing.T) {
 	}
 	assertDownload(t, root, "complete source")
 }
+
+func TestDownloadHelpWithoutMetadata(t *testing.T) {
+	command := exec.Command("go", "run", ".", "--help")
+	command.Env = append(os.Environ(), "METADATA_PATH_OVERRIDE="+filepath.Join(t.TempDir(), "absent.json"))
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("help failed: %v\n%s", err, output)
+	}
+}
