@@ -31,7 +31,7 @@ Run them as a non-root user; macOS and Windows hosts use Compose.
 Go manages both BuildKit client and daemon through `go.mod`. GitHub installs distribution-packaged `rootlesskit`, `uidmap`, and `runc` without changing runner security settings.
 The selected worker must support local filesystem export, cache import/export, and execution of `BUILDKIT_PLATFORM`, which defaults to `linux/amd64`.
 Use a native worker or separately configured emulation when the worker architecture differs from the selected platform.
-The Taskfile writes artifacts to `dist/<target>/` and imports and exports local cache in `.cache/<target>/` by default.
+The Taskfile forwards explicit output and cache arguments from its caller without selecting a cache backend.
 
 The following tools are managed through `go.mod`:
 
