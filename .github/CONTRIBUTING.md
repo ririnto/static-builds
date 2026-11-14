@@ -12,7 +12,7 @@ Use the repository's `.markdownlint-cli2.jsonc` when running Markdown lint.
 
 ### Contributor validation
 
-The [GitHub validation workflow](workflows/markdown-validation.yaml) runs Go-managed tooling checks on every pull request without building targets or publishing releases.
+The [GitHub validation workflow](workflows/check.yaml) runs Go-managed tooling checks on every pull request without building targets or publishing releases.
 The separate [build validation workflow](workflows/validate-builds.yaml) runs nonpublishing GoReleaser snapshots on build-relevant pull requests, using native amd64 for every metadata target and native arm64 for all except Vector's fixed x86_64 archive.
 Each matrix job downloads sources, builds and packages them in an isolated checkout and distribution directory, then uploads an architecture-named package without sharing release caches or credentials.
 GitLab invokes Go tests, golangci-lint, NilAway, shell formatting, and Jsonnet formatting through `go tool task` before generating its package pipeline.
@@ -186,5 +186,5 @@ The custom healthcheck module remains maintained production source.
 
 For build changes, run the nonpublishing GoReleaser snapshot command for each affected target and inspect its exported binaries, archive members, and checksum before creating release tags.
 The release workflows run on release tags or reusable workflow calls.
-The separate Markdown validation workflow runs on pull requests or manual requests with read-only repository access.
+The contributor check workflow runs on pull requests or manual requests with read-only repository access.
 Do not create release tags to validate documentation changes.
