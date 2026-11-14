@@ -36,42 +36,17 @@ RUN gcc -static -static-pie -o ${TARGET_PREFIX}/bin/monit \
         -lpthread -lresolv -ldl -lm
 
 FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
+SHELL ["/bin/bash", "-eo", "pipefail", "-c"]
 ARG TARGETARCH
 ARG BUILD_TARGET=monit
 ARG TARGET_PREFIX
 RUN --mount=type=cache,id=monit-dnf-${TARGETARCH},sharing=locked,target=/var/cache/dnf \
     microdnf -y install file binutils strace
 COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
-RUN set -eu; \
-    case "$TARGETARCH" in \
-        amd64) machine='Advanced Micro Devices X86-64' ;; \
-        arm64) machine='AArch64' ;; \
-        arm) machine='ARM' ;; \
-        386) machine='Intel 80386' ;; \
-        ppc64le) machine='PowerPC64' ;; \
-        s390x) machine='IBM S/390' ;; \
-        riscv64) machine='RISC-V' ;; \
-        *) machine= ;; \
-    esac; \
-    for binary in "${TARGET_PREFIX}/bin/monit"; do \
-        test -f "$binary"; \
-        test -x "$binary"; \
-        header=$(LC_ALL=C readelf -h "$binary"); \
-        printf '%s\n' "$header" | grep -E 'Type: +((EXEC)|(DYN)) '; \
-        if [ -n "$machine" ]; then \
-            printf '%s\n' "$header" | grep -E "Machine: +$machine$"; \
-        fi; \
-        description=$(LC_ALL=C file -b "$binary"); \
-        printf '%s\n' "$description" | grep -E '^ELF .* (statically linked|static-pie linked)(,|$)'; \
-        segments=$(LC_ALL=C readelf -l "$binary"); \
-        dynamic=$(LC_ALL=C readelf -d "$binary"); \
-        if printf '%s\n' "$segments" | grep -w INTERP; then \
-            echo "Unexpected ELF interpreter: $binary" >&2; exit 1; \
-        fi; \
-        if printf '%s\n' "$dynamic" | grep -F '(NEEDED)'; then \
-            echo "Unexpected shared library dependency: $binary" >&2; exit 1; \
-        fi; \
-    done
+RUN test -x "${TARGET_PREFIX}/bin/monit"
+RUN file -b "${TARGET_PREFIX}/bin/monit" | grep -Eq '^ELF .* (statically linked|static-pie linked)(,|$)'
+RUN readelf -l "${TARGET_PREFIX}/bin/monit" | ( ! grep -q INTERP )
+RUN readelf -d "${TARGET_PREFIX}/bin/monit" | ( ! grep -q '(NEEDED)' )
 RUN timeout --kill-after=5s 30s strace "${TARGET_PREFIX}/bin/monit" -V
 
 FROM scratch

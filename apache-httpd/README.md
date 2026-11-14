@@ -11,6 +11,7 @@ This target builds Apache HTTPd as static PIE with selected modules compiled in.
 - Proxy/load-balancer stack: `--enable-proxy`, `--enable-proxy-http`, `--enable-proxy-balancer`, `--enable-proxy-hcheck`, `--enable-lbmethod-byrequests`, `--enable-lbmethod-bytraffic`, and `--enable-lbmethod-bybusyness`.
 - Static packaging policy: `--enable-so=no`, `--enable-mods-static=few`, and `--disable-autoindex`.
 - Utility inclusion: `rotatelogs` is enabled with `--enable-static-rotatelogs`.
+- `rotatelogs` has no version-output option, so build verification inspects its static ELF artifact without running log rotation.
 
 ### Runtime/Packaging Snapshot
 

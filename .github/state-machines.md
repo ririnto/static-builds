@@ -30,11 +30,9 @@ The model does not prove download integrity, retry liveness, or concurrent publi
 | Contributor hooks | Git operation, checks, success or blocked operation. | Both tracked hooks invoke the complete contributor checks. |
 
 Static verification checks metadata-selected release executables, including Apache HTTPd's `rotatelogs`.
-Each released executable runs a bounded command under `strace` in UBI.
-Version commands cover the primary binaries, while `rotatelogs` processes finite input in a temporary directory and verifies the output.
-Each trace has a 30-second timeout with a five-second kill grace period.
-Vector component lists, CoreDNS plugin lists, HTTPd module lists, and nginx configuration parsing remain build checks.
-Application functional verification belongs to the custom healthcheck target.
+Each released executable must have executable permissions and be identified as a statically linked ELF artifact.
+Build verification checks executable startup under strace and module, plugin, or feature listings and rejects ELF interpreters or shared-library dependencies with readelf.
+It does not repeat upstream functional tests.
 The workflow descriptions reflect source inspection rather than hosted execution evidence.
 
 ## Custom healthcheck

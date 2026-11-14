@@ -46,7 +46,7 @@
 - Do not require upstream source checksums or fail a build because an upstream checksum file is unavailable.
 - Leave independent source validation to consumers.
 - Keep target build commands and artifact verification in Dockerfiles rather than introducing per-target wrapper harnesses.
-- Reserve application functional verification for the custom healthcheck target.
+- Verify static linking and executable startup with readelf and strace without duplicating upstream functional tests.
 - Document approved target-specific variations without turning them into universal requirements.
 - Keep intermediate output outside the distribution directory when distribution initialization follows build hooks.
 - Serialize releases per checkout and preserve needed packages before cleaning shared distribution output.
