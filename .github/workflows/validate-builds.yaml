@@ -77,7 +77,7 @@ jobs:
       TAG: ${{ matrix.target }}-pr-${{ github.event.pull_request.number }}-${{ matrix.arch }}
       GORELEASER_CURRENT_TAG: ${{ matrix.target }}-pr-${{ github.event.pull_request.number }}-${{ matrix.arch }}
       BUILDKIT_PLATFORM: linux/${{ matrix.arch }}
-      BUILDKIT_CACHE_BACKEND: local
+      BUILDKIT_ARGS: --import-cache type=local,src=.cache/${{ matrix.target }} --export-cache type=local,dest=.cache/${{ matrix.target }},mode=max
     steps:
       - name: Checkout
         uses: actions/checkout@v7

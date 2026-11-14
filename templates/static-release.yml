@@ -24,6 +24,7 @@ spec:
     TARGET: "$[[ inputs.target ]]"
     TAG: "$[[ inputs.package_name ]]"
     GORELEASER_CURRENT_TAG: "$[[ inputs.package_name ]]"
+    BUILDKIT_ARGS: --import-cache type=local,src=.cache/$[[ inputs.target ]] --export-cache type=local,dest=.cache/$[[ inputs.target ]],mode=max
     BUILDKITD_FLAGS: --oci-worker-no-process-sandbox
   before_script:
     - mkdir -p "$APK_CACHE_DIR"

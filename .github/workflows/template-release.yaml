@@ -49,7 +49,7 @@ jobs:
 
       - name: Build and package with GoReleaser
         env:
-          BUILDKIT_CACHE_BACKEND: gha
+          BUILDKIT_ARGS: --import-cache type=gha,scope=${{ inputs.target }} --export-cache type=gha,scope=${{ inputs.target }},mode=max
           GORELEASER_CURRENT_TAG: ${{ inputs.tag }}
           TAG: ${{ inputs.tag }}
           TARGET: ${{ inputs.target }}

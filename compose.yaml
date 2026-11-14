@@ -27,6 +27,7 @@ services:
       TAG: ${TAG:-local}
       GORELEASER_CURRENT_TAG: ${TAG:-local}
       BUILDKIT_PLATFORM: ${BUILDKIT_PLATFORM:-linux/amd64}
+      BUILDKIT_ARGS: ${BUILDKIT_ARGS---import-cache type=local,src=.cache/${TARGET} --export-cache type=local,dest=.cache/${TARGET},mode=max}
       GOFLAGS: -buildvcs=false
     security_opt:
       - seccomp=unconfined

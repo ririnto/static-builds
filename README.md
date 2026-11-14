@@ -130,16 +130,20 @@ GoReleaser and its low-level build drivers accept inherited environment values.
 | `TARGET` | None | Require an explicit metadata target. |
 | `TAG` | None; `local` in Compose | Name the archive. |
 | `BUILDKIT_PLATFORM` | `linux/amd64` | Select a target platform supported by the builder, such as `linux/arm64`. |
-| `BUILDKIT_NETWORK` | `default` | Select `default`, `host`, or `none` for RUN-step networking. |
-| `BUILDKIT_CACHE_BACKEND` | `local` | Select `local` or `gha` for cache import and export. |
+| `BUILDKIT_ARGS` | Empty | Pass explicit BuildKit client arguments through the GoReleaser before hook. |
 | `BUILD_OUTPUT_DEST` | `dist/<target>/` | Select an artifact output directory relative to the repository root or an absolute path. |
-| `CACHE_DIR` | `.cache/<target>/` | Select a local cache directory relative to the repository root or an absolute path when using the `local` backend. |
+
+Cache import and export are caller policy, not Taskfile defaults.
+Compose and GitLab explicitly pass local cache options, GitHub release jobs pass GHA cache options, and isolated validation jobs pass local cache options.
+Direct GoReleaser and pnpm invocations can set `BUILDKIT_ARGS`; omitting it uses only the persistent daemon state.
+Quote argument values containing spaces inside `BUILDKIT_ARGS`, as with a command line.
+The hook forwards arguments without evaluating shell substitutions.
 
 Build invocation examples:
 
 - `TARGET=nginx TAG=nginx-local go tool task goreleaser -- release --clean --snapshot --verbose --timeout=6h --skip=publish,validate`
 - `BUILDKIT_PLATFORM=linux/arm64 TARGET=nginx TAG=nginx-local pnpm run build`
-- `BUILD_OUTPUT_DEST=dist/custom/nginx CACHE_DIR=.cache/custom/nginx TARGET=nginx TAG=nginx-local pnpm run build`
+- `BUILDKIT_ARGS="--import-cache type=local,src=.cache/custom/nginx --export-cache type=local,dest=.cache/custom/nginx,mode=max" TARGET=nginx TAG=nginx-local pnpm run build`
 - `TARGET=dnsmasq TAG=dnsmasq-local pnpm run build` on a configured native Linux host.
 
 ### Network and platform behavior
@@ -148,8 +152,8 @@ Every build uses the GoReleaser before hook and `go tool task build` to start an
 Taskfile selects the native snapshotter and a persistent per-target state directory under `${XDG_DATA_HOME:-$HOME/.local/share}/buildkit/`.
 Each invocation creates a private temporary runtime directory for the daemon socket and removes it after the daemon exits.
 Existing `BUILDKITD_FLAGS` remain available for explicitly configured host requirements; GitLab retains its documented process-sandbox exception.
-`BUILDKIT_NETWORK=none` disables RUN-step networking.
-`BUILDKIT_NETWORK=host` requests host networking from the selected builder.
+`BUILDKIT_ARGS="--opt force-network-mode=none"` disables RUN-step networking.
+`BUILDKIT_ARGS="--opt force-network-mode=host --allow network.host"` requests host networking from the selected builder.
 The host request requires a daemon explicitly configured to allow `network.host` and the build client flag `--allow network.host`; the task does not grant either entitlement automatically.
 The build does not automatically configure a Linux VM or cross-platform emulation.
 A build always requires an explicit `TARGET` and fails without one.
