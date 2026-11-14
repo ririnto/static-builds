@@ -77,7 +77,6 @@ jobs:
       TAG: ${{ matrix.target }}-pr-${{ github.event.pull_request.number }}-${{ matrix.arch }}
       GORELEASER_CURRENT_TAG: ${{ matrix.target }}-pr-${{ github.event.pull_request.number }}-${{ matrix.arch }}
       BUILDKIT_PLATFORM: linux/${{ matrix.arch }}
-      BUILDKIT_ARGS: --import-cache type=local,src=.cache/${{ matrix.target }} --export-cache type=local,dest=.cache/${{ matrix.target }},mode=max
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -94,15 +93,20 @@ jobs:
       - name: Set up rootless BuildKit
         uses: ./.github/actions/setup-buildkit
 
+      - name: Expose GitHub cache runtime
+        uses: crazy-max/ghaction-github-runtime@v4
+
       - name: Build and package without publishing
-        run: go tool task goreleaser -- release --clean --snapshot --verbose --timeout=6h --skip=publish,validate
+        run: |-
+          go tool task build -- "$TARGET" --output "type=local,dest=dist/$TARGET" --import-cache "type=gha,scope=validation-$TARGET-${{ matrix.arch }}" --export-cache "type=gha,scope=validation-$TARGET-${{ matrix.arch }},mode=max"
+          go tool task goreleaser -- release --clean --snapshot --verbose --timeout=6h --skip=publish,validate
 
       - name: Verify release package
         run: |-
           RELEASE_FILES=$(go tool task manifest -- get-release-files "$TARGET")
           export RELEASE_FILES
           (
-            cd dist
+            cd dist/packages
             echo "$(cat "$TARGET-$TAG.tgz.sha256")  $TARGET-$TAG.tgz" | sha256sum --check
           )
           python3 - <<'PY'
@@ -112,8 +116,8 @@ jobs:
           from pathlib import Path
 
           expected = set(os.environ["RELEASE_FILES"].splitlines())
-          output = Path(".cache/build") / os.environ["TARGET"]
-          release = Path("dist")
+          output = Path("dist") / os.environ["TARGET"]
+          release = Path("dist/packages")
           package = release / f"{os.environ['TARGET']}-{os.environ['TAG']}.tgz"
           report = [f"Verified {os.environ['TARGET']} on {os.environ['BUILDKIT_PLATFORM']}"]
           with tarfile.open(package, "r:gz") as archive:
@@ -141,8 +145,8 @@ jobs:
         with:
           name: validation-${{ matrix.target }}-${{ matrix.arch }}
           path: |-
-            dist/${{ env.TARGET }}-${{ env.TAG }}.tgz
-            dist/${{ env.TARGET }}-${{ env.TAG }}.tgz.sha256
-            dist/package-verification.txt
+            dist/packages/${{ env.TARGET }}-${{ env.TAG }}.tgz
+            dist/packages/${{ env.TARGET }}-${{ env.TAG }}.tgz.sha256
+            dist/packages/package-verification.txt
           if-no-files-found: error
           retention-days: 7

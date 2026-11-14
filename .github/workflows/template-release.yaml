@@ -49,17 +49,18 @@ jobs:
 
       - name: Build and package with GoReleaser
         env:
-          BUILDKIT_ARGS: --import-cache type=gha,scope=${{ inputs.target }} --export-cache type=gha,scope=${{ inputs.target }},mode=max
           GORELEASER_CURRENT_TAG: ${{ inputs.tag }}
           TAG: ${{ inputs.tag }}
           TARGET: ${{ inputs.target }}
-        run: go tool task goreleaser -- release --clean --verbose --timeout=6h --skip=publish,validate
+        run: |-
+          go tool task build -- "$TARGET" --output "type=local,dest=dist/$TARGET" --import-cache "type=gha,scope=$TARGET" --export-cache "type=gha,scope=$TARGET,mode=max"
+          go tool task goreleaser -- release --clean --verbose --timeout=6h --skip=publish,validate
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: "fs"
-          scan-ref: ".cache/build/${{ inputs.target }}"
+          scan-ref: "dist/${{ inputs.target }}"
           format: "sarif"
           output: "trivy-results.sarif"
           severity: "CRITICAL,HIGH"
@@ -73,7 +74,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: ${{ inputs.target }}-static-build
-          path: .cache/build/${{ inputs.target }}
+          path: dist/${{ inputs.target }}
           include-hidden-files: true
 
       - name: Upload release package
@@ -81,8 +82,8 @@ jobs:
         with:
           name: ${{ inputs.target }}-release-package
           path: |-
-            dist/${{ inputs.target }}-${{ inputs.tag }}.tgz
-            dist/${{ inputs.target }}-${{ inputs.tag }}.tgz.sha256
+            dist/packages/${{ inputs.target }}-${{ inputs.tag }}.tgz
+            dist/packages/${{ inputs.target }}-${{ inputs.tag }}.tgz.sha256
           include-hidden-files: true
           if-no-files-found: error
 
@@ -114,4 +115,4 @@ jobs:
           TARGET: ${{ inputs.target }}
           RELEASE_ARCHIVE: ${{ runner.temp }}/${{ inputs.target }}/${{ inputs.target }}-${{ inputs.tag }}.tgz
           TAG: ${{ inputs.tag }}
-        run: go tool task goreleaser -- release --clean --skip=before,archive,validate
+        run: go tool task goreleaser -- release --clean --skip=archive,validate

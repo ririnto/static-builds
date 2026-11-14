@@ -22,7 +22,7 @@ Build metadata selects the NGINX, njs, QuickJS-NG, and VTS release versions.
 The build statically compiles the official njs NGINX module and selects the supported `qjs` engine explicitly.
 QuickJS-NG is linked statically through its normal CMake build.
 The build disables optional libxslt support.
-The build output is `.cache/build/nginx-upstream-healthcheck/`.
+The build output is `dist/nginx-upstream-healthcheck/`.
 Release tags use the `nginx-upstream-healthcheck` prefix and take their version from `NGINX_VERSION`.
 
 Release archives contain only `sbin/nginx`.

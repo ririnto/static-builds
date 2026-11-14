@@ -21,7 +21,7 @@ The model does not prove download integrity, retry liveness, or concurrent publi
 
 | Machine | Transitions | Contract and evidence |
 | --- | --- | --- |
-| Build task | Download, metadata arguments, caller-supplied client options, private target context, rootless BuildKit, export and cleanup. | `Taskfile.yaml` propagates failed commands before the next build phase. |
+| Build task | Download, metadata arguments, caller-supplied client options, filtered repository context, rootless BuildKit and export. | `Taskfile.yaml` propagates failed commands before the next build phase. |
 | Docker artifact | Source, configure, compile, install, static verification, final copy. | Each target's final stage depends on its verify stage. |
 | GitHub release | Resolve tag, validate version, build, scan, package, upload, publish. | `.github/workflows/template-release.yaml` publishes only after the release job succeeds. |
 | Release retry | Existing release or missing release, asset replacement or release creation. | GoReleaser owns release creation and asset replacement through `.goreleaser.yaml`. |

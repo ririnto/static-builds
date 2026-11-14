@@ -1,8 +1,6 @@
 version: 2
 
-before:
-  hooks:
-    - go tool task build -- {{ .Env.TARGET }} --output type=local,dest=.cache/build/{{ .Env.TARGET }} {{ if isEnvSet "BUILDKIT_ARGS" }}{{ .Env.BUILDKIT_ARGS }}{{ end }}
+dist: dist/packages
 
 builds:
   - skip: true
@@ -13,11 +11,11 @@ archives:
       - tgz
     name_template: "{{ .Env.TARGET }}-{{ .Env.TAG }}"
     files:
-      - src: '.cache/build/{{ .Env.TARGET }}/{ {{- replace (filter .Env.RELEASE_FILES "^bin/") "\n" "," -}} }'
+      - src: 'dist/{{ .Env.TARGET }}/{ {{- replace (filter .Env.RELEASE_FILES "^bin/") "\n" "," -}} }'
         dst: bin
-      - src: '.cache/build/{{ .Env.TARGET }}/{ {{- replace (filter .Env.RELEASE_FILES "^sbin/") "\n" "," -}} }'
+      - src: 'dist/{{ .Env.TARGET }}/{ {{- replace (filter .Env.RELEASE_FILES "^sbin/") "\n" "," -}} }'
         dst: sbin
-      - src: '.cache/build/{{ .Env.TARGET }}/{ {{- replace (filter .Env.RELEASE_FILES "^[^/]+$") "\n" "," -}} }'
+      - src: 'dist/{{ .Env.TARGET }}/{ {{- replace (filter .Env.RELEASE_FILES "^[^/]+$") "\n" "," -}} }'
         dst: .
 
 checksum:

@@ -27,7 +27,7 @@ services:
       TAG: ${TAG:-local}
       GORELEASER_CURRENT_TAG: ${TAG:-local}
       BUILDKIT_PLATFORM: ${BUILDKIT_PLATFORM:-linux/amd64}
-      BUILDKIT_ARGS: ${BUILDKIT_ARGS---import-cache type=local,src=.cache/${TARGET} --export-cache type=local,dest=.cache/${TARGET},mode=max}
+      BUILDCTL_CONNECT_RETRIES_MAX: 300
       BUILDCTL: go tool buildctl
       BUILDKITD: go tool buildkitd
       BUILDKITD_FLAGS: --root=/home/user/.local/share/buildkit/${TARGET} --oci-worker-snapshotter=native
@@ -36,17 +36,17 @@ services:
       - seccomp=unconfined
       - systempaths=unconfined
     entrypoint:
-      - go
-      - tool
-      - task
-      - goreleaser
-      - --
-      - release
-      - --clean
-      - --snapshot
-      - --verbose
-      - --timeout=6h
-      - "--skip=publish,validate"
+      - sh
+      - -ec
+      - |-
+        go tool task build -- "$$TARGET" --output "type=local,dest=dist/$$TARGET" "$$@"
+        exec go tool task goreleaser -- release --clean --snapshot --verbose --timeout=6h --skip=publish,validate
+      - build
+    command:
+      - --import-cache
+      - type=local,src=.cache/${TARGET}
+      - --export-cache
+      - type=local,dest=.cache/${TARGET},mode=max
     volumes:
       - type: bind
         source: .

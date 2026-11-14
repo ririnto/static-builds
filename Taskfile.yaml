@@ -20,26 +20,10 @@ tasks:
         go tool task download -- "${1:-}"
         TARGET="$1"
         shift
-        context=$(mktemp -d)
-        trap 'rm -rf "$context"' EXIT
-        mkdir -p "$context/.cache/downloads/$TARGET"
-        cp -a "$TARGET" "$context/"
-        for archive in ".cache/downloads/$TARGET/"*; do
-          case "$archive" in
-            *.lock | *.tmp.*) ;;
-            *)
-              if [ -f "$archive" ] && [ -s "$archive" ]; then
-                cp -a "$archive" "$context/.cache/downloads/$TARGET/"
-              fi
-              ;;
-          esac
-        done
-        go tool buildkitd --version
-        go tool buildctl --version
-        sh "$(go list -m -f '{{"{{.Dir}}"}}' github.com/moby/buildkit)/examples/buildctl-daemonless/buildctl-daemonless.sh" build \
+        sh "$(go list -find -f '{{"{{.Module.Dir}}"}}' github.com/moby/buildkit/cmd/buildctl)/examples/buildctl-daemonless/buildctl-daemonless.sh" build \
           --frontend dockerfile.v0 \
-          --local "context=$context" \
-          --local "dockerfile=$context/$TARGET" \
+          --local context=. \
+          --local "dockerfile=$TARGET" \
           --opt filename=Dockerfile \
           --opt "platform=${BUILDKIT_PLATFORM:-linux/amd64}" \
           {{range reverse (splitList "\n" .METADATA_ENV)}}--opt {{printf "build-arg:%s" . | shellQuote}} {{end}}"$@"

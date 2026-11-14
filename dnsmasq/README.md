@@ -27,11 +27,11 @@ This target builds a static PIE `dnsmasq` binary from source.
 
 > [!NOTE]
 >
-> Outputs are under `.cache/build/dnsmasq/`.
-> The GoReleaser hook selects this directory with an explicit `--output` argument.
+> Outputs are under `dist/dnsmasq/`.
+> The build caller selects this directory with an explicit `--output` argument.
 
 ```bash
-./.cache/build/dnsmasq/sbin/dnsmasq -v
+./dist/dnsmasq/sbin/dnsmasq -v
 ```
 
 ## Runtime Introspection Output

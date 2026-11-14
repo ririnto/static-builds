@@ -78,11 +78,11 @@ This build-profile change does not change HAProxy's HTTP/2 proxying of applicati
 
 > [!NOTE]
 >
-> Outputs are under `.cache/build/haproxy/`.
-> The GoReleaser hook selects this directory with an explicit `--output` argument.
+> Outputs are under `dist/haproxy/`.
+> The build caller selects this directory with an explicit `--output` argument.
 
 ```bash
-./.cache/build/haproxy/sbin/haproxy -vv
+./dist/haproxy/sbin/haproxy -vv
 ```
 
 ## Runtime Introspection Output

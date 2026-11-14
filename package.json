@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "go tool task goreleaser -- release --clean --snapshot --verbose --timeout=6h --skip=publish,validate",
+    "build": "go tool task build -- \"$TARGET\" --output \"type=local,dest=dist/$TARGET\" && go tool task goreleaser -- release --clean --snapshot --verbose --timeout=6h --skip=publish,validate",
     "check": "run-p check:*",
     "check:branch-lock": "node .claude/skills/branch-download/scripts/run.mjs --check",
     "check:golangci-lint": "go tool task golangci-lint -- run ./...",

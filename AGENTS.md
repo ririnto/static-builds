@@ -19,7 +19,7 @@
 - Keep custom Go commands limited to source download and manifest queries.
 - Use rootless builds without Docker-in-Docker.
 - Require an explicit build target rather than silently selecting a default.
-- Stage downloads and selected source in a private build context and remove it only after the daemon exits.
+- Use the repository build context with `.dockerignore` excluding generated outputs, private tooling state, and incomplete downloads.
 - Do not disable lint rules, add suppressions, or weaken configuration to make changes pass.
 - Keep one authoritative dependency version declaration and remove overrides when upstream resolves the supported patched version.
 - Use the latest supported upstream LTS series when available, or supported stable releases otherwise.
@@ -48,7 +48,7 @@
 - Keep target build commands and artifact verification in Dockerfiles rather than introducing per-target wrapper harnesses.
 - Verify static linking and executable startup with readelf and strace without duplicating upstream functional tests.
 - Document approved target-specific variations without turning them into universal requirements.
-- Keep intermediate output outside the distribution directory when distribution initialization follows build hooks.
+- Export final binaries directly under `dist/<target>` and keep GoReleaser cleanup confined to `dist/packages`.
 - Serialize releases per checkout and preserve needed packages before cleaning shared distribution output.
 - Keep publication separate from building so publisher credentials never execute build hooks.
 - Request minimum permissions and grant repository write access only to publishing jobs.

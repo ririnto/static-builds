@@ -57,14 +57,14 @@ The source-backed commands below capture the same introspection surfaces, but do
 
 From the repository root, use the [GoReleaser configuration](../.goreleaser.yaml) to build and package the target selected by the current metadata, then run the capture commands on a compatible Linux host.
 The default build platform is `linux/amd64`.
-The GoReleaser before hook invokes Task to download the inputs and run rootless BuildKit, including the Dockerfile verify stage.
+The build caller invokes Task to download the inputs and run rootless BuildKit, including the Dockerfile verify stage.
 These commands assume the GoReleaser artifact directory.
 Adjust the paths when invoking the low-level Task build with a different `--output` destination.
 
 ```bash
 TARGET=monit TAG=monit-local go tool task goreleaser -- release --clean --snapshot --verbose --timeout=6h --skip=publish,validate
-./.cache/build/monit/bin/monit -V
-./.cache/build/monit/bin/monit -h
+./dist/monit/bin/monit -V
+./dist/monit/bin/monit -h
 ```
 
 Record the capture date, repository revision, selected metadata versions, build platform, build environment, exact commands, and results with any replacement output.
@@ -128,8 +128,8 @@ Build monit and inspect the feature set:
 
 ```bash
 CI= GITHUB_ACTIONS= TARGET=monit TAG=monit-local go tool task goreleaser -- release --clean --snapshot --verbose --timeout=6h --skip=publish,validate
-./.cache/build/monit/bin/monit -V
-./.cache/build/monit/bin/monit -h
+./dist/monit/bin/monit -V
+./dist/monit/bin/monit -h
 ```
 
 The `-V` flag shows the build feature summary, and `-h` shows all available command line options and commands.
@@ -139,9 +139,9 @@ See the [Runtime Introspection Output](#runtime-introspection-output) section ab
 
 > [!NOTE]
 >
-> Outputs are under `.cache/build/monit/`.
-> The GoReleaser hook selects this directory with an explicit `--output` argument.
+> Outputs are under `dist/monit/`.
+> The build caller selects this directory with an explicit `--output` argument.
 
 ```bash
-./.cache/build/monit/bin/monit -V
+./dist/monit/bin/monit -V
 ```

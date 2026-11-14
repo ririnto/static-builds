@@ -20,10 +20,10 @@ This target builds the upstream Apache Exporter source into a statically linked 
 
 > [!NOTE]
 >
-> Outputs are under `.cache/build/apache-exporter/`.
-> The GoReleaser hook selects this directory with an explicit `--output` argument.
+> Outputs are under `dist/apache-exporter/`.
+> The build caller selects this directory with an explicit `--output` argument.
 
 ```bash
 TARGET=apache-exporter TAG=apache-exporter-local go tool task goreleaser -- release --clean --snapshot --verbose --timeout=6h --skip=publish,validate
-./.cache/build/apache-exporter/bin/apache-exporter --version 2>&1 | grep -F '1.1.3'
+./dist/apache-exporter/bin/apache-exporter --version 2>&1 | grep -F '1.1.3'
 ```
