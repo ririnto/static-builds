@@ -101,4 +101,4 @@ tasks:
   nilaway:
     desc: Analyze repository Go packages for potential nil dereferences
     cmds:
-      - go tool nilaway -include-pkgs=github.com/ririnto/static-builds {{range .CLI_ARGS_LIST}}{{. | shellQuote}} {{end}}
+      - go tool nilaway {{range .CLI_ARGS_LIST}}{{. | shellQuote}} {{end}}
