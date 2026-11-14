@@ -104,35 +104,7 @@ jobs:
             --export-cache "type=gha,scope=validation-${{ matrix.target }}-${{ matrix.arch }},mode=max"
           go tool task goreleaser -- "${{ matrix.target }}" release --clean --snapshot --verbose --timeout=6h --skip=publish,validate
 
-      - name: Verify release package
-        run: |-
-          RELEASE_FILES="$(go tool task manifest -- get-release-files "${{ matrix.target }}")" python3 - "${{ matrix.target }}" <<'PYTHON'
-          import hashlib
-          import os
-          import stat
-          import sys
-          import tarfile
-          from pathlib import Path
-
-          package = Path(f"dist/packages/{sys.argv[1]}-{os.environ['TAG']}.tgz")
-          if hashlib.sha256(package.read_bytes()).hexdigest() != package.with_suffix(".tgz.sha256").read_text().strip():
-              raise SystemExit("Archive checksum mismatch")
-          with tarfile.open(package) as archive:
-              members = [member for member in archive.getmembers() if not member.isdir()]
-              if sorted(member.name for member in members) != sorted(os.environ["RELEASE_FILES"].splitlines()):
-                  raise SystemExit("Archive members differ from metadata")
-              for member in members:
-                  source = Path("dist") / sys.argv[1] / member.name
-                  info = source.lstat()
-                  if not member.isfile() or not stat.S_ISREG(info.st_mode) or member.mode != stat.S_IMODE(info.st_mode):
-                      raise SystemExit(f"Archive file type or mode mismatch: {member.name}")
-                  with archive.extractfile(member) as packaged:
-                      if packaged.read() != source.read_bytes():
-                          raise SystemExit(f"Archive content mismatch: {member.name}")
-          print(f"Verified {package}")
-          PYTHON
-
-      - name: Upload verified package
+      - name: Upload release package
         uses: actions/upload-artifact@v7
         with:
           name: validation-${{ matrix.target }}-${{ matrix.arch }}

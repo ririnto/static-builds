@@ -508,7 +508,7 @@ Compose and GitLab package builds use daemonless rootless BuildKit and retain lo
 ## CI Behavior
 
 - Build-relevant pull requests run the [nonpublishing build validation workflow](.github/workflows/validate-builds.yaml) for all metadata targets on native amd64 and all except the x86_64-only Vector target on native arm64.
-- Each isolated job runs the GoReleaser snapshot flow, including Dockerfile verification, then checks the generated SHA-256 checksum and exact metadata-selected archive files, bytes, and modes before uploading an architecture-named package artifact.
+- Each isolated job downloads, builds with Dockerfile verification, and packages a GoReleaser snapshot before uploading an architecture-named package artifact.
 - Build validation uses read-only repository access and target/architecture-scoped GHA caches, without release credentials or shared release scopes, tag creation, or publication.
 - Archive upload includes selected release files as a workflow artifact.
 - GoReleaser creates one `.tgz` and SHA-256 checksum per tag during the build job, with publication handled separately.
