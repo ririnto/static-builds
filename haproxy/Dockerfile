@@ -245,7 +245,6 @@ RUN test -x "${TARGET_PREFIX}/sbin/haproxy"
 RUN file -b "${TARGET_PREFIX}/sbin/haproxy" | grep -Eq '^ELF .* (statically linked|static-pie linked)(,|$)'
 RUN readelf -l "${TARGET_PREFIX}/sbin/haproxy" | ( ! grep -q INTERP )
 RUN readelf -d "${TARGET_PREFIX}/sbin/haproxy" | ( ! grep -q '(NEEDED)' )
-
 RUN timeout --kill-after=5s 30s strace "${TARGET_PREFIX}/sbin/haproxy" -vv
 
 FROM scratch

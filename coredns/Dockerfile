@@ -36,9 +36,7 @@ RUN test -x "${TARGET_PREFIX}/coredns"
 RUN file -b "${TARGET_PREFIX}/coredns" | grep -Eq '^ELF .* (statically linked|static-pie linked)(,|$)'
 RUN readelf -l "${TARGET_PREFIX}/coredns" | ( ! grep -q INTERP )
 RUN readelf -d "${TARGET_PREFIX}/coredns" | ( ! grep -q '(NEEDED)' )
-
 RUN timeout --kill-after=5s 30s strace "${TARGET_PREFIX}/coredns" -version
-
 RUN "${TARGET_PREFIX}/coredns" -plugins
 
 FROM scratch

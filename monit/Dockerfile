@@ -47,7 +47,6 @@ RUN test -x "${TARGET_PREFIX}/bin/monit"
 RUN file -b "${TARGET_PREFIX}/bin/monit" | grep -Eq '^ELF .* (statically linked|static-pie linked)(,|$)'
 RUN readelf -l "${TARGET_PREFIX}/bin/monit" | ( ! grep -q INTERP )
 RUN readelf -d "${TARGET_PREFIX}/bin/monit" | ( ! grep -q '(NEEDED)' )
-
 RUN timeout --kill-after=5s 30s strace "${TARGET_PREFIX}/bin/monit" -V
 
 FROM scratch

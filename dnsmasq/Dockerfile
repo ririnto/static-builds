@@ -35,7 +35,6 @@ RUN test -x "${TARGET_PREFIX}/sbin/dnsmasq"
 RUN file -b "${TARGET_PREFIX}/sbin/dnsmasq" | grep -Eq '^ELF .* (statically linked|static-pie linked)(,|$)'
 RUN readelf -l "${TARGET_PREFIX}/sbin/dnsmasq" | ( ! grep -q INTERP )
 RUN readelf -d "${TARGET_PREFIX}/sbin/dnsmasq" | ( ! grep -q '(NEEDED)' )
-
 RUN timeout --kill-after=5s 30s strace "${TARGET_PREFIX}/sbin/dnsmasq" -v
 
 FROM scratch

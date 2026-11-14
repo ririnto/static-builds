@@ -87,7 +87,6 @@ RUN test -x "${TARGET_PREFIX}/sbin/nginx"
 RUN file -b "${TARGET_PREFIX}/sbin/nginx" | grep -Eq '^ELF .* (statically linked|static-pie linked)(,|$)'
 RUN readelf -l "${TARGET_PREFIX}/sbin/nginx" | ( ! grep -q INTERP )
 RUN readelf -d "${TARGET_PREFIX}/sbin/nginx" | ( ! grep -q '(NEEDED)' )
-
 RUN timeout --kill-after=5s 30s strace "${TARGET_PREFIX}/sbin/nginx" -V
 
 FROM scratch

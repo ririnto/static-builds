@@ -96,9 +96,7 @@ RUN readelf -d "${TARGET_PREFIX}/bin/httpd" | ( ! grep -q '(NEEDED)' )
 RUN file -b "${TARGET_PREFIX}/bin/rotatelogs" | grep -Eq '^ELF .* (statically linked|static-pie linked)(,|$)'
 RUN readelf -l "${TARGET_PREFIX}/bin/rotatelogs" | ( ! grep -q INTERP )
 RUN readelf -d "${TARGET_PREFIX}/bin/rotatelogs" | ( ! grep -q '(NEEDED)' )
-
 RUN timeout --kill-after=5s 30s strace "${TARGET_PREFIX}/bin/httpd" -V
-
 RUN "${TARGET_PREFIX}/bin/httpd" -l
 RUN "${TARGET_PREFIX}/bin/httpd" -M
 
