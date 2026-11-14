@@ -15,6 +15,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/alecthomas/kong"
+
 	"github.com/ririnto/static-builds/internal/metadata"
 )
 
@@ -194,19 +196,26 @@ func download(ctx context.Context, url, destination string) (err error) {
 }
 
 func run(ctx context.Context, args []string) error {
-	if len(args) == 0 {
-		return fmt.Errorf("usage: download <target>")
+	var cli struct {
+		Target string `arg:"" help:"Target whose sources should be downloaded."`
 	}
-	if strings.ContainsAny(args[0], "/\\") || strings.IndexFunc(args[0], func(c rune) bool {
+	parser, err := kong.New(&cli, kong.Name("download"))
+	if err != nil {
+		return err
+	}
+	if _, err := parser.Parse(args); err != nil {
+		return err
+	}
+	if strings.ContainsAny(cli.Target, "/\\") || strings.IndexFunc(cli.Target, func(c rune) bool {
 		return (c < 'A' || c > 'Z') && (c < 'a' || c > 'z') && (c < '0' || c > '9') && !strings.ContainsRune("._-", c)
 	}) >= 0 {
-		return fmt.Errorf("invalid target '%s'", args[0])
+		return fmt.Errorf("invalid target '%s'", cli.Target)
 	}
 	data, err := metadata.LoadDefault()
 	if err != nil {
 		return err
 	}
-	target, err := data.Target(args[0])
+	target, err := data.Target(cli.Target)
 	if err != nil {
 		return err
 	}
@@ -220,7 +229,7 @@ func run(ctx context.Context, args []string) error {
 	}
 	for record := range slices.Values(downloads) {
 		if record.URL != "" && record.Name != "" {
-			if err := download(ctx, record.URL, filepath.Join(root, ".cache", "downloads", args[0], record.Name)); err != nil {
+			if err := download(ctx, record.URL, filepath.Join(root, ".cache", "downloads", cli.Target, record.Name)); err != nil {
 				return err
 			}
 		}

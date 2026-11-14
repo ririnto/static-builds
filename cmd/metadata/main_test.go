@@ -3,6 +3,7 @@ package main
 import (
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"slices"
 	"testing"
@@ -55,5 +56,26 @@ func TestManifestQueries(t *testing.T) {
 	}
 	if err := run(nil); err == nil {
 		t.Fatal("accepted a missing query")
+	}
+}
+
+func TestMetadataArgumentsRejectUnexpectedInput(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "metadata.json")
+	if err := os.WriteFile(path, []byte(`{"fixture":{"downloads":[]}}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("METADATA_PATH_OVERRIDE", path)
+	for _, args := range [][]string{{"get-env"}, {"get-env", "fixture", "extra"}, {"unknown", "fixture"}, {"--unknown"}} {
+		if err := run(args); err == nil {
+			t.Fatalf("accepted invalid arguments: %v", args)
+		}
+	}
+}
+
+func TestMetadataHelp(t *testing.T) {
+	command := exec.Command("go", "run", ".", "--help")
+	command.Env = append(os.Environ(), "METADATA_PATH_OVERRIDE="+filepath.Join(t.TempDir(), "absent.json"))
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("help failed: %v\n%s", err, output)
 	}
 }
