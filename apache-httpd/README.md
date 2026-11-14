@@ -60,7 +60,7 @@ Adjust the paths when invoking the low-level Task build with a different `--outp
 TARGET=apache-httpd TAG=apache-httpd-local go tool task goreleaser -- release --clean --snapshot --verbose --timeout=6h --skip=publish,validate
 ./.cache/build/apache-httpd/bin/httpd -V 2>&1
 ./.cache/build/apache-httpd/bin/httpd -l 2>&1
-./.cache/build/apache-httpd/bin/httpd -d "$PWD/dist/apache-httpd" -M 2>&1
+./.cache/build/apache-httpd/bin/httpd -d "$PWD/.cache/build/apache-httpd" -M 2>&1
 ```
 
 The host `-M` command selects the exported server root because the compiled default is `/home/nobody`.

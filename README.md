@@ -484,7 +484,7 @@ Invalid examples:
 
 1. GoReleaser runs its before hook, which selects the Task build driver and runs `go tool task download -- <target>` to resolve the target's download resources from `metadata.json` before starting the build.
 2. The build task invokes the upstream daemonless rootless BuildKit script to execute the multi-stage Dockerfile.
-3. GoReleaser builds export binaries to `.cache/build/<target>/`; direct Task builds default to `dist/<target>/`.
+3. GoReleaser builds export binaries to `.cache/build/<target>/`; direct Task builds export to the caller's explicit `--output` destination.
 4. Each target verifies built artifacts in its Dockerfile before exporting its `scratch` stage.
 5. GoReleaser selects the metadata-listed files directly from the build output and creates the archive and SHA-256 checksum.
 6. Separate CI publication jobs use GoReleaser to publish the existing archive without rebuilding.
