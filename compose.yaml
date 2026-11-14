@@ -23,10 +23,13 @@ services:
         USER user
         WORKDIR /workspace
     environment:
-      TARGET: ${TARGET:-}
       TAG: ${TAG:-local}
       GORELEASER_CURRENT_TAG: ${TAG:-local}
       BUILDKIT_PLATFORM: ${BUILDKIT_PLATFORM:-linux/amd64}
+      BUILDCTL_CONNECT_RETRIES_MAX: 300
+      BUILDCTL: go tool buildctl
+      BUILDKITD: go tool buildkitd
+      BUILDKITD_FLAGS: --root=/home/user/.local/share/buildkit --oci-worker-snapshotter=native
       GOFLAGS: -buildvcs=false
     security_opt:
       - seccomp=unconfined
@@ -35,14 +38,9 @@ services:
       - go
       - tool
       - task
-      - goreleaser
+      - snapshot
       - --
-      - release
-      - --clean
-      - --snapshot
-      - --verbose
-      - --timeout=6h
-      - "--skip=publish,validate"
+    command: ""
     volumes:
       - type: bind
         source: .

@@ -21,7 +21,7 @@ check:
       - "$APK_CACHE_DIR/*.apk"
   before_script:
     - mkdir -p "$APK_CACHE_DIR"
-    - apk --cache-dir "$APK_CACHE_DIR" add --update-cache ca-certificates git
+    - apk --cache-dir "$CI_PROJECT_DIR/$APK_CACHE_DIR" add --update-cache ca-certificates git
   script:
     - go tool task test
     - go tool task golangci-lint -- run ./...
@@ -37,7 +37,7 @@ generate-package-pipeline:
       - "$APK_CACHE_DIR/*.apk"
   before_script:
     - mkdir -p "$APK_CACHE_DIR"
-    - apk --cache-dir "$APK_CACHE_DIR" add --update-cache ca-certificates git
+    - apk --cache-dir "$CI_PROJECT_DIR/$APK_CACHE_DIR" add --update-cache ca-certificates git
   script:
     - |-
       target=

@@ -28,7 +28,7 @@ This target builds a static PIE `dnsmasq` binary from source.
 > [!NOTE]
 >
 > Outputs are under `dist/dnsmasq/`.
-> Override with `BUILD_OUTPUT_DEST`.
+> The build caller selects this directory with an explicit `--output` argument.
 
 ```bash
 ./dist/dnsmasq/sbin/dnsmasq -v

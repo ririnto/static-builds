@@ -4,7 +4,7 @@ This target builds the upstream Apache Exporter source into a statically linked 
 
 ## Build Options (Explicit)
 
-- Build command: `TARGET=apache-exporter TAG=apache-exporter-local go tool task goreleaser -- release --clean --snapshot --verbose --timeout=6h --skip=publish,validate`.
+- Build command: `TAG=apache-exporter-local go tool task snapshot -- apache-exporter`.
 - The Dockerfile uses a Go builder image based on Alpine and compiles with `CGO_ENABLED=0`, `GOOS=linux`, and the BuildKit `TARGETARCH`.
 - The build writes `${TARGET_PREFIX}/bin/apache-exporter`, with `TARGET_PREFIX` defaulting to `/out`.
 - The build injects `APACHE_EXPORTER_VERSION` into the upstream version variable with Go linker flags.
@@ -21,9 +21,9 @@ This target builds the upstream Apache Exporter source into a statically linked 
 > [!NOTE]
 >
 > Outputs are under `dist/apache-exporter/`.
-> Override with `BUILD_OUTPUT_DEST`.
+> The build caller selects this directory with an explicit `--output` argument.
 
 ```bash
-TARGET=apache-exporter TAG=apache-exporter-local go tool task goreleaser -- release --clean --snapshot --verbose --timeout=6h --skip=publish,validate
+TAG=apache-exporter-local go tool task snapshot -- apache-exporter
 ./dist/apache-exporter/bin/apache-exporter --version 2>&1 | grep -F '1.1.3'
 ```

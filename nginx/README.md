@@ -23,7 +23,8 @@ NGINX Open Source does not publish a separate LTS line.
 Both nginx images install their operational base configuration at `/config/nginx.conf` and include HTTP snippets from `/config/conf.d/*.conf`.
 The compiled path is `config/nginx.conf` beneath the selected prefix, and the images use `-p /`.
 The base configuration retains the upstream default HTTP server and supports additional HTTP configuration through `config/conf.d`.
-Mount your own configuration or snippets at those paths; no host configuration is changed by the build.
+Mount your own configuration or snippets at those paths.
+No host configuration is changed by the build.
 The images include minimal `nobody` account records for worker processes and run nginx in the foreground.
 Release archives contain only the binary, so supply your own `config/nginx.conf`, writable logs, and runtime directories when deploying an archive.
 
@@ -63,7 +64,7 @@ Run `go tool task shfmt -- -d -i 2 -ci` from the repository root to check mainta
 > [!NOTE]
 >
 > Outputs are under `dist/nginx/`.
-> Override with `BUILD_OUTPUT_DEST`.
+> The build caller selects this directory with an explicit `--output` argument.
 
 ```bash
 ./dist/nginx/sbin/nginx -V
@@ -84,11 +85,12 @@ The source-backed commands below capture the same introspection surfaces, but do
 
 From the repository root, use the [GoReleaser configuration](../.goreleaser.yaml) to build and package the target selected by the current metadata, then run the capture commands on a compatible Linux host.
 The default build platform is `linux/amd64`.
-The GoReleaser before hook invokes Task to download the inputs and run rootless BuildKit, including the Dockerfile verify stage.
-These commands assume the default output directory and must be adjusted if `BUILD_OUTPUT_DEST` is overridden.
+The build caller invokes Task to download the inputs and run rootless BuildKit, including the Dockerfile verify stage.
+These commands assume the GoReleaser artifact directory.
+Adjust the paths when invoking the low-level Task build with a different `--output` destination.
 
 ```bash
-TARGET=nginx TAG=nginx-local go tool task goreleaser -- release --clean --snapshot --verbose --timeout=6h --skip=publish,validate
+TAG=nginx-local go tool task snapshot -- nginx
 ./dist/nginx/sbin/nginx -V 2>&1
 ```
 

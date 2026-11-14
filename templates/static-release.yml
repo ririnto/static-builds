@@ -21,25 +21,35 @@ spec:
       - "$APK_CACHE_DIR/*.apk"
   variables:
     APK_CACHE_DIR: .cache/apk
-    TARGET: "$[[ inputs.target ]]"
+    TARGET_INPUT: "$[[ inputs.target ]]"
     TAG: "$[[ inputs.package_name ]]"
     GORELEASER_CURRENT_TAG: "$[[ inputs.package_name ]]"
-    BUILDKITD_FLAGS: --oci-worker-no-process-sandbox
+    HOME: /home/user
+    USER: user
+    GOPATH: /home/user/go
+    TMPDIR: /home/user/.local/tmp
+    BUILDCTL_CONNECT_RETRIES_MAX: 300
+    BUILDCTL: go tool buildctl
+    BUILDKITD: go tool buildkitd
+    XDG_RUNTIME_DIR: /run/user/1000
+    BUILDKITD_FLAGS: --root=/home/user/.local/share/buildkit --oci-worker-snapshotter=native --oci-worker-no-process-sandbox
   before_script:
-    - mkdir -p "$APK_CACHE_DIR"
-    - apk --cache-dir "$APK_CACHE_DIR" add --update-cache ca-certificates git fuse3 fuse-overlayfs runc rootlesskit shadow-uidmap su-exec
+    - mkdir -p "$APK_CACHE_DIR" "$TMPDIR"
+    - apk --cache-dir "$CI_PROJECT_DIR/$APK_CACHE_DIR" add --update-cache ca-certificates git fuse3 fuse-overlayfs runc rootlesskit shadow-uidmap su-exec
     - adduser -D -u 1000 user
     - echo user:100000:65536 > /etc/subuid
     - echo user:100000:65536 > /etc/subgid
-    - mkdir -p /run/user/1000 /home/user/.local/tmp /home/user/.local/share/buildkit
+    - mkdir -p /run/user/1000 /home/user/.local/share/buildkit
     - chown -R user:user /run/user/1000 /home/user "$CI_PROJECT_DIR"
   script:
-    - su-exec user env HOME=/home/user USER=user GOPATH=/home/user/go XDG_RUNTIME_DIR=/run/user/1000 TMPDIR=/home/user/.local/tmp go tool task goreleaser -- release --clean --verbose --timeout=6h --snapshot --skip=publish,validate
+    - su-exec user go tool task download -- "$TARGET_INPUT"
+    - su-exec user go tool task build -- "$TARGET_INPUT" --output "type=local,dest=dist/$TARGET_INPUT" --import-cache "type=local,src=.cache/$TARGET_INPUT" --export-cache "type=local,dest=.cache/$TARGET_INPUT,mode=max"
+    - su-exec user go tool task goreleaser -- "$TARGET_INPUT" release --clean --verbose --timeout=6h --snapshot --skip=publish,validate
   artifacts:
     paths:
-      - ".cache/build/$[[ inputs.target ]]/"
-      - "dist/$[[ inputs.target ]]-$[[ inputs.package_name ]].tgz"
-      - "dist/$[[ inputs.target ]]-$[[ inputs.package_name ]].tgz.sha256"
+      - "dist/$[[ inputs.target ]]/"
+      - "dist/packages/$[[ inputs.target ]]-$[[ inputs.package_name ]].tgz"
+      - "dist/packages/$[[ inputs.target ]]-$[[ inputs.package_name ]].tgz.sha256"
     when: always
 
 "gitlab-static-release-$[[ inputs.target ]]":
@@ -57,15 +67,15 @@ spec:
     - when: never
   variables:
     APK_CACHE_DIR: .cache/apk
-    TARGET: "$[[ inputs.target ]]"
+    TARGET_INPUT: "$[[ inputs.target ]]"
     GORELEASER_FORCE_TOKEN: gitlab
     GORELEASER_CURRENT_TAG: "$[[ inputs.release_tag ]]"
     TAG: "$[[ inputs.release_tag ]]"
   before_script:
     - mkdir -p "$APK_CACHE_DIR"
-    - apk --cache-dir "$APK_CACHE_DIR" add --update-cache ca-certificates git
+    - apk --cache-dir "$CI_PROJECT_DIR/$APK_CACHE_DIR" add --update-cache ca-certificates git
   script:
-    - RELEASE_ARCHIVE="$(mktemp -d)/$TARGET-$TAG.tgz"
+    - RELEASE_ARCHIVE="$(mktemp -d)/$TARGET_INPUT-$TAG.tgz"
     - export RELEASE_ARCHIVE
-    - cp "dist/$TARGET-$TAG.tgz" "$RELEASE_ARCHIVE"
-    - GITLAB_TOKEN="$CI_JOB_TOKEN" go tool task goreleaser -- release --clean --skip=before,archive,validate
+    - cp "dist/packages/$TARGET_INPUT-$TAG.tgz" "$RELEASE_ARCHIVE"
+    - GITLAB_TOKEN="$CI_JOB_TOKEN" go tool task goreleaser -- "$TARGET_INPUT" release --clean --skip=archive,validate

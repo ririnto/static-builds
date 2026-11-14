@@ -79,7 +79,7 @@ This build-profile change does not change HAProxy's HTTP/2 proxying of applicati
 > [!NOTE]
 >
 > Outputs are under `dist/haproxy/`.
-> Override with `BUILD_OUTPUT_DEST`.
+> The build caller selects this directory with an explicit `--output` argument.
 
 ```bash
 ./dist/haproxy/sbin/haproxy -vv

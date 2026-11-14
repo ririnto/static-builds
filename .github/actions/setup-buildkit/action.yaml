@@ -11,3 +11,14 @@ runs:
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends rootlesskit uidmap runc
         fi
+
+    - name: Configure rootless BuildKit
+      shell: sh
+      run: |-
+        mkdir -p "$RUNNER_TEMP/buildkit-runtime"
+        chmod 700 "$RUNNER_TEMP/buildkit-runtime"
+        echo "XDG_RUNTIME_DIR=$RUNNER_TEMP/buildkit-runtime" >>"$GITHUB_ENV"
+        echo "BUILDCTL_CONNECT_RETRIES_MAX=300" >>"$GITHUB_ENV"
+        echo "BUILDCTL=go tool buildctl" >>"$GITHUB_ENV"
+        echo "BUILDKITD=go tool buildkitd" >>"$GITHUB_ENV"
+        echo "BUILDKITD_FLAGS=--root=$HOME/.local/share/buildkit --oci-worker-snapshotter=native" >>"$GITHUB_ENV"

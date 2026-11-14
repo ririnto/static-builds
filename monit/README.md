@@ -57,11 +57,12 @@ The source-backed commands below capture the same introspection surfaces, but do
 
 From the repository root, use the [GoReleaser configuration](../.goreleaser.yaml) to build and package the target selected by the current metadata, then run the capture commands on a compatible Linux host.
 The default build platform is `linux/amd64`.
-The GoReleaser before hook invokes Task to download the inputs and run rootless BuildKit, including the Dockerfile verify stage.
-These commands assume the default output directory and must be adjusted if `BUILD_OUTPUT_DEST` is overridden.
+The build caller invokes Task to download the inputs and run rootless BuildKit, including the Dockerfile verify stage.
+These commands assume the GoReleaser artifact directory.
+Adjust the paths when invoking the low-level Task build with a different `--output` destination.
 
 ```bash
-TARGET=monit TAG=monit-local go tool task goreleaser -- release --clean --snapshot --verbose --timeout=6h --skip=publish,validate
+TAG=monit-local go tool task snapshot -- monit
 ./dist/monit/bin/monit -V
 ./dist/monit/bin/monit -h
 ```
@@ -126,7 +127,7 @@ procmatch <pattern>   - Test process matching pattern
 Build monit and inspect the feature set:
 
 ```bash
-CI= GITHUB_ACTIONS= TARGET=monit TAG=monit-local go tool task goreleaser -- release --clean --snapshot --verbose --timeout=6h --skip=publish,validate
+CI= GITHUB_ACTIONS= TAG=monit-local go tool task snapshot -- monit
 ./dist/monit/bin/monit -V
 ./dist/monit/bin/monit -h
 ```
@@ -139,7 +140,7 @@ See the [Runtime Introspection Output](#runtime-introspection-output) section ab
 > [!NOTE]
 >
 > Outputs are under `dist/monit/`.
-> Override with `BUILD_OUTPUT_DEST`.
+> The build caller selects this directory with an explicit `--output` argument.
 
 ```bash
 ./dist/monit/bin/monit -V

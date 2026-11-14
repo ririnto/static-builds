@@ -8,7 +8,7 @@ It never consumes nginx build outputs or release packages.
 
 ## Build and packaged files
 
-Build this target with `TARGET=nginx-upstream-healthcheck TAG=nginx-upstream-healthcheck-local go tool task goreleaser -- release --clean --snapshot --verbose --timeout=6h --skip=publish,validate`.
+Build this target with `TAG=nginx-upstream-healthcheck-local go tool task snapshot -- nginx-upstream-healthcheck`.
 
 Build metadata selects the NGINX, njs, QuickJS-NG, and VTS release versions.
 
@@ -247,7 +247,7 @@ The NGINX results classify the point where each probe succeeded or failed while 
 
 ## Build and contributor checks
 
-Build this target with `TARGET=nginx-upstream-healthcheck TAG=nginx-upstream-healthcheck-local go tool task goreleaser -- release --clean --snapshot --verbose --timeout=6h --skip=publish,validate`.
+Build this target with `TAG=nginx-upstream-healthcheck-local go tool task snapshot -- nginx-upstream-healthcheck`.
 The Dockerfile checks static linking, executable permissions, and startup under strace before exporting the binary, configurations, and runtime identity files.
 Build verification exercises startup only, without duplicating upstream functional tests.
 Run `go tool task test` and `pnpm check` from the repository root for Go command tests and contributor tooling checks.

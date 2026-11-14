@@ -3,6 +3,14 @@
 .husky
 .vscode
 .idea
+.env
+.envrc
+.claude
+.worktrees
+.tmp
+.cache-gh
+.omo
+*.local.*
 .out
 .cache
 .ruff_cache

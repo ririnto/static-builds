@@ -15,68 +15,20 @@ tasks:
         sh: go tool task manifest -- get-env {{index .CLI_ARGS_LIST 0 | shellQuote}}
     cmds:
       - |-
-        set -e
-        if [ "$(id -u)" -eq 0 ]; then
-          echo "Error: BuildKit must run as a non-root user" >&2
-          exit 1
-        fi
-        set -- {{range .CLI_ARGS_LIST}}{{. | shellQuote}} {{end}}
-        go tool task download -- "${1:-}"
-        TARGET="$1"
-        shift
-        CACHE_DIR="${CACHE_DIR:-.cache/$TARGET}"
-        BUILD_OUTPUT_DEST="${BUILD_OUTPUT_DEST:-dist/$TARGET}"
-        case "${BUILDKIT_CACHE_BACKEND:-local}" in
-          local)
-            mkdir -p "$CACHE_DIR"
-            set -- --import-cache "type=local,src=$CACHE_DIR" --export-cache "type=local,dest=$CACHE_DIR,mode=max" "$@"
-            ;;
-          gha)
-            set -- --import-cache "type=gha,scope=$TARGET" --export-cache "type=gha,scope=$TARGET,mode=max" "$@"
-            ;;
-          *)
-            echo "Error: Invalid BUILDKIT_CACHE_BACKEND '${BUILDKIT_CACHE_BACKEND}' (allowed: local, gha)" >&2
-            exit 1
-            ;;
-        esac
-        case "${BUILDKIT_NETWORK:-default}" in
-          default) ;;
-          host | none)
-            set -- --opt "force-network-mode=$BUILDKIT_NETWORK" "$@"
-            ;;
-          *)
-            echo "Error: Invalid BUILDKIT_NETWORK '${BUILDKIT_NETWORK}' (allowed: default, host, none)" >&2
-            exit 1
-            ;;
-        esac
-        mkdir -p "$BUILD_OUTPUT_DEST"
-        runtime=$(mktemp -d)
-        trap 'rm -rf "$runtime"' EXIT
-        mkdir -p "$runtime/context/.cache/downloads/$TARGET"
-        cp -a "$TARGET" "$runtime/context/"
-        for archive in ".cache/downloads/$TARGET/"*; do
-          case "$archive" in
-            *.lock | *.tmp.*) ;;
-            *)
-              if [ -f "$archive" ] && [ -s "$archive" ]; then
-                cp -a "$archive" "$runtime/context/.cache/downloads/$TARGET/"
-              fi
-              ;;
-          esac
-        done
-        export XDG_RUNTIME_DIR="$runtime"
-        export BUILDKITD_FLAGS="--root=${XDG_DATA_HOME:-$HOME/.local/share}/buildkit/$TARGET --oci-worker-snapshotter=native ${BUILDKITD_FLAGS:-}"
-        go mod download github.com/moby/buildkit
-        BUILDKITD=$(go tool -n buildkitd)
-        export BUILDKITD
-        BUILDCTL="go tool buildctl" sh "$(go list -m -f '{{"{{.Dir}}"}}' github.com/moby/buildkit)/examples/buildctl-daemonless/buildctl-daemonless.sh" build \
+        sh "$(go list -find -f '{{"{{.Module.Dir}}"}}' github.com/moby/buildkit/cmd/buildctl)/examples/buildctl-daemonless/buildctl-daemonless.sh" build \
           --frontend dockerfile.v0 \
-          --local "context=$runtime/context" \
-          --local "dockerfile=$runtime/context/$TARGET" \
+          --local context=. \
+          --local {{printf "dockerfile=%s" (index .CLI_ARGS_LIST 0) | shellQuote}} \
           --opt filename=Dockerfile \
           --opt "platform=${BUILDKIT_PLATFORM:-linux/amd64}" \
-          --output "type=local,dest=$BUILD_OUTPUT_DEST" \
-          {{range reverse (splitList "\n" .METADATA_ENV)}}--opt {{printf "build-arg:%s" . | shellQuote}} {{end}}"$@"
+          {{range reverse (splitList "\n" .METADATA_ENV)}}--opt {{printf "build-arg:%s" . | shellQuote}} {{end}}{{range slice .CLI_ARGS_LIST 1}}{{. | shellQuote}} {{end}}
+
+  snapshot:
+    desc: Download, build, and package without publishing (-- <target> [buildctl args...])
+    cmds:
+      - go tool task download -- {{index .CLI_ARGS_LIST 0 | shellQuote}}
+      - go tool task build -- {{index .CLI_ARGS_LIST 0 | shellQuote}} --output {{printf "type=local,dest=dist/%s" (index .CLI_ARGS_LIST 0) | shellQuote}} {{range slice .CLI_ARGS_LIST 1}}{{. | shellQuote}} {{end}}
+      - go tool task goreleaser -- {{index .CLI_ARGS_LIST 0 | shellQuote}} release --clean --snapshot --verbose --timeout=6h --skip=publish,validate
 
   buildctl:
     desc: Run the BuildKit client
@@ -94,14 +46,15 @@ tasks:
       - go run ./cmd/metadata {{range .CLI_ARGS_LIST}}{{. | shellQuote}} {{end}}
 
   goreleaser:
-    desc: Build, package, hash, and publish through GoReleaser (-- <args...>)
+    desc: Package, hash, and publish through GoReleaser (-- <target> <args...>)
     vars:
       RELEASE_FILES:
-        sh: "{{if .TARGET}}go tool task manifest -- get-release-files {{.TARGET | shellQuote}}{{else}}echo{{end}}"
+        sh: go tool task manifest -- get-release-files {{index .CLI_ARGS_LIST 0 | shellQuote}}
     env:
+      TARGET: "{{index .CLI_ARGS_LIST 0}}"
       RELEASE_FILES: "{{.RELEASE_FILES}}"
     cmds:
-      - go tool goreleaser {{range .CLI_ARGS_LIST}}{{. | shellQuote}} {{end}}
+      - go tool goreleaser {{range slice .CLI_ARGS_LIST 1}}{{. | shellQuote}} {{end}}
 
   jsonnet:
     desc: Render the GitLab package pipeline
