@@ -51,10 +51,13 @@ jobs:
         env:
           GORELEASER_CURRENT_TAG: ${{ inputs.tag }}
           TAG: ${{ inputs.tag }}
-          TARGET: ${{ inputs.target }}
         run: |-
-          go tool task build -- "$TARGET" --output "type=local,dest=dist/$TARGET" --import-cache "type=gha,scope=$TARGET" --export-cache "type=gha,scope=$TARGET,mode=max"
-          go tool task goreleaser -- release --clean --verbose --timeout=6h --skip=publish,validate
+          go tool task download -- "${{ inputs.target }}"
+          go tool task build -- "${{ inputs.target }}" \
+            --output "type=local,dest=dist/${{ inputs.target }}" \
+            --import-cache "type=gha,scope=${{ inputs.target }}" \
+            --export-cache "type=gha,scope=${{ inputs.target }},mode=max"
+          go tool task goreleaser -- "${{ inputs.target }}" release --clean --verbose --timeout=6h --skip=publish,validate
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@v0.36.0
@@ -112,7 +115,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
           GORELEASER_CURRENT_TAG: ${{ inputs.tag }}
-          TARGET: ${{ inputs.target }}
           RELEASE_ARCHIVE: ${{ runner.temp }}/${{ inputs.target }}/${{ inputs.target }}-${{ inputs.tag }}.tgz
           TAG: ${{ inputs.tag }}
-        run: go tool task goreleaser -- release --clean --skip=archive,validate
+        run: go tool task goreleaser -- "${{ inputs.target }}" release --clean --skip=archive,validate

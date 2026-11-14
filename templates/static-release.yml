@@ -21,7 +21,6 @@ spec:
       - "$APK_CACHE_DIR/*.apk"
   variables:
     APK_CACHE_DIR: .cache/apk
-    TARGET: "$[[ inputs.target ]]"
     TAG: "$[[ inputs.package_name ]]"
     GORELEASER_CURRENT_TAG: "$[[ inputs.package_name ]]"
     BUILDCTL_CONNECT_RETRIES_MAX: 300
@@ -38,8 +37,9 @@ spec:
     - mkdir -p /run/user/1000 /home/user/.local/tmp /home/user/.local/share/buildkit
     - chown -R user:user /run/user/1000 /home/user "$CI_PROJECT_DIR"
   script:
-    - su-exec user env HOME=/home/user USER=user GOPATH=/home/user/go TMPDIR=/home/user/.local/tmp go tool task build -- "$TARGET" --output "type=local,dest=dist/$TARGET" --import-cache "type=local,src=.cache/$TARGET" --export-cache "type=local,dest=.cache/$TARGET,mode=max"
-    - su-exec user env HOME=/home/user USER=user GOPATH=/home/user/go TMPDIR=/home/user/.local/tmp go tool task goreleaser -- release --clean --verbose --timeout=6h --snapshot --skip=publish,validate
+    - su-exec user env HOME=/home/user USER=user GOPATH=/home/user/go TMPDIR=/home/user/.local/tmp go tool task download -- "$[[ inputs.target ]]"
+    - su-exec user env HOME=/home/user USER=user GOPATH=/home/user/go TMPDIR=/home/user/.local/tmp go tool task build -- "$[[ inputs.target ]]" --output "type=local,dest=dist/$[[ inputs.target ]]" --import-cache "type=local,src=.cache/$[[ inputs.target ]]" --export-cache "type=local,dest=.cache/$[[ inputs.target ]],mode=max"
+    - su-exec user env HOME=/home/user USER=user GOPATH=/home/user/go TMPDIR=/home/user/.local/tmp go tool task goreleaser -- "$[[ inputs.target ]]" release --clean --verbose --timeout=6h --snapshot --skip=publish,validate
   artifacts:
     paths:
       - "dist/$[[ inputs.target ]]/"
@@ -62,7 +62,6 @@ spec:
     - when: never
   variables:
     APK_CACHE_DIR: .cache/apk
-    TARGET: "$[[ inputs.target ]]"
     GORELEASER_FORCE_TOKEN: gitlab
     GORELEASER_CURRENT_TAG: "$[[ inputs.release_tag ]]"
     TAG: "$[[ inputs.release_tag ]]"
@@ -70,7 +69,7 @@ spec:
     - mkdir -p "$APK_CACHE_DIR"
     - apk --cache-dir "$APK_CACHE_DIR" add --update-cache ca-certificates git
   script:
-    - RELEASE_ARCHIVE="$(mktemp -d)/$TARGET-$TAG.tgz"
+    - RELEASE_ARCHIVE="$(mktemp -d)/$[[ inputs.target ]]-$TAG.tgz"
     - export RELEASE_ARCHIVE
-    - cp "dist/packages/$TARGET-$TAG.tgz" "$RELEASE_ARCHIVE"
-    - GITLAB_TOKEN="$CI_JOB_TOKEN" go tool task goreleaser -- release --clean --skip=archive,validate
+    - cp "dist/packages/$[[ inputs.target ]]-$TAG.tgz" "$RELEASE_ARCHIVE"
+    - GITLAB_TOKEN="$CI_JOB_TOKEN" go tool task goreleaser -- "$[[ inputs.target ]]" release --clean --skip=archive,validate

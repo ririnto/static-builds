@@ -46,36 +46,33 @@ jobs:
     runs-on: ubuntu-26.04
     timeout-minutes: 5
     outputs:
-      builds: ${{ steps.matrix.outputs.builds }}
+      targets: ${{ steps.matrix.outputs.targets }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
         with:
           persist-credentials: false
 
-      - name: Select native build platforms
-        id: matrix
-        run: |-
-          builds=$(jq -c '{include: [keys[] as $target |
-            {target: $target, arch: "amd64", runner: "ubuntu-26.04"},
-            if $target != "vector" then
-              {target: $target, arch: "arm64", runner: "ubuntu-26.04-arm"}
-            else empty end]}' metadata.json)
-          echo "builds=$builds" >>"$GITHUB_OUTPUT"
+      - id: matrix
+        run: echo "targets=$(jq -c 'keys' metadata.json)" >>"$GITHUB_OUTPUT"
 
   build:
     name: Build ${{ matrix.target }} (${{ matrix.arch }})
     needs: matrix
-    runs-on: ${{ matrix.runner }}
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-26.04-arm' || 'ubuntu-26.04' }}
     timeout-minutes: 360
     strategy:
       fail-fast: false
       max-parallel: 4
-      matrix: ${{ fromJSON(needs.matrix.outputs.builds) }}
+      matrix:
+        target: ${{ fromJSON(needs.matrix.outputs.targets) }}
+        arch: [amd64, arm64]
+        exclude:
+          - target: vector
+            arch: arm64
     env:
-      TARGET: ${{ matrix.target }}
-      TAG: ${{ matrix.target }}-pr-${{ github.event.pull_request.number }}-${{ matrix.arch }}
-      GORELEASER_CURRENT_TAG: ${{ matrix.target }}-pr-${{ github.event.pull_request.number }}-${{ matrix.arch }}
+      TAG: pr-${{ github.event.pull_request.number }}-${{ matrix.arch }}
+      GORELEASER_CURRENT_TAG: pr-${{ github.event.pull_request.number }}-${{ matrix.arch }}
       BUILDKIT_PLATFORM: linux/${{ matrix.arch }}
     steps:
       - name: Checkout
@@ -98,55 +95,47 @@ jobs:
 
       - name: Build and package without publishing
         run: |-
-          go tool task build -- "$TARGET" --output "type=local,dest=dist/$TARGET" --import-cache "type=gha,scope=validation-$TARGET-${{ matrix.arch }}" --export-cache "type=gha,scope=validation-$TARGET-${{ matrix.arch }},mode=max"
-          go tool task goreleaser -- release --clean --snapshot --verbose --timeout=6h --skip=publish,validate
+          go tool task download -- "${{ matrix.target }}"
+          go tool task build -- "${{ matrix.target }}" \
+            --output "type=local,dest=dist/${{ matrix.target }}" \
+            --import-cache "type=gha,scope=validation-${{ matrix.target }}-${{ matrix.arch }}" \
+            --export-cache "type=gha,scope=validation-${{ matrix.target }}-${{ matrix.arch }},mode=max"
+          go tool task goreleaser -- "${{ matrix.target }}" release --clean --snapshot --verbose --timeout=6h --skip=publish,validate
 
       - name: Verify release package
         run: |-
-          RELEASE_FILES=$(go tool task manifest -- get-release-files "$TARGET")
-          export RELEASE_FILES
-          (
-            cd dist/packages
-            echo "$(cat "$TARGET-$TAG.tgz.sha256")  $TARGET-$TAG.tgz" | sha256sum --check
-          )
-          python3 - <<'PY'
+          RELEASE_FILES="$(go tool task manifest -- get-release-files "${{ matrix.target }}")" python3 - "${{ matrix.target }}" <<'PYTHON'
+          import hashlib
           import os
           import stat
+          import sys
           import tarfile
           from pathlib import Path
 
-          expected = set(os.environ["RELEASE_FILES"].splitlines())
-          output = Path("dist") / os.environ["TARGET"]
-          release = Path("dist/packages")
-          package = release / f"{os.environ['TARGET']}-{os.environ['TAG']}.tgz"
-          report = [f"Verified {os.environ['TARGET']} on {os.environ['BUILDKIT_PLATFORM']}"]
-          with tarfile.open(package, "r:gz") as archive:
+          package = Path(f"dist/packages/{sys.argv[1]}-{os.environ['TAG']}.tgz")
+          if hashlib.sha256(package.read_bytes()).hexdigest() != package.with_suffix(".tgz.sha256").read_text().strip():
+              raise SystemExit("Archive checksum mismatch")
+          with tarfile.open(package) as archive:
               members = [member for member in archive.getmembers() if not member.isdir()]
-              if len(members) != len(expected) or {member.name for member in members} != expected:
-                  raise SystemExit("Archive members do not match metadata release files")
+              if sorted(member.name for member in members) != sorted(os.environ["RELEASE_FILES"].splitlines()):
+                  raise SystemExit("Archive members differ from metadata")
               for member in members:
-                  source = output / member.name
-                  if not member.isfile() or not stat.S_ISREG(source.lstat().st_mode):
-                      raise SystemExit(f"Release member is not a regular file: {member.name}")
-                  if member.mode != stat.S_IMODE(source.stat().st_mode):
-                      raise SystemExit(f"Release member mode differs: {member.name}")
+                  source = Path("dist") / sys.argv[1] / member.name
+                  info = source.lstat()
+                  if not member.isfile() or not stat.S_ISREG(info.st_mode) or member.mode != stat.S_IMODE(info.st_mode):
+                      raise SystemExit(f"Archive file type or mode mismatch: {member.name}")
                   with archive.extractfile(member) as packaged:
                       if packaged.read() != source.read_bytes():
-                          raise SystemExit(f"Release member bytes differ: {member.name}")
-                  report.append(f"{member.name}: {member.size} bytes, mode {member.mode:04o}")
-          report.append("SHA-256 checksum, selected files, bytes, and modes passed.")
-          result = "\n".join(report) + "\n"
-          (release / "package-verification.txt").write_text(result)
-          print(result, end="")
-          PY
+                          raise SystemExit(f"Archive content mismatch: {member.name}")
+          print(f"Verified {package}")
+          PYTHON
 
       - name: Upload verified package
         uses: actions/upload-artifact@v7
         with:
           name: validation-${{ matrix.target }}-${{ matrix.arch }}
           path: |-
-            dist/packages/${{ env.TARGET }}-${{ env.TAG }}.tgz
-            dist/packages/${{ env.TARGET }}-${{ env.TAG }}.tgz.sha256
-            dist/packages/package-verification.txt
+            dist/packages/${{ matrix.target }}-${{ env.TAG }}.tgz
+            dist/packages/${{ matrix.target }}-${{ env.TAG }}.tgz.sha256
           if-no-files-found: error
           retention-days: 7

@@ -15,18 +15,20 @@ tasks:
         sh: go tool task manifest -- get-env {{index .CLI_ARGS_LIST 0 | shellQuote}}
     cmds:
       - |-
-        set -e
-        set -- {{range .CLI_ARGS_LIST}}{{. | shellQuote}} {{end}}
-        go tool task download -- "${1:-}"
-        TARGET="$1"
-        shift
         sh "$(go list -find -f '{{"{{.Module.Dir}}"}}' github.com/moby/buildkit/cmd/buildctl)/examples/buildctl-daemonless/buildctl-daemonless.sh" build \
           --frontend dockerfile.v0 \
           --local context=. \
-          --local "dockerfile=$TARGET" \
+          --local {{printf "dockerfile=%s" (index .CLI_ARGS_LIST 0) | shellQuote}} \
           --opt filename=Dockerfile \
           --opt "platform=${BUILDKIT_PLATFORM:-linux/amd64}" \
-          {{range reverse (splitList "\n" .METADATA_ENV)}}--opt {{printf "build-arg:%s" . | shellQuote}} {{end}}"$@"
+          {{range reverse (splitList "\n" .METADATA_ENV)}}--opt {{printf "build-arg:%s" . | shellQuote}} {{end}}{{range slice .CLI_ARGS_LIST 1}}{{. | shellQuote}} {{end}}
+
+  snapshot:
+    desc: Download, build, and package without publishing (-- <target> [buildctl args...])
+    cmds:
+      - go tool task download -- {{index .CLI_ARGS_LIST 0 | shellQuote}}
+      - go tool task build -- {{index .CLI_ARGS_LIST 0 | shellQuote}} --output {{printf "type=local,dest=dist/%s" (index .CLI_ARGS_LIST 0) | shellQuote}} {{range slice .CLI_ARGS_LIST 1}}{{. | shellQuote}} {{end}}
+      - go tool task goreleaser -- {{index .CLI_ARGS_LIST 0 | shellQuote}} release --clean --snapshot --verbose --timeout=6h --skip=publish,validate
 
   buildctl:
     desc: Run the BuildKit client
@@ -44,14 +46,15 @@ tasks:
       - go run ./cmd/metadata {{range .CLI_ARGS_LIST}}{{. | shellQuote}} {{end}}
 
   goreleaser:
-    desc: Build, package, hash, and publish through GoReleaser (-- <args...>)
+    desc: Package, hash, and publish through GoReleaser (-- <target> <args...>)
     vars:
       RELEASE_FILES:
-        sh: "{{if .TARGET}}go tool task manifest -- get-release-files {{.TARGET | shellQuote}}{{else}}echo{{end}}"
+        sh: go tool task manifest -- get-release-files {{index .CLI_ARGS_LIST 0 | shellQuote}}
     env:
+      TARGET: "{{index .CLI_ARGS_LIST 0}}"
       RELEASE_FILES: "{{.RELEASE_FILES}}"
     cmds:
-      - go tool goreleaser {{range .CLI_ARGS_LIST}}{{. | shellQuote}} {{end}}
+      - go tool goreleaser {{range slice .CLI_ARGS_LIST 1}}{{. | shellQuote}} {{end}}
 
   jsonnet:
     desc: Render the GitLab package pipeline

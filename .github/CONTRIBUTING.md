@@ -49,7 +49,7 @@ Tool tasks quote each CLI_ARGS_LIST element separately so argument boundaries re
 Use `go tool task jsonnetfmt -- -i` to format the package pipeline and `go tool task jsonnetfmt -- --test` to check it.
 `go tool task buildctl -- --help` exposes the same Go-managed BuildKit client used by the build task.
 Local container builds use compose.yaml with a golang-based non-root image and the upstream daemonless BuildKit script.
-Run `mkdir -p .cache dist`, `docker compose build build`, and `TARGET=<target> docker compose run --rm build` from the repository root.
+Run `mkdir -p .cache dist`, `docker compose build build`, and `docker compose run --rm build <target>` from the repository root.
 The dedicated container relaxes seccomp and masked system paths as described in the [official rootless Docker guidance](https://github.com/moby/buildkit/blob/v0.34.2/docs/rootless.md#docker).
 It keeps BuildKit's process sandbox, uses the native snapshotter without a FUSE device, and never mounts the Docker socket.
 Direct local builds require a non-root user on a configured Linux host with BuildKit, RootlessKit, runc, subordinate UID/GID mappings, and unprivileged user namespaces.
@@ -100,9 +100,9 @@ All checks exclude ignored build outputs and source caches.
 These checks run without building targets or invoking release jobs.
 Check target mapping with `go tool task manifest -- get-target-from-tag <tag>` without creating a tag.
 Render a tag child pipeline with the Jsonnet `--tla-str release_tag=<tag>` argument and one explicit target.
-Use `TARGET=<target> TAG=<target>-local pnpm run build` for nonpublishing build, archive, and checksum checks.
+Use `TAG=<target>-local pnpm run build <target>` for nonpublishing build, archive, and checksum checks.
 Run packaging for one target at a time because `--clean` removes only the GoReleaser `dist/packages` directory.
-The Compose service and `TARGET=<target> TAG=<target>-local pnpm run build` use this same snapshot flow.
+The Compose service and `TAG=<target>-local pnpm run build <target>` use this same snapshot flow.
 Compose defaults `TAG` to `local`, but never supplies a default target.
 Live release publication is separate from configuration validation.
 Node dependencies are development-only and are excluded from the Docker build context.

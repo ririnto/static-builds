@@ -52,17 +52,17 @@ Target compilers are installed in Dockerfile stages, so they are not host prereq
 ```sh
 go tool task
 go tool task download -- nginx
-TARGET=nginx TAG=nginx-local pnpm run build
+TAG=nginx-local pnpm run build nginx
 ```
 
-Set `TARGET` and `TAG` for GoReleaser builds, and pass GoReleaser arguments after Task's `--` separator.
+Set the target argument and `TAG` for packaging, and pass GoReleaser arguments after Task's `--` separator.
 Run these commands from the repository root.
 The equivalent pnpm commands are:
 
 ```sh
 pnpm run tasks
-pnpm run download -- nginx
-TARGET=nginx TAG=nginx-local pnpm run build
+pnpm run download nginx
+TAG=nginx-local pnpm run build nginx
 ```
 
 The direct Task build requires an explicit `--output` argument to export artifacts.
@@ -70,7 +70,7 @@ BuildKit exports final binaries directly to `dist/<target>/`.
 GoReleaser writes archives and checksum files as `dist/packages/<target>-<tag>.tgz` and the matching `.tgz.sha256`.
 Run one release at a time per checkout.
 `--clean` replaces only `dist/packages`, so preserve any older packages needed before packaging again.
-The pnpm build script runs Task build first and then a nonpublishing GoReleaser snapshot.
+The pnpm build script runs download, build, and nonpublishing packaging in order.
 
 ### Independent targets
 
@@ -91,16 +91,20 @@ Run a one-shot rootless build from the repository root:
 ```sh
 mkdir -p .cache dist
 docker compose build build
-TARGET=dnsmasq docker compose run --rm build
+docker compose run --rm build dnsmasq
 ```
 
 Replace `dnsmasq` with the required target.
 The service defaults to a nonpublishing GoReleaser snapshot with `TAG=local`.
-Set `TAG=dnsmasq-local` alongside `TARGET` to name the archive `dist/packages/dnsmasq-dnsmasq-local.tgz` and checksum `dist/packages/dnsmasq-dnsmasq-local.tgz.sha256`.
+Set `TAG=dnsmasq-local` when passing the `dnsmasq` target to name the archive `dist/packages/dnsmasq-dnsmasq-local.tgz` and checksum `dist/packages/dnsmasq-dnsmasq-local.tgz.sha256`.
 No target is selected when it is omitted.
-Packages are written to `dist/`, intermediate binaries to `dist/<target>/`, and downloads and build caches remain under `.cache/`.
+
+- Final binaries: `dist/<target>/`
+- Packages: `dist/packages/`
+- Downloads and explicit local caches: `.cache/`
+
 The checkout is read-only inside the service except for the cache and distribution directories.
-Named volumes retain the Go tool module cache, Go tool compilation cache, and target-specific BuildKit state directories.
+Named volumes retain the Go tool module cache, Go tool compilation cache, and BuildKit state.
 The service does not mount the Docker socket, publish ports, use host networking, or run in privileged mode.
 
 The image starts from `golang:alpine` and runs the upstream daemonless BuildKit script as a non-root user.
@@ -113,7 +117,7 @@ Do not disable host security controls to work around a runner denial.
 
 The builder itself runs on the Docker host's native architecture.
 `BUILDKIT_PLATFORM` selects the target artifact architecture, not the architecture of the rootless daemon.
-For example, `BUILDKIT_PLATFORM=linux/arm64 TARGET=dnsmasq docker compose run --rm build` builds an arm64 target when its dependencies support that platform.
+For example, `BUILDKIT_PLATFORM=linux/arm64 docker compose run --rm build dnsmasq` builds an arm64 target when its dependencies support that platform.
 Building a different architecture requires working emulation in the Docker host.
 The `vector` target currently selects a fixed x86_64 upstream archive.
 
@@ -131,22 +135,29 @@ Its `dist` directory is `dist/packages`, so `--clean` does not delete binaries u
 
 | Variable | Default | Values and purpose |
 | --- | --- | --- |
-| `TARGET` | None | Require an explicit metadata target. |
 | `TAG` | None (`local` in Compose) | Name the archive. |
 | `BUILDKIT_PLATFORM` | `linux/amd64` | Select a target platform supported by the builder, such as `linux/arm64`. |
 
 Cache import and export are caller policy, not Taskfile defaults.
-Compose and GitLab explicitly pass local cache options, GitHub release jobs pass GHA cache options, and isolated validation jobs use separate target/architecture GHA scopes.
+
+- Compose accepts local cache options after the target argument.
+- GitLab explicitly passes local cache options.
+- GitHub release jobs use target-scoped GHA cache options.
+- Validation jobs use separate target/architecture GHA scopes.
 
 Build invocation examples:
 
-- `TARGET=nginx TAG=nginx-local pnpm run build`
-- `BUILDKIT_PLATFORM=linux/arm64 TARGET=nginx TAG=nginx-local pnpm run build`
-- `TARGET=dnsmasq TAG=dnsmasq-local pnpm run build` on a configured native Linux host.
+- `TAG=nginx-local pnpm run build nginx`
+- `BUILDKIT_PLATFORM=linux/arm64 TAG=nginx-local pnpm run build nginx`
+- `TAG=dnsmasq-local pnpm run build dnsmasq` on a configured native Linux host.
 
 ### Network and platform behavior
 
-Each caller runs `go tool task build` to start an ephemeral rootless BuildKit daemon, then invokes GoReleaser to package the exported files.
+Each caller runs these commands in order:
+
+1. `go tool task download -- <target>` resolves and downloads sources.
+2. `go tool task build -- <target> <buildctl options>` builds from those sources.
+3. `go tool task goreleaser -- <target> <arguments>` packages the exported files.
 Compose and CI configure the daemon command, native snapshotter, persistent state path, and runtime directory.
 BuildKit uses the repository context filtered by `.dockerignore`, including exclusions for lock and partial-download files.
 Direct Linux callers must set `XDG_RUNTIME_DIR`, `BUILDCTL="go tool buildctl"`, and `BUILDKITD="go tool buildkitd"` before invoking the build.
@@ -159,20 +170,20 @@ Pass `--opt force-network-mode=none` directly to disable RUN-step networking.
 Host networking uses `--opt force-network-mode=host --allow network.host` and a daemon explicitly configured to allow `network.host`.
 The Task driver does not grant entitlements automatically.
 The build does not automatically configure a Linux VM or cross-platform emulation.
-A build always requires an explicit `TARGET` and fails without one.
+A build always requires an explicit target argument.
 The nginx commands in this document are examples, not defaults.
 For low-level troubleshooting only, bypass GoReleaser with `go tool task build -- dnsmasq --output type=local,dest=dist/dnsmasq --progress=plain`.
 This driver command accepts extra BuildKit client flags but does not select release files, archive them, generate checksums, or publish releases.
 Tool tasks also pass arguments through: `go tool task jsonnetfmt -- -i` formats the built-in pipeline file.
 `go tool task buildctl -- --help` exposes the same Go-managed BuildKit client used by the build task.
-`go tool task goreleaser -- <arguments>` runs the shared build and release configuration in [.goreleaser.yaml](.goreleaser.yaml).
+`go tool task goreleaser -- <target> <arguments>` runs the shared build and release configuration in [.goreleaser.yaml](.goreleaser.yaml).
 
 ### Build and package without publishing
 
 Build one target, select only its metadata-listed release files, and create its archive and checksum without publishing:
 
 ```sh
-TARGET=dnsmasq TAG=dnsmasq-local pnpm run build
+TAG=dnsmasq-local pnpm run build dnsmasq
 ```
 
 GoReleaser writes `dist/packages/<TARGET>-<TAG>.tgz` and `dist/packages/<TARGET>-<TAG>.tgz.sha256`.
@@ -193,7 +204,7 @@ GoReleaser filters the metadata-listed files from the build output into the arch
 Its mixed-language targets do not use GoReleaser's native Go builder or the Pro-only prebuilt builder.
 The Task entrypoint supplies the metadata file list as `RELEASE_FILES` and forwards arguments to GoReleaser.
 
-Both hosts run explicit build and package commands in sequence.
+Both hosts run explicit download, build, and package commands in sequence.
 Their separate publication jobs receive the built archive, set `RELEASE_ARCHIVE` to its preserved copy, and run GoReleaser with `--skip=archive,validate` to recompute the checksum and publish.
 No build command runs under publishing credentials.
 GitLab branch jobs use the same nonpublishing snapshot flow and retain artifacts without creating GitLab Releases.
@@ -264,7 +275,7 @@ Do not pin dependencies with commit hashes or container image digests.
 The downloader refreshes branch archives on every call and reuses cached release archives.
 Concurrent branch downloads use a lock for each destination.
 Lock waits stop after 60 seconds.
-Run `TARGET=<target> TAG=<target>-local pnpm run build` for each affected target before creating release tags.
+Run `TAG=<target>-local pnpm run build <target>` for each affected target before creating release tags.
 
 Upstream projects use different support policies.
 The following policies guide version selection.
@@ -374,7 +385,7 @@ Each target must follow this structure:
 
    Add this filter to the existing `on.push.tags` list rather than replacing the caller workflow.
 
-7. Validate: Run `TARGET=your-target TAG=your-target-local pnpm run build` to verify the download and build flow works.
+7. Validate: Run `TAG=your-target-local pnpm run build your-target` to verify the download and build flow works.
 
 ### Allowed Target-Specific Variations
 
@@ -429,7 +440,7 @@ Target selection, tag-prefix exceptions, and release-file selection use `metadat
 2. Test build: Verify that build works locally:
 
    ```bash
-   TARGET=your-target TAG=your-target-local pnpm run build
+   TAG=your-target-local pnpm run build your-target
    ```
 
 3. Commit version updates with a title and an explanatory body.
@@ -483,7 +494,7 @@ Invalid examples:
 
 ## How It Works
 
-1. The caller runs the Task build driver, which invokes `go tool task download -- <target>` to resolve source resources from `metadata.json` before starting the build.
+1. The caller runs `go tool task download -- <target>` to resolve source resources from `metadata.json`.
 2. The build task invokes the upstream daemonless rootless BuildKit script to execute the multi-stage Dockerfile.
 3. BuildKit exports binaries directly to the caller's explicit `--output` destination, conventionally `dist/<target>/`.
 4. Each target verifies built artifacts in its Dockerfile before exporting its `scratch` stage.
