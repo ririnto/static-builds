@@ -64,7 +64,7 @@ pnpm run download -- nginx
 TARGET=nginx TAG=nginx-local pnpm run build
 ```
 
-The direct Task build writes to `dist/<target>/` by default; `BUILD_OUTPUT_DEST` overrides that path.
+The direct Task build requires an explicit `--output` argument to export artifacts.
 GoReleaser builds use `.cache/build/<target>/` for intermediate binaries.
 Archives and checksum files are written as `dist/<target>-<tag>.tgz` and the matching `.tgz.sha256`.
 Run one release at a time per checkout. `--clean` replaces the prior contents of `dist/`, so copy any packages you want to keep elsewhere first.
@@ -131,7 +131,6 @@ GoReleaser and its low-level build drivers accept inherited environment values.
 | `TAG` | None; `local` in Compose | Name the archive. |
 | `BUILDKIT_PLATFORM` | `linux/amd64` | Select a target platform supported by the builder, such as `linux/arm64`. |
 | `BUILDKIT_ARGS` | Empty | Pass explicit BuildKit client arguments through the GoReleaser before hook. |
-| `BUILD_OUTPUT_DEST` | `dist/<target>/` | Select an artifact output directory relative to the repository root or an absolute path. |
 
 Cache import and export are caller policy, not Taskfile defaults.
 Compose and GitLab explicitly pass local cache options, GitHub release jobs pass GHA cache options, and isolated validation jobs pass local cache options.
@@ -149,8 +148,10 @@ Build invocation examples:
 ### Network and platform behavior
 
 Every build uses the GoReleaser before hook and `go tool task build` to start an ephemeral rootless BuildKit daemon.
-Taskfile selects the native snapshotter and a persistent per-target state directory under `${XDG_DATA_HOME:-$HOME/.local/share}/buildkit/`.
-Each invocation creates a private temporary runtime directory for the daemon socket and removes it after the daemon exits.
+Compose and CI configure the daemon command, native snapshotter, persistent state path, and runtime directory.
+Each Task invocation creates a private source context and removes it only after the daemon exits.
+Direct Linux callers must set `XDG_RUNTIME_DIR`, `BUILDCTL="go tool buildctl"`, and `BUILDKITD="go tool buildkitd"` before invoking the build.
+The Go-managed tools are compiled before starting the daemonless connection loop.
 Existing `BUILDKITD_FLAGS` remain available for explicitly configured host requirements; GitLab retains its documented process-sandbox exception.
 `BUILDKIT_ARGS="--opt force-network-mode=none"` disables RUN-step networking.
 `BUILDKIT_ARGS="--opt force-network-mode=host --allow network.host"` requests host networking from the selected builder.
@@ -158,7 +159,7 @@ The host request requires a daemon explicitly configured to allow `network.host`
 The build does not automatically configure a Linux VM or cross-platform emulation.
 A build always requires an explicit `TARGET` and fails without one.
 The nginx commands in this document are examples, not defaults.
-For low-level troubleshooting only, bypass GoReleaser with `go tool task build -- dnsmasq --progress=plain`.
+For low-level troubleshooting only, bypass GoReleaser with `go tool task build -- dnsmasq --output type=local,dest=dist/dnsmasq --progress=plain`.
 This driver command accepts extra BuildKit client flags but does not select release files, archive them, generate checksums, or publish releases.
 Tool tasks also pass arguments through: `go tool task jsonnetfmt -- -i` formats the built-in pipeline file.
 `go tool task buildctl -- --help` exposes the same Go-managed BuildKit client used by the build task.

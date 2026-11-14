@@ -2,7 +2,7 @@ version: 2
 
 before:
   hooks:
-    - env BUILD_OUTPUT_DEST=.cache/build/{{ .Env.TARGET }} go tool task build -- {{ .Env.TARGET }} {{ if isEnvSet "BUILDKIT_ARGS" }}{{ .Env.BUILDKIT_ARGS }}{{ end }}
+    - go tool task build -- {{ .Env.TARGET }} --output type=local,dest=.cache/build/{{ .Env.TARGET }} {{ if isEnvSet "BUILDKIT_ARGS" }}{{ .Env.BUILDKIT_ARGS }}{{ end }}
 
 builds:
   - skip: true

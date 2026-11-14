@@ -28,6 +28,9 @@ services:
       GORELEASER_CURRENT_TAG: ${TAG:-local}
       BUILDKIT_PLATFORM: ${BUILDKIT_PLATFORM:-linux/amd64}
       BUILDKIT_ARGS: ${BUILDKIT_ARGS---import-cache type=local,src=.cache/${TARGET} --export-cache type=local,dest=.cache/${TARGET},mode=max}
+      BUILDCTL: go tool buildctl
+      BUILDKITD: go tool buildkitd
+      BUILDKITD_FLAGS: --root=/home/user/.local/share/buildkit/${TARGET} --oci-worker-snapshotter=native
       GOFLAGS: -buildvcs=false
     security_opt:
       - seccomp=unconfined
