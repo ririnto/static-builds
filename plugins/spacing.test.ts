@@ -72,7 +72,7 @@ tester.run(
   }
 );
 
-void it("enables both spacing rules through the root configuration", () => {
+await it("enables both spacing rules through the root configuration", () => {
   const root = fileURLToPath(new URL("..", import.meta.url));
   const directory = mkdtempSync(path.join(tmpdir(), "spacing-config-"));
   const fixture = path.join(directory, "fixture.ts");
