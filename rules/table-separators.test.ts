@@ -13,7 +13,7 @@ const check = (input: string) =>
     strings: { input }
   }).input ?? [];
 
-void test("accepts three hyphens and all table alignment markers", () => {
+await test("accepts three hyphens and all table alignment markers", () => {
   assert.deepEqual(
     check(
       "| A | B | C | D |\n| --- | :--- | ---: | :---: |\n| 1 | 2 | 3 | 4 |\n"
@@ -22,7 +22,7 @@ void test("accepts three hyphens and all table alignment markers", () => {
   );
 });
 
-void test("reports and fixes short and long delimiters while preserving alignment", () => {
+await test("reports and fixes short and long delimiters while preserving alignment", () => {
   const input =
     "| A | B | C | D |\n| -- | ----- | :-: | ---: |\n| 1 | 2 | 3 | 4 |\n";
   const errors = check(input);
@@ -42,7 +42,7 @@ void test("reports and fixes short and long delimiters while preserving alignmen
   assert.equal(applyFixes(fixed, check(fixed)), fixed);
 });
 
-void test("ignores data rows and fenced table examples", () => {
+await test("ignores data rows and fenced table examples", () => {
   assert.deepEqual(
     check(
       "| A | B |\n| --- | --- |\n| - | - |\n| -- | ---- |\n\n```markdown\n| A |\n| - |\n```\n"
@@ -51,7 +51,7 @@ void test("ignores data rows and fenced table examples", () => {
   );
 });
 
-void test("checks pipeless and blockquoted tables", () => {
+await test("checks pipeless and blockquoted tables", () => {
   assert.deepEqual(
     check("A | B\n-- | ---\n1 | 2\n\n> | A |\n> | - |\n> | 1 |\n").map(
       ({ lineNumber, errorRange }) => ({
