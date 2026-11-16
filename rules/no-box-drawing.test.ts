@@ -31,7 +31,7 @@ const violations = (input: string) =>
     .filter(({ ruleNames }) => ruleNames.includes("docs/no-box-drawing"))
     .map(({ lineNumber, errorRange }) => ({ errorRange, lineNumber }));
 
-void test("accepts ASCII tree markers and characters outside the rule range", () => {
+await test("accepts ASCII tree markers and characters outside the rule range", () => {
   assert.deepEqual(
     violations(
       `ASCII +-- and | ${String.fromCodePoint(0x24_ff)} ${String.fromCodePoint(0x25_80)}`
@@ -40,7 +40,7 @@ void test("accepts ASCII tree markers and characters outside the rule range", ()
   );
 });
 
-void test("reports every character in the Unicode box drawing range", () => {
+await test("reports every character in the Unicode box drawing range", () => {
   assert.deepEqual(
     violations(
       Array.from(
@@ -55,7 +55,7 @@ void test("reports every character in the Unicode box drawing range", () => {
   );
 });
 
-void test("reports the first box drawing character on a line", () => {
+await test("reports the first box drawing character on a line", () => {
   assert.deepEqual(
     violations(
       `${String.fromCodePoint(0x25_00)} and ${String.fromCodePoint(0x25_7f)}`
@@ -64,7 +64,7 @@ void test("reports the first box drawing character on a line", () => {
   );
 });
 
-void test("reports the location inside fenced code", () => {
+await test("reports the location inside fenced code", () => {
   assert.deepEqual(
     violations(
       ["```text", `x ${String.fromCodePoint(0x25_02)} y`, "```"].join("\n")
@@ -73,7 +73,7 @@ void test("reports the location inside fenced code", () => {
   );
 });
 
-void test("reports matching columns and line numbers across multiline Markdown", () => {
+await test("reports matching columns and line numbers across multiline Markdown", () => {
   assert.deepEqual(
     violations(
       `plain +--\n  a${String.fromCodePoint(0x25_01)}\n| safe\n  b${String.fromCodePoint(0x25_7f)}`
@@ -85,7 +85,7 @@ void test("reports matching columns and line numbers across multiline Markdown",
   );
 });
 
-void test("reports UTF-16 columns after astral characters", () => {
+await test("reports UTF-16 columns after astral characters", () => {
   assert.deepEqual(
     violations(
       `${String.fromCodePoint(0x1_f6_00)} ${String.fromCodePoint(0x25_00)}`
@@ -94,7 +94,7 @@ void test("reports UTF-16 columns after astral characters", () => {
   );
 });
 
-void test("leaves box drawing content unchanged when applying fixes", () => {
+await test("leaves box drawing content unchanged when applying fixes", () => {
   const input = `# Diagnostic only\n\nA box ${String.fromCodePoint(0x25_00)} remains.\n`;
   assert.equal(
     applyFixes(input, lint({ ...lintOptions, strings: { input } }).input ?? []),
