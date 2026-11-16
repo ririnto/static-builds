@@ -6,7 +6,7 @@ import { lint } from "markdownlint/sync";
 
 import noEmDash from "./no-em-dash.ts";
 
-void test("ignores em dashes in inline HTML code but reports prose", () => {
+await test("ignores em dashes in inline HTML code but reports prose", () => {
   assert.deepEqual(
     (
       lint({
