@@ -20,3 +20,10 @@ updates:
       - dependency-name: "@tsconfig/node-lts"
         update-types:
           - version-update:semver-major
+    groups:
+      minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
