@@ -1,7 +1,9 @@
 # syntax=docker/dockerfile:1
+ARG ALPINE_VERSION
+ARG UBI10_MINIMAL_VERSION
 ARG TARGET_PREFIX=/home/nobody
 
-FROM alpine AS download
+FROM alpine:${ALPINE_VERSION} AS download
 ARG TARGETARCH
 ARG BUILD_TARGET=vector
 ARG VECTOR_VERSION
@@ -12,7 +14,7 @@ ADD ".cache/downloads/vector/vector-${VECTOR_VERSION}-x86_64-unknown-linux-musl.
 RUN mkdir -p ${TARGET_PREFIX}/bin
 RUN mv vector-x86_64-unknown-linux-musl/bin/vector ${TARGET_PREFIX}/bin/
 
-FROM redhat/ubi10-minimal AS verify
+FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
 SHELL ["/bin/bash", "-eo", "pipefail", "-c"]
 ARG TARGETARCH
 ARG BUILD_TARGET=vector

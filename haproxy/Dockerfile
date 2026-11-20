@@ -1,8 +1,10 @@
 # syntax=docker/dockerfile:1
+ARG ALPINE_VERSION
+ARG UBI10_MINIMAL_VERSION
 ARG TARGET_PREFIX=/home/nobody
 ARG HARDENING_CFLAGS="-O2 -pipe -fPIC -fstack-protector-strong -fstack-clash-protection -ffunction-sections -fdata-sections -ftrivial-auto-var-init=zero"
 
-FROM alpine AS otel-base
+FROM alpine:${ALPINE_VERSION} AS otel-base
 ARG TARGETARCH
 ARG BUILD_TARGET=haproxy
 RUN --mount=type=cache,id=haproxy-apk-${TARGETARCH},sharing=locked,target=/var/cache/apk \
@@ -152,7 +154,7 @@ RUN PKG_CONFIG_PATH=/opt/lib/pkgconfig:/usr/lib/pkgconfig cmake -S /build/opente
 RUN cmake --build /build/opentelemetry-c-wrapper/build --parallel "$(nproc)"
 RUN cmake --install /build/opentelemetry-c-wrapper/build
 
-FROM alpine AS build
+FROM alpine:${ALPINE_VERSION} AS build
 ARG TARGETARCH
 ARG BUILD_TARGET=haproxy
 ARG HAPROXY_VERSION
@@ -231,7 +233,7 @@ RUN PKG_CONFIG_PATH=/opt/lib/pkgconfig make "-j$(nproc)" \
 RUN make install \
     PREFIX=${TARGET_PREFIX}
 
-FROM redhat/ubi10-minimal AS verify
+FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
 SHELL ["/bin/bash", "-eo", "pipefail", "-c"]
 ARG TARGETARCH
 ARG BUILD_TARGET=haproxy

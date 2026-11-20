@@ -1,7 +1,9 @@
 # syntax=docker/dockerfile:1
+ARG ALPINE_VERSION
+ARG UBI10_MINIMAL_VERSION
 ARG TARGET_PREFIX=/home/nobody
 
-FROM alpine AS build
+FROM alpine:${ALPINE_VERSION} AS build
 ARG TARGETARCH
 ARG BUILD_TARGET=nginx-upstream-healthcheck
 ARG NGINX_VERSION
@@ -73,7 +75,7 @@ RUN make install
 RUN mkdir -p "${TARGET_PREFIX}/config/conf.d"
 COPY nginx-upstream-healthcheck/config/nginx.conf ${TARGET_PREFIX}/config/nginx.conf
 
-FROM redhat/ubi10-minimal AS verify
+FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
 SHELL ["/bin/bash", "-eo", "pipefail", "-c"]
 ARG TARGETARCH
 ARG BUILD_TARGET=nginx-upstream-healthcheck

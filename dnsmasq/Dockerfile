@@ -1,7 +1,9 @@
 # syntax=docker/dockerfile:1
+ARG ALPINE_VERSION
+ARG UBI10_MINIMAL_VERSION
 ARG TARGET_PREFIX=/home/nobody
 
-FROM alpine AS build
+FROM alpine:${ALPINE_VERSION} AS build
 ARG TARGETARCH
 ARG BUILD_TARGET=dnsmasq
 ARG DNSMASQ_VERSION
@@ -21,7 +23,7 @@ RUN make "-j$(nproc)" \
     PREFIX=${TARGET_PREFIX} \
     install
 
-FROM redhat/ubi10-minimal AS verify
+FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
 SHELL ["/bin/bash", "-eo", "pipefail", "-c"]
 ARG TARGETARCH
 ARG BUILD_TARGET=dnsmasq
