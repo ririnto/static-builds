@@ -19,12 +19,12 @@ on:
 
 jobs:
   release:
-    runs-on: ubuntu-26.04
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       security-events: write
     outputs:
-      image_tag: ${{ steps.image-tag.outputs.tag }}
+      image: ${{ steps.image.outputs.reference }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -49,14 +49,15 @@ jobs:
       - name: Expose GitHub cache runtime
         uses: crazy-max/ghaction-github-runtime@v4
 
-      - name: Select container tag
-        id: image-tag
+      - name: Select container image reference
+        id: image
         if: ${{ inputs.upload_release }}
         env:
           TAG: ${{ inputs.tag }}
+          TARGET_INPUT: ${{ inputs.target }}
         run: |-
           if [[ "$TAG" =~ ^[a-zA-Z0-9_][a-zA-Z0-9_.-]{0,127}$ ]]; then
-            echo "tag=$TAG" >>"$GITHUB_OUTPUT"
+            echo "reference=ghcr.io/${GITHUB_REPOSITORY,,}/$TARGET_INPUT:$TAG" >>"$GITHUB_OUTPUT"
           else
             echo "::notice::Skipping container publication because the release tag is not a valid container tag."
           fi
@@ -66,12 +67,12 @@ jobs:
           GORELEASER_CURRENT_TAG: ${{ inputs.tag }}
           TAG: ${{ inputs.tag }}
           TARGET_INPUT: ${{ inputs.target }}
-          IMAGE_TAG: ${{ steps.image-tag.outputs.tag }}
+          IMAGE: ${{ steps.image.outputs.reference }}
         run: |-
           image_options=()
-          if [[ -n "$IMAGE_TAG" ]]; then
+          if [[ -n "$IMAGE" ]]; then
             image_options+=(
-              --output "type=docker,name=static-builds-image:${IMAGE_TAG},dest=$RUNNER_TEMP/image.tar"
+              --output "type=docker,name=$IMAGE,dest=$RUNNER_TEMP/image.tar"
               --opt "label:org.opencontainers.image.source=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY"
             )
           fi
@@ -114,18 +115,23 @@ jobs:
           include-hidden-files: true
           if-no-files-found: error
 
+      - name: Compress container image
+        if: ${{ steps.image.outputs.reference != '' }}
+        run: gzip -c "$RUNNER_TEMP/image.tar" >"$RUNNER_TEMP/image.tgz"
+
       - name: Upload container image
-        if: ${{ steps.image-tag.outputs.tag != '' }}
+        if: ${{ steps.image.outputs.reference != '' }}
         uses: actions/upload-artifact@v7
         with:
           name: release-image
-          path: ${{ runner.temp }}/image.tar
+          path: ${{ runner.temp }}/image.tgz
+          compression-level: 0
           if-no-files-found: error
 
   publish:
     needs: release
     if: ${{ inputs.upload_release }}
-    runs-on: ubuntu-26.04
+    runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
@@ -154,7 +160,7 @@ jobs:
 
   publish-image:
     needs: release
-    if: ${{ needs.release.outputs.image_tag != '' }}
+    if: ${{ needs.release.outputs.image != '' }}
     runs-on: ubuntu-latest
     permissions:
       packages: write
@@ -168,11 +174,8 @@ jobs:
       - name: Publish container image
         env:
           GHCR_TOKEN: ${{ github.token }}
-          IMAGE_TAG: ${{ needs.release.outputs.image_tag }}
-          TARGET_INPUT: ${{ inputs.target }}
+          IMAGE: ${{ needs.release.outputs.image }}
         run: |-
-          image="ghcr.io/${GITHUB_REPOSITORY,,}/$TARGET_INPUT:$IMAGE_TAG"
-          docker load --input "$RUNNER_TEMP/image.tar"
-          docker tag "static-builds-image:$IMAGE_TAG" "$image"
+          docker load --input "$RUNNER_TEMP/image.tgz"
           echo "$GHCR_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
-          docker push "$image"
+          docker push "$IMAGE"
