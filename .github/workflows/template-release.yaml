@@ -19,10 +19,12 @@ on:
 
 jobs:
   release:
-    runs-on: ubuntu-26.04
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       security-events: write
+    outputs:
+      image: ${{ steps.image.outputs.reference }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -47,17 +49,39 @@ jobs:
       - name: Expose GitHub cache runtime
         uses: crazy-max/ghaction-github-runtime@v4
 
+      - name: Select container image reference
+        id: image
+        if: ${{ inputs.upload_release }}
+        env:
+          TAG: ${{ inputs.tag }}
+          TARGET_INPUT: ${{ inputs.target }}
+        run: |-
+          if [[ "$TAG" =~ ^[a-zA-Z0-9_][a-zA-Z0-9_.-]{0,127}$ ]]; then
+            echo "reference=ghcr.io/${GITHUB_REPOSITORY,,}/$TARGET_INPUT:$TAG" >>"$GITHUB_OUTPUT"
+          else
+            echo "::notice::Skipping container publication because the release tag is not a valid container tag."
+          fi
+
       - name: Build and package with GoReleaser
         env:
           GORELEASER_CURRENT_TAG: ${{ inputs.tag }}
           TAG: ${{ inputs.tag }}
           TARGET_INPUT: ${{ inputs.target }}
+          IMAGE: ${{ steps.image.outputs.reference }}
         run: |-
+          image_options=()
+          if [[ -n "$IMAGE" ]]; then
+            image_options+=(
+              --output "type=docker,name=$IMAGE,dest=$RUNNER_TEMP/image.tar"
+              --opt "label:org.opencontainers.image.source=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY"
+            )
+          fi
           go tool task download -- "$TARGET_INPUT"
           go tool task build -- "$TARGET_INPUT" \
             --output "type=local,dest=dist/$TARGET_INPUT" \
             --import-cache "type=gha,scope=$TARGET_INPUT" \
-            --export-cache "type=gha,scope=$TARGET_INPUT,mode=max"
+            --export-cache "type=gha,scope=$TARGET_INPUT,mode=max" \
+            "${image_options[@]}"
           go tool task goreleaser -- "$TARGET_INPUT" release --clean --verbose --timeout=6h --skip=publish,validate
 
       - name: Run Trivy vulnerability scanner
@@ -91,10 +115,23 @@ jobs:
           include-hidden-files: true
           if-no-files-found: error
 
+      - name: Compress container image
+        if: ${{ steps.image.outputs.reference != '' }}
+        run: gzip -c "$RUNNER_TEMP/image.tar" >"$RUNNER_TEMP/image.tgz"
+
+      - name: Upload container image
+        if: ${{ steps.image.outputs.reference != '' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-image
+          path: ${{ runner.temp }}/image.tgz
+          compression-level: 0
+          if-no-files-found: error
+
   publish:
     needs: release
     if: ${{ inputs.upload_release }}
-    runs-on: ubuntu-26.04
+    runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
@@ -120,3 +157,25 @@ jobs:
           TAG: ${{ inputs.tag }}
           TARGET_INPUT: ${{ inputs.target }}
         run: go tool task goreleaser -- "$TARGET_INPUT" release --clean --skip=archive,validate
+
+  publish-image:
+    needs: release
+    if: ${{ needs.release.outputs.image != '' }}
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+      - name: Download container image
+        uses: actions/download-artifact@v8
+        with:
+          name: release-image
+          path: ${{ runner.temp }}
+
+      - name: Publish container image
+        env:
+          GHCR_TOKEN: ${{ github.token }}
+          IMAGE: ${{ needs.release.outputs.image }}
+        run: |-
+          docker load --input "$RUNNER_TEMP/image.tgz"
+          echo "$GHCR_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          docker push "$IMAGE"

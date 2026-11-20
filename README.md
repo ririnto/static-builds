@@ -460,6 +460,7 @@ Target selection and release-file selection use `metadata.json`.
    - Scans for vulnerabilities (Trivy).
    - Uploads artifacts to GitHub Actions.
    - Publishes the existing `.tgz` archive and checksum with GoReleaser in a separate job.
+   - Publishes the verified Linux amd64 image as `ghcr.io/ririnto/static-builds/<target>:<tag>` in a separate job when the release tag is also a valid container tag.
 
 ### Release Tag Format
 
@@ -474,6 +475,7 @@ Release tags use the format `<prefix>-<version>-<suffix>`.
 - `version` is the exact value named by the component's `version_env_var` in `metadata.json`.
 - `suffix` is non-empty free-form text and can contain dashes and dots.
   The workflow treats the suffix as an opaque string.
+  Tags with characters outside ASCII letters, digits, underscores, periods, and dashes, or with more than 128 characters, still publish binary releases but skip GHCR.
 
 Valid examples:
 

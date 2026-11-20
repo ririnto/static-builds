@@ -15,7 +15,7 @@ on:
 
 jobs:
   resolve-target:
-    runs-on: ubuntu-26.04
+    runs-on: ubuntu-latest
     permissions:
       contents: read
     outputs:
@@ -41,6 +41,7 @@ jobs:
     needs: resolve-target
     permissions:
       contents: write
+      packages: write
       security-events: write
     uses: ./.github/workflows/template-release.yaml
     with:
