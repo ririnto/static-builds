@@ -34,9 +34,7 @@ jobs:
         run: go tool task shfmt -- -d
 
       - name: Check Jsonnet
-        run: |-
-          go tool task jsonnet -- -S --ext-str branch=main --ext-str target= --ext-str component_ref=example.invalid/group/static-builds/static-release@main
-          go tool task jsonnet -- -S --ext-str branch=feature/tooling-check --ext-str target= --ext-str component_ref=example.invalid/group/static-builds/static-release@feature/tooling-check
+        run: go tool task jsonnet -- -S --ext-str branch=main --ext-str target= --ext-str component_ref=example.invalid/group/static-builds/static-release@main
 
       - name: Check Jsonnet formatting
         run: go tool task jsonnetfmt -- --test

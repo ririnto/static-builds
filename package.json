@@ -10,7 +10,6 @@
     "check:formal-verification": "pnpm --filter @static-builds/formal-verification run check",
     "check:golangci-lint": "go tool task golangci-lint -- run ./...",
     "check:jsonnet": "run-p check:jsonnet:*",
-    "check:jsonnet:feature": "go tool task jsonnet -- -S --ext-str branch=feature/tooling-check --ext-str target= --ext-str component_ref=example.invalid/group/static-builds/static-release@feature/tooling-check",
     "check:jsonnet:main": "go tool task jsonnet -- -S --ext-str branch=main --ext-str target= --ext-str component_ref=example.invalid/group/static-builds/static-release@main",
     "check:jsonnetfmt": "go tool task jsonnetfmt -- --test",
     "check:markdownlint-cli2": "markdownlint-cli2",

@@ -1,5 +1,7 @@
+import { runStatechart } from "../statechart.mjs";
+
 /** @type {Record<string, string>} */
-export const actions = {
+const actions = {
   Acquire: "Parent acquires the lock",
   Close: "Parent closes its descriptor",
   Done: "Both downloaders remain stopped",
@@ -12,7 +14,7 @@ export const actions = {
  * @param {Record<string, string>} values TLC scalar fields.
  * @returns {string} First downloader's visible ownership.
  */
-export const state = (values) => {
+const stateLabel = (values) => {
   const phases = /^<<(?<items>.*)>>$/u.exec(values.phase);
   if (!phases) {
     throw new Error(`Unsupported downloader phases: ${values.phase}`);
@@ -38,3 +40,20 @@ export const state = (values) => {
   }
   return label;
 };
+
+runStatechart({
+  actions,
+  config: new URL(
+    "../../assets/branch-download/BranchLock.cfg",
+    import.meta.url
+  ),
+  model: new URL(
+    "../../assets/branch-download/BranchLock.tla",
+    import.meta.url
+  ),
+  output: new URL(
+    "../../references/branch-download/statechart.mmd",
+    import.meta.url
+  ),
+  stateLabel
+});

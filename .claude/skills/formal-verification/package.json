@@ -3,12 +3,12 @@
   "private": true,
   "scripts": {
     "check": "run-p check:*",
-    "check:branch-download": "node scripts/branch-download/run.mjs --check",
+    "check:branch-download": "node scripts/branch-download/statechart.mjs --check",
     "check:typescript": "tsc --noEmit",
     "fix": "run-p fix:*",
     "fix:branch-download": "pnpm run generate:branch-download",
     "generate": "run-p generate:*",
-    "generate:branch-download": "node scripts/branch-download/run.mjs --write"
+    "generate:branch-download": "node scripts/branch-download/statechart.mjs --write"
   },
   "devDependencies": {
     "@tsconfig/node-lts": "catalog:",
