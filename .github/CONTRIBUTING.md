@@ -18,7 +18,6 @@ Each matrix job downloads sources, builds and packages them in an isolated check
 GitLab invokes Go tests, golangci-lint, NilAway, shell formatting, and Jsonnet formatting through `go tool task` before generating its package pipeline.
 Branch child pipelines start automatically and offer an optional manual build for each target.
 Tag releases run automatically.
-Local hooks and the GitHub tooling workflow check Jsonnet rendering for `main`.
 Its Go jobs use `golang:alpine` with Go's default `GOTOOLCHAIN=auto` behavior honoring the `go.mod` directive.
 The GitLab package component invokes GoReleaser, after the shared rootless Task driver completes without Docker-in-Docker.
 GitLab reuses signed APK downloads in its declared `APK_CACHE_DIR`, isolated by runner, while refreshing repository indexes on every job.
@@ -76,7 +75,7 @@ pnpm run fix
 
 The root package manifest references Node-side tooling through the pnpm workspace catalog.
 The lockfile records the resolved dependency graph.
-`check` runs markdownlint-cli2, TypeScript validation, Ultracite, formal verification, download and manifest Go tests, golangci-lint, NilAway, shell formatting, Jsonnet evaluation, and Jsonnet formatting checks.
+`check` runs markdownlint-cli2, TypeScript validation, Ultracite, formal verification, download and manifest Go tests, golangci-lint, NilAway, shell formatting, and Jsonnet formatting checks.
 Markdown validation uses pnpm and markdownlint-cli2, including the `code-block-style` rule for fenced code blocks.
 `fix` applies the following changes:
 
