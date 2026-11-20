@@ -116,7 +116,7 @@ The same configuration loads repository-owned plugins from `plugins/` to check f
 The test spacing rule recognizes registrations imported from Vitest, Jest globals, and Bun, but does not recognize `node:test` registrations.
 `oxlint.config.ts` enables type-aware lint for both `check:ultracite` and `fix:ultracite`.
 `check:typescript` checks those TypeScript files through `tsconfig.json` and the Node LTS compiler preset.
-Ultracite checks the optional njs examples in each nginx target's `examples/njs/scripting.js` for lint and formatting.
+Ultracite checks the optional njs example in `nginx-upstream-healthcheck/examples/njs/scripting.js` for lint and formatting.
 The njs example is not copied into runtime images or release archives.
 The njs example uses upstream `njs-types` declarations through its own TypeScript configuration.
 That separate configuration preserves the njs runtime globals, which differ from Node's Buffer and module types.

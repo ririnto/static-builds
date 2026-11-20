@@ -510,8 +510,8 @@ Selected release contents:
 - `nginx`: `sbin/nginx` with njs and VTS modules compiled in.
 - `nginx-upstream-healthcheck`: `sbin/nginx` with upstream healthcheck, njs and VTS modules compiled in.
 - Both nginx archives contain only the executable.
-  Optional njs and healthcheck examples remain in the repository.
-- Nginx images use `config/nginx.conf` and `config/conf.d/`, and preserve user-provided configuration mounted at those locations.
+- The nginx image uses the upstream default configuration at `/config/nginx.conf`.
+- The healthcheck image also loads HTTP snippets from `/config/conf.d/`.
 - `haproxy`: `sbin/haproxy`
 - `apache-exporter`: `bin/apache-exporter`
 - `apache-httpd`: `bin/httpd`, `bin/rotatelogs`
