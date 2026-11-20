@@ -262,8 +262,8 @@ Follow the [contribution guide](.github/CONTRIBUTING.md) for documentation style
 ### Dependency Updates
 
 `metadata.json` defines source versions and build image versions for every target.
-Each target's `env` declares `"UBI10_MINIMAL_VERSION": "10.2"`.
-The Taskfile `build` task reads it with `go tool task manifest -- get-env <target>` and passes it to BuildKit as `--opt build-arg:UBI10_MINIMAL_VERSION=10.2`.
+Each target's `env` declares `"UBI10_MINIMAL_VERSION": "10.3-1795002774"`.
+The Taskfile `build` task reads it with `go tool task manifest -- get-env <target>` and passes it to BuildKit as `--opt build-arg:UBI10_MINIMAL_VERSION=10.3-1795002774`.
 Each Dockerfile declares `ARG UBI10_MINIMAL_VERSION` and consumes the value in `FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify`.
 The registry-implicit `redhat/ubi10-minimal` reference resolves through Docker Hub.
 Use the latest supported LTS release when upstream provides an LTS series.
@@ -325,7 +325,7 @@ Each target must follow this structure:
          "bin/your-target"
        ],
        "env": {
-         "ALPINE_VERSION": "3",
+         "ALPINE_VERSION": "3.24.4",
          "YOUR_TARGET_VERSION": "1.0.0"
        }
      }
