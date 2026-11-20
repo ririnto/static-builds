@@ -41,6 +41,7 @@ jobs:
     needs: resolve-target
     permissions:
       contents: write
+      packages: write
       security-events: write
     uses: ./.github/workflows/template-release.yaml
     with:
