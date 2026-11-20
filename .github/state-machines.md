@@ -14,7 +14,7 @@ Upstream application internals remain outside this repository's verification sco
 | Fetch retry | Attempt, failed process, bounded delay, next attempt or exhaustion. | Successful nonempty downloads replace the destination through a sibling-file rename. |
 | Cancellation | Signal, cancelled context, child termination or cancelled wait, cleanup. | Go command tests do not establish process-tree termination or all signal interleavings. |
 
-The [branch-download model](../.claude/skills/branch-download/SKILL.md) checks two downloaders' exclusive descriptor ownership, including inherited transport ownership after parent exit, under its stated filesystem assumptions.
+The [branch-download model](../.claude/skills/formal-verification/references/branch-download/README.md) checks two downloaders' exclusive descriptor ownership, including inherited transport ownership after parent exit, under its stated filesystem assumptions.
 The model does not prove download integrity, retry liveness, or concurrent publication.
 
 ## Builds and publication

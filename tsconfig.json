@@ -1,17 +1,9 @@
 {
   "extends": "@tsconfig/node-lts/tsconfig.json",
   "compilerOptions": {
-    "allowImportingTsExtensions": true,
     "noEmit": true,
-    "types": ["node"],
     "allowJs": true,
     "checkJs": true
   },
-  "include": [
-    "plugins/**/*.ts",
-    "rules/**/*.ts",
-    "oxfmt.config.ts",
-    "oxlint.config.ts",
-    ".claude/skills/branch-download/scripts/**/*.mjs"
-  ]
+  "include": ["**/*.mjs", "**/*.ts"]
 }

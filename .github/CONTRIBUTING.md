@@ -28,7 +28,7 @@ The GitHub job runs Go tests, golangci-lint, NilAway, shell formatting, and Json
 
 Install the Node.js version supported by `package.json` and the pnpm version declared there for Node-side tooling.
 Install the Go version declared in `go.mod` for repository tasks and Go-managed contributor tools.
-Install Java 25 or a compatible Java runtime for `pnpm run check:branch-lock`, which also runs through `pnpm check` and Git hooks.
+Install Java 25 or a compatible Java runtime for `pnpm run check:formal-verification`, which also runs through `pnpm check` and Git hooks.
 Use `go tool task test`, `go tool task fmt`, and `go tool task tidy`.
 Invoke managed tools through tool-named Task tasks with arguments after `--`.
 On macOS, Go-managed tools may compile dependencies that require system SDK headers through CGO.
@@ -75,9 +75,8 @@ pnpm run fix
 ```
 
 The root package manifest references Node-side tooling through the pnpm workspace catalog.
-`pnpm-workspace.yaml` defines the catalog-backed `katex` development override required by `micromark-extension-math`.
 The lockfile records the resolved dependency graph.
-`check` runs markdownlint-cli2, rule tests, TypeScript validation, Ultracite, download and manifest Go tests, golangci-lint, NilAway, shell formatting, Jsonnet evaluation, and Jsonnet formatting checks.
+`check` runs markdownlint-cli2, TypeScript validation, Ultracite, formal verification, download and manifest Go tests, golangci-lint, NilAway, shell formatting, Jsonnet evaluation, and Jsonnet formatting checks.
 Markdown validation uses pnpm and markdownlint-cli2, including the `code-block-style` rule for fenced code blocks.
 `fix` applies the following changes:
 
@@ -93,10 +92,7 @@ Static Builds retains the default `single-title` front matter check, which is st
 Static Builds keeps the stricter table HTML exception by allowing only `br` inside table markup while the shared baseline also allows `code`.
 The local `docs/table-separators` rule requires exactly three hyphens in each table delimiter cell.
 It preserves alignment colons and fixes only the delimiter hyphens.
-The Markdownlint rule tests exercise owned behavior through Markdownlint's public API.
-`check:test` runs the Go command tests and Node's native `**/*.test.ts` discovery in parallel.
-Focused Oxlint tests use its official RuleTester API without retesting the upstream preset or formatter.
-The direct `markdown-it` dependency supplies the parser used by the token-based rules.
+`check:test` runs the Go tests.
 The CLI configuration respects Git ignore files.
 Only the supported `customRules` spelling loads packages through the installed CLI2 loader.
 The lowercase `customrules` spelling does not register rules through this entrypoint.

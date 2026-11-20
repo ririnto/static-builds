@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import * as view from "./branch-lock/statechart.mjs";
+import * as view from "./statechart.mjs";
 /**
  * @typedef {{initial: boolean, values: Record<string, string>}} State
  * @typedef {{action: string, from: string, to: string}} Edge
@@ -14,10 +14,10 @@ import * as view from "./branch-lock/statechart.mjs";
 const [mode] = process.argv.slice(2);
 if (!["--check", "--write"].includes(mode) || process.argv.length !== 3) {
   throw new Error(
-    "Usage: node .claude/skills/branch-download/scripts/run.mjs --check|--write"
+    "Usage: pnpm run check:formal-verification or pnpm run generate:formal-verification from the repository root"
   );
 }
-const skill = fileURLToPath(new URL("..", import.meta.url));
+const skill = fileURLToPath(new URL("../..", import.meta.url));
 const require = createRequire(import.meta.url);
 const temporary = mkdtempSync(path.join(tmpdir(), "branch-lock-"));
 try {
@@ -38,8 +38,8 @@ try {
       "dot,actionlabels",
       path.join(temporary, "graph.dot"),
       "-config",
-      path.join(skill, "assets/branch-lock/BranchLock.cfg"),
-      path.join(skill, "assets/branch-lock/BranchLock.tla")
+      path.join(skill, "assets/branch-download/BranchLock.cfg"),
+      path.join(skill, "assets/branch-download/BranchLock.tla")
     ],
     { encoding: "utf-8", maxBuffer: 8 * 1024 * 1024, timeout: 60_000 }
   );
@@ -153,12 +153,12 @@ try {
     ...[...arrows].toSorted(),
     ""
   ].join("\n");
-  const output = path.join(skill, "references/branch-lock/statechart.mmd");
+  const output = path.join(skill, "references/branch-download/statechart.mmd");
   if (mode === "--write") {
     writeFileSync(output, mermaid);
   } else if (readFileSync(output, "utf-8") !== mermaid) {
     throw new Error(
-      "Generated statechart is stale. Run pnpm generate:statechart."
+      "Generated statechart is stale. Run pnpm run generate:formal-verification from the repository root."
     );
   }
   console.log(
