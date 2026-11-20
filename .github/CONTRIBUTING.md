@@ -119,7 +119,7 @@ The JavaScript and TypeScript lint, formatter, and compiler configurations form 
 The preset supplies native ESLint, TypeScript, Unicorn, Oxc, import, JSDoc, Node, and Promise plugins.
 The same configuration loads repository-owned plugins from `plugins/` to check function-body spacing and adjacent test registrations without replacing the base rules.
 The test spacing rule recognizes registrations imported from Vitest, Jest globals, and Bun, but does not recognize `node:test` registrations.
-`check:ultracite` runs Ultracite with type-aware lint across its discovered files.
+`oxlint.config.ts` enables type-aware lint for both `check:ultracite` and `fix:ultracite`.
 `check:typescript` checks those TypeScript files through `tsconfig.json` and the Node LTS compiler preset.
 Ultracite checks the optional njs examples in each nginx target's `examples/njs/scripting.js` for lint and formatting.
 The njs example is not copied into runtime images or release archives.

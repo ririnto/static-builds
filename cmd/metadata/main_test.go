@@ -19,7 +19,7 @@ func TestManifestQueries(t *testing.T) {
 		{"get-env", "healthcheck", "NGINX_VERSION=1.30.6\n"},
 		{"get-official-version", "healthcheck", "1.30.6\n"},
 		{"get-tag-prefix", "healthcheck", "nginx-healthcheck\n"},
-		{"get-target-from-tag", "nginx-healthcheck-1.30.6.0", "healthcheck\n"},
+		{"get-target-from-tag", "nginx-healthcheck-1.30.6-0.2.7-1", "healthcheck\n"},
 		{"get-release-files", "healthcheck", "sbin/nginx\nconf\n"},
 		{"get-downloads", "healthcheck", "https://example.invalid/nginx-1.30.6.tar.gz\tnginx-1.30.6.tar.gz\n"},
 	}) {

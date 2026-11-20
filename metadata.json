@@ -4,7 +4,7 @@
     "release_files": ["sbin/nginx"],
     "env": {
       "ALPINE_VERSION": "3.24.4",
-      "NGINX_VERSION": "1.30.6",
+      "NGINX_VERSION": "1.30.7",
       "NGINX_VTS_MODULE_VERSION": "0.2.7",
       "UBI10_MINIMAL_VERSION": "10.3-1795002774",
       "NJS_VERSION": "1.0.2",
@@ -35,7 +35,7 @@
     "release_files": ["sbin/nginx"],
     "env": {
       "ALPINE_VERSION": "3.24.4",
-      "NGINX_VERSION": "1.30.6",
+      "NGINX_VERSION": "1.30.7",
       "NGINX_VTS_MODULE_VERSION": "0.2.7",
       "UBI10_MINIMAL_VERSION": "10.3-1795002774",
       "NJS_VERSION": "1.0.2",
@@ -69,7 +69,7 @@
       "ALPINE_VERSION": "3.24.4",
       "HAPROXY_OTEL_ADDON_VERSION": "2.3.0",
       "HAPROXY_OTEL_C_WRAPPER_VERSION": "3.4.0",
-      "HAPROXY_VERSION": "3.4.7",
+      "HAPROXY_VERSION": "3.4.8",
       "HAPROXY_VERSION_SERIES": "3.4",
       "NLOHMANN_JSON_VERSION": "3.12.0",
       "OPENTELEMETRY_CPP_VERSION": "1.30.0",
@@ -140,7 +140,7 @@
     "env": {
       "ALPINE_VERSION": "3.24.4",
       "UBI10_MINIMAL_VERSION": "10.3-1795002774",
-      "HTTPD_VERSION": "2.4.70",
+      "HTTPD_VERSION": "2.4.71",
       "APR_VERSION": "1.7.6",
       "APR_UTIL_VERSION": "1.6.6"
     },
@@ -197,7 +197,7 @@
     "release_files": ["bin/vector"],
     "env": {
       "ALPINE_VERSION": "3.24.4",
-      "VECTOR_VERSION": "0.61.0",
+      "VECTOR_VERSION": "0.62.0",
       "UBI10_MINIMAL_VERSION": "10.3-1795002774"
     },
     "downloads": [
@@ -213,7 +213,7 @@
     "release_files": ["bin/monit"],
     "env": {
       "ALPINE_VERSION": "3.24.4",
-      "MONIT_VERSION": "6.0.0",
+      "MONIT_VERSION": "6.1.0",
       "UBI10_MINIMAL_VERSION": "10.3-1795002774"
     },
     "downloads": [

@@ -1,6 +1,6 @@
 # NGINX Upstream Healthcheck
 
-This target builds NGINX Open Source stable release 1.30.6 as a static musl PIE with active HTTP and stream health checks, njs, and VTS metrics.
+This target builds the NGINX Open Source stable release pinned in `metadata.json` as a static musl PIE with active HTTP and stream health checks, njs, and VTS metrics.
 The healthcheck code is compiled into the binary as `ngx_http_upstream_healthcheck_module`.
 
 This target owns its sources, operational configuration, account files, and optional examples independently of the nginx target.
@@ -14,7 +14,7 @@ Build metadata selects the NGINX, njs, QuickJS-NG, and VTS release versions.
 
 | Component | Version | Purpose |
 | --- | --- | --- |
-| NGINX Open Source | 1.30.6 | Provides the HTTP and stream servers. |
+| NGINX Open Source | `NGINX_VERSION` | Provides the HTTP and stream servers. |
 | njs | 1.0.2 | Provides JavaScript scripting in HTTP and stream. |
 | QuickJS-NG | 0.18.0 | Provides the recommended JavaScript engine for njs. |
 | nginx-module-vts | 0.2.7 | Provides NGINX traffic metrics. |
@@ -232,7 +232,7 @@ It does not count a successful recovery as another failure.
 
 ## HAProxy behavior comparison
 
-This repository tracks HAProxy 3.4.7 on the 3.4 series.
+This repository tracks the HAProxy 3.4 series.
 The result names follow layer distinctions documented by the [HAProxy 3.4 configuration manual](https://docs.haproxy.org/3.4/configuration.html).
 The NGINX results classify the point where each probe succeeded or failed while retaining NGINX's selected-peer routing.
 

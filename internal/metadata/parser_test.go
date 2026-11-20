@@ -47,6 +47,9 @@ func TestLoadPreservesOrderedQueries(t *testing.T) {
 
 func TestTargetFromTag(t *testing.T) {
 	t.Parallel()
+	base := metadata.Target{Name: "base", TagPrefix: "nginx", VersionEnvVar: "VERSION", Env: []metadata.Entry{{Key: "VERSION", Value: "1.0.0"}}}
+	healthcheck := metadata.Target{Name: "healthcheck", TagPrefix: "nginx-upstream-healthcheck", VersionEnvVar: "VERSION", Env: []metadata.Entry{{Key: "VERSION", Value: "1.0.0"}}}
+	prerelease := metadata.Target{Name: "prerelease", TagPrefix: "nginx", VersionEnvVar: "VERSION", Env: []metadata.Entry{{Key: "VERSION", Value: "1.0.0-rc1"}}}
 	for test := range slices.Values([]struct {
 		name    string
 		targets []metadata.Target
@@ -54,12 +57,19 @@ func TestTargetFromTag(t *testing.T) {
 		index   int
 		wantErr string
 	}{
-		{name: "longest prefix", targets: []metadata.Target{{Name: "base", TagPrefix: "nginx"}, {Name: "healthcheck", TagPrefix: "nginx-healthcheck"}}, tag: "nginx-healthcheck-1.0.0", index: 1},
-		{name: "later shorter prefix", targets: []metadata.Target{{Name: "healthcheck", TagPrefix: "nginx-healthcheck"}, {Name: "base", TagPrefix: "nginx"}}, tag: "nginx-healthcheck-1.0.0", index: 0},
-		{name: "ambiguous prefix", targets: []metadata.Target{{Name: "one", TagPrefix: "nginx"}, {Name: "two", TagPrefix: "nginx"}}, tag: "nginx-1.0.0", wantErr: "ambiguous tag"},
-		{name: "duplicate target name", targets: []metadata.Target{{Name: "one", TagPrefix: "nginx"}, {Name: "one", TagPrefix: "nginx"}}, tag: "nginx-1.0.0", index: 0},
-		{name: "unknown tag", targets: []metadata.Target{{Name: "one", TagPrefix: "nginx"}}, tag: "other-1.0.0", wantErr: "unknown tag"},
-		{name: "empty targets", tag: "nginx-1.0.0", wantErr: "unknown tag"},
+		{name: "longest prefix", targets: []metadata.Target{base, healthcheck}, tag: "nginx-upstream-healthcheck-1.0.0-1", index: 1},
+		{name: "later shorter prefix", targets: []metadata.Target{healthcheck, base}, tag: "nginx-upstream-healthcheck-1.0.0-1", index: 0},
+		{name: "free-form suffix", targets: []metadata.Target{base}, tag: "nginx-1.0.0-suffix.with-dashes"},
+		{name: "version with a dash", targets: []metadata.Target{prerelease}, tag: "nginx-1.0.0-rc1-1"},
+		{name: "missing suffix separator", targets: []metadata.Target{base}, tag: "nginx-1.0.0", wantErr: "invalid release tag"},
+		{name: "old tag format", targets: []metadata.Target{base}, tag: "nginx-1.0.0.1", wantErr: "invalid release tag"},
+		{name: "empty version", targets: []metadata.Target{base}, tag: "nginx--1", wantErr: "invalid release tag"},
+		{name: "empty suffix", targets: []metadata.Target{base}, tag: "nginx-1.0.0-", wantErr: "invalid release tag"},
+		{name: "version mismatch", targets: []metadata.Target{base}, tag: "nginx-2.0.0-1", wantErr: "expected 'nginx-1.0.0-<suffix>'"},
+		{name: "ambiguous prefix", targets: []metadata.Target{{Name: "one", TagPrefix: "nginx"}, {Name: "two", TagPrefix: "nginx"}}, tag: "nginx-1.0.0-1", wantErr: "ambiguous tag"},
+		{name: "duplicate target name", targets: []metadata.Target{base, base}, tag: "nginx-1.0.0-1", index: 0},
+		{name: "unknown tag", targets: []metadata.Target{{Name: "one", TagPrefix: "nginx"}}, tag: "other-1.0.0-1", wantErr: "unknown tag"},
+		{name: "empty targets", tag: "nginx-1.0.0-1", wantErr: "unknown tag"},
 	}) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()

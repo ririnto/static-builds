@@ -18,6 +18,7 @@ export default defineConfig({
       specifier: "./plugins/sibling-test-spacing.ts"
     }
   ],
+  options: { typeAware: true },
   overrides: [
     {
       files: ["**/*.{js,jsx,mjs,cjs}"],

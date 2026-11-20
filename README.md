@@ -414,14 +414,10 @@ Contributor checks do not establish runtime acceptance of the custom healthcheck
 
 ### Creating a Release
 
-Releases are triggered by Git tags following the pattern `<target>-<version>[-<prerelease>].<revision>`:
-
-- Format: `{target}-{official_version}[-{prerelease}].{revision}`
-- Example: `nginx-1.28.2.18` (target: nginx, version: 1.28.2, revision: 18)
-- Target mapping: Release tag prefixes are resolved through `metadata.json`
+Push a Git tag in the [release tag format](#release-tag-format) to start the release workflow.
 
 Release tag event filters remain static in `.github/workflows/release-from-tag.yaml` as required by GitHub.
-Target selection, tag-prefix exceptions, and release-file selection use `metadata.json`.
+Target selection and release-file selection use `metadata.json`.
 
 ### Steps to Release
 
@@ -451,12 +447,11 @@ Target selection, tag-prefix exceptions, and release-file selection use `metadat
    git commit
    ```
 
-4. Create tag: Create and push release tag.
-   Use the target name as the tag prefix, except `apache-httpd`, which uses `httpd-`:
+4. Create and push a release tag using the target's `tag_prefix` from `metadata.json`.
 
    ```bash
-   git tag your-target-2.0.0.0
-   git push origin your-target-2.0.0.0
+   git tag your-target-2.0.0-1
+   git push origin your-target-2.0.0-1
    ```
 
 5. CI automation: GitHub Actions automatically:
@@ -472,25 +467,19 @@ Push release tags to each host where a release should be published.
 GitHub and GitLab do not replicate tags or Releases automatically.
 GitLab release publication depends on available CI capacity and a runner that supports the documented rootless build requirements.
 
-Tags MUST follow this format:
+Release tags use the format `<prefix>-<version>-<suffix>`.
 
-- `{target}-{version}[-{prerelease}].{revision}`
-- target: Target tag prefix (e.g., nginx, haproxy, httpd)
-- version: Official version from `metadata.json` (e.g., 1.28.2)
-- prerelease: Optional pre-release suffix (e.g., beta, rc1)
-- revision: Release revision suffix starting at 0, incrementing for rebuilds (e.g., 18)
+- `prefix` is the component `tag_prefix` from `metadata.json`.
+- The manifest command selects the longest matching prefix, so `nginx-upstream-healthcheck` takes precedence over `nginx`.
+- `version` is the exact value named by the component's `version_env_var` in `metadata.json`.
+- `suffix` is non-empty free-form text and can contain dashes and dots.
+  The workflow treats the suffix as an opaque string.
 
 Valid examples:
 
-- `nginx-1.28.2.18` (nginx version 1.28.2, revision 18)
-- `httpd-2.4.66.5` (apache-httpd version 2.4.66, revision 5)
-- `haproxy-3.2.13-beta.0` (haproxy version 3.2.13-beta, revision 0)
-
-Invalid examples:
-
-- `nginx-1.28.2` (missing revision suffix)
-- `custom-1.0.0.0` (unknown target)
-- `nginx-1.28.2.x` (non-numeric revision)
+- `coredns-1.15.0-1` has prefix `coredns`, version `1.15.0`, and suffix `1`.
+- `nginx-1.30.7-0.2.7-1` has prefix `nginx`, version `1.30.7`, and suffix `0.2.7-1`.
+- `nginx-upstream-healthcheck-1.30.7-0.2.7-1` resolves to the longer `nginx-upstream-healthcheck` prefix.
 
 ## How It Works
 
