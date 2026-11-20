@@ -9,8 +9,8 @@ ARG BUILD_TARGET=vector
 ARG VECTOR_VERSION
 ARG TARGET_PREFIX
 
-WORKDIR /download
-ADD ".cache/downloads/vector/vector-${VECTOR_VERSION}-x86_64-unknown-linux-musl.tar.gz" /download/
+WORKDIR /build
+ADD ".cache/downloads/vector/vector-${VECTOR_VERSION}-x86_64-unknown-linux-musl.tar.gz" /build/
 RUN mkdir -p ${TARGET_PREFIX}/bin
 RUN mv vector-x86_64-unknown-linux-musl/bin/vector ${TARGET_PREFIX}/bin/
 

@@ -26,8 +26,8 @@ RUN --mount=type=cache,id=haproxy-apk-${TARGETARCH},sharing=locked,target=/var/c
 FROM otel-base AS otel-abseil
 ARG ABSEIL_CPP_VERSION
 ARG HARDENING_CFLAGS
-ADD ".cache/downloads/haproxy/abseil-cpp-${ABSEIL_CPP_VERSION}.tar.gz" /tmp/
-RUN cmake -S "/tmp/abseil-cpp-${ABSEIL_CPP_VERSION}" -B /tmp/abseil-build \
+ADD ".cache/downloads/haproxy/abseil-cpp-${ABSEIL_CPP_VERSION}.tar.gz" /build/
+RUN cmake -S "/build/abseil-cpp-${ABSEIL_CPP_VERSION}" -B /build/abseil-build \
         -DCMAKE_INSTALL_PREFIX=/opt \
         -DCMAKE_CXX_FLAGS="${HARDENING_CFLAGS}" \
         -DCMAKE_CXX_STANDARD=17 \
@@ -36,15 +36,15 @@ RUN cmake -S "/tmp/abseil-cpp-${ABSEIL_CPP_VERSION}" -B /tmp/abseil-build \
         -DBUILD_SHARED_LIBS=OFF \
         -DABSL_ENABLE_INSTALL=ON \
         -DABSL_PROPAGATE_CXX_STD=ON
-RUN cmake --build /tmp/abseil-build --parallel "$(nproc)"
-RUN cmake --install /tmp/abseil-build
+RUN cmake --build /build/abseil-build --parallel "$(nproc)"
+RUN cmake --install /build/abseil-build
 
 FROM otel-base AS otel-protobuf
 ARG PROTOBUF_VERSION
 ARG HARDENING_CFLAGS
-ADD ".cache/downloads/haproxy/protobuf-${PROTOBUF_VERSION}.tar.gz" /tmp/
+ADD ".cache/downloads/haproxy/protobuf-${PROTOBUF_VERSION}.tar.gz" /build/
 COPY --from=otel-abseil /opt /opt
-RUN cmake -S "/tmp/protobuf-${PROTOBUF_VERSION}" -B /tmp/protobuf-build \
+RUN cmake -S "/build/protobuf-${PROTOBUF_VERSION}" -B /build/protobuf-build \
         -DCMAKE_INSTALL_PREFIX=/opt \
         -DCMAKE_CXX_FLAGS="${HARDENING_CFLAGS}" \
         -DCMAKE_CXX_STANDARD=17 \
@@ -55,14 +55,14 @@ RUN cmake -S "/tmp/protobuf-${PROTOBUF_VERSION}" -B /tmp/protobuf-build \
         -Dprotobuf_ABSL_PROVIDER=package \
         -DZLIB_LIBRARY=/usr/lib/libz.a \
         -DZLIB_INCLUDE_DIR=/usr/include
-RUN cmake --build /tmp/protobuf-build --parallel "$(nproc)"
-RUN cmake --install /tmp/protobuf-build
+RUN cmake --build /build/protobuf-build --parallel "$(nproc)"
+RUN cmake --install /build/protobuf-build
 
 FROM otel-base AS otel-rapidyaml
 ARG RAPIDYAML_VERSION
 ARG HARDENING_CFLAGS
-ADD ".cache/downloads/haproxy/rapidyaml-${RAPIDYAML_VERSION}-src.tgz" /tmp/
-RUN cmake -S "/tmp/rapidyaml.v${RAPIDYAML_VERSION}" -B /tmp/rapidyaml-build \
+ADD ".cache/downloads/haproxy/rapidyaml-${RAPIDYAML_VERSION}-src.tgz" /build/
+RUN cmake -S "/build/rapidyaml.v${RAPIDYAML_VERSION}" -B /build/rapidyaml-build \
         -DCMAKE_INSTALL_PREFIX=/opt \
         -DCMAKE_C_FLAGS="${HARDENING_CFLAGS}" \
         -DCMAKE_CXX_FLAGS="${HARDENING_CFLAGS}" \
@@ -76,8 +76,8 @@ RUN cmake -S "/tmp/rapidyaml.v${RAPIDYAML_VERSION}" -B /tmp/rapidyaml-build \
         -DRYML_BUILD_EXAMPLES=OFF \
         -DRYML_BUILD_C4C_TESTING=OFF \
         -DGIT=/bin/true
-RUN cmake --build /tmp/rapidyaml-build --parallel "$(nproc)"
-RUN cmake --install /tmp/rapidyaml-build
+RUN cmake --build /build/rapidyaml-build --parallel "$(nproc)"
+RUN cmake --install /build/rapidyaml-build
 
 FROM otel-base AS otel-cpp
 ARG HAPROXY_OTEL_C_WRAPPER_VERSION
@@ -85,9 +85,9 @@ ARG OPENTELEMETRY_CPP_VERSION
 ARG OPENTELEMETRY_PROTO_VERSION
 ARG NLOHMANN_JSON_VERSION
 ARG HARDENING_CFLAGS
-ADD ".cache/downloads/haproxy/opentelemetry-cpp-${OPENTELEMETRY_CPP_VERSION}.tar.gz" /tmp/
-ADD ".cache/downloads/haproxy/opentelemetry-proto-${OPENTELEMETRY_PROTO_VERSION}.tar.gz" /tmp/
-ADD ".cache/downloads/haproxy/nlohmann-json-${NLOHMANN_JSON_VERSION}.tar.gz" /tmp/
+ADD ".cache/downloads/haproxy/opentelemetry-cpp-${OPENTELEMETRY_CPP_VERSION}.tar.gz" /build/
+ADD ".cache/downloads/haproxy/opentelemetry-proto-${OPENTELEMETRY_PROTO_VERSION}.tar.gz" /build/
+ADD ".cache/downloads/haproxy/nlohmann-json-${NLOHMANN_JSON_VERSION}.tar.gz" /build/
 ADD ".cache/downloads/haproxy/opentelemetry-c-wrapper-${HAPROXY_OTEL_C_WRAPPER_VERSION}.tar.gz" /build/
 COPY --from=otel-abseil /opt /opt
 COPY --from=otel-protobuf /opt /opt
@@ -95,11 +95,11 @@ COPY --from=otel-rapidyaml /opt /opt
 RUN apk add c-ares-dev curl-dev curl-static brotli-static libidn2-static libpsl-static libunistring-static nghttp2-static zstd-static
 RUN mv "/build/opentelemetry-c-wrapper-${HAPROXY_OTEL_C_WRAPPER_VERSION}" /build/opentelemetry-c-wrapper
 RUN set -e; \
-    cd "/tmp/opentelemetry-cpp-${OPENTELEMETRY_CPP_VERSION}"; \
+    cd "/build/opentelemetry-cpp-${OPENTELEMETRY_CPP_VERSION}"; \
     for patch_file in /build/opentelemetry-c-wrapper/scripts/build/000*-opentelemetry-cpp-*.patch; do \
         patch -p1 <"$patch_file"; \
     done
-RUN PKG_CONFIG_PATH=/opt/lib/pkgconfig cmake -S "/tmp/opentelemetry-cpp-${OPENTELEMETRY_CPP_VERSION}" -B /tmp/opentelemetry-cpp-${OPENTELEMETRY_CPP_VERSION}/build \
+RUN PKG_CONFIG_PATH=/opt/lib/pkgconfig cmake -S "/build/opentelemetry-cpp-${OPENTELEMETRY_CPP_VERSION}" -B /build/opentelemetry-cpp-${OPENTELEMETRY_CPP_VERSION}/build \
         -DCMAKE_INSTALL_PREFIX=/opt \
         -DCMAKE_C_FLAGS="${HARDENING_CFLAGS}" \
         -DCMAKE_CXX_FLAGS="${HARDENING_CFLAGS}" \
@@ -110,8 +110,8 @@ RUN PKG_CONFIG_PATH=/opt/lib/pkgconfig cmake -S "/tmp/opentelemetry-cpp-${OPENTE
         -DOTELCPP_BUILD_PACKAGE=OFF \
         -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
         -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
-        -DOTELCPP_PROTO_PATH="/tmp/opentelemetry-proto-${OPENTELEMETRY_PROTO_VERSION}" \
-        -DFETCHCONTENT_SOURCE_DIR_NLOHMANN_JSON="/tmp/json-${NLOHMANN_JSON_VERSION}" \
+        -DOTELCPP_PROTO_PATH="/build/opentelemetry-proto-${OPENTELEMETRY_PROTO_VERSION}" \
+        -DFETCHCONTENT_SOURCE_DIR_NLOHMANN_JSON="/build/json-${NLOHMANN_JSON_VERSION}" \
         -DOPENSSL_USE_STATIC_LIBS=TRUE \
         -DOPENSSL_ROOT_DIR=/usr \
         -DOPENSSL_SSL_LIBRARY=/usr/lib/libssl.a \
@@ -141,8 +141,8 @@ RUN PKG_CONFIG_PATH=/opt/lib/pkgconfig cmake -S "/tmp/opentelemetry-cpp-${OPENTE
         -DOTELCPP_WITH_EXAMPLES=OFF \
         -DOTELCPP_WITH_FUNC_TESTS=OFF \
         -DBUILD_TESTING=OFF
-RUN cmake --build /tmp/opentelemetry-cpp-${OPENTELEMETRY_CPP_VERSION}/build --parallel "$(nproc)"
-RUN cmake --install /tmp/opentelemetry-cpp-${OPENTELEMETRY_CPP_VERSION}/build
+RUN cmake --build /build/opentelemetry-cpp-${OPENTELEMETRY_CPP_VERSION}/build --parallel "$(nproc)"
+RUN cmake --install /build/opentelemetry-cpp-${OPENTELEMETRY_CPP_VERSION}/build
 RUN apk add gawk
 RUN PKG_CONFIG_PATH=/opt/lib/pkgconfig:/usr/lib/pkgconfig cmake -S /build/opentelemetry-c-wrapper -B /build/opentelemetry-c-wrapper/build \
         -DCMAKE_INSTALL_PREFIX=/opt \
