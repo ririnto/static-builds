@@ -49,6 +49,5 @@ The [module source](../nginx-upstream-healthcheck/ngx_http_upstream_healthcheck_
 | Peer membership | Discovered, referenced by probes, removed from upstream, reclaimed. | In-flight probes retain the peer state until completion. |
 | Status response | Shared state snapshot, status serialization, HTTP response. | Status reports expose health and checker activity without changing the health decision. |
 
-The njs examples return version text and hold no persistent application state.
 Markdown and lint rules traverse input syntax within one invocation and retain no cross-invocation lifecycle.
 No runtime interleaving proof covers the custom module's shared memory, TLS, timers, reloads, or peer replacement.

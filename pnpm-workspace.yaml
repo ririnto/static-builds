@@ -8,7 +8,6 @@ catalog:
   husky: ^9.1.7
   markdownlint: ^0.42.1
   markdownlint-cli2: ^0.24.1
-  njs-types: ^1.0.0
   npm-run-all2: ^9.0.4
   oxfmt: ^0.79.0
   oxlint: ^1.94.0

@@ -53,23 +53,8 @@ Provide your backend CA at `<prefix>/config/backend-ca.pem`.
 The example uses `backend-ca.pem` because NGINX resolves trusted certificate paths relative to the configuration directory.
 Keep the checker and proxy trust directives pointed at the same bundle.
 
-For an unprivileged local smoke test, use the optional [repository scripting example](examples/njs/scripting.conf) with its adjacent `scripting.js` file:
-
-```sh
-cd /path/to/extracted/archive
-mkdir -p logs client_body_temp proxy_temp
-./sbin/nginx -p "$PWD/" -c /absolute/path/to/repository/nginx-upstream-healthcheck/examples/njs/scripting.conf -e stderr -g 'pid logs/nginx.pid; daemon off;'
-```
-
-Run this command as a non-root user so workers inherit your account without looking up `nobody`.
 For a root master, supply a system `nobody` user and group or choose an existing worker account with the `user` directive.
-The scripting example listens on loopback ports 18081 and 18082 and needs no backend CA.
 Create writable `logs`, `client_body_temp`, and `proxy_temp` directories under the selected prefix before startup.
-The `-e stderr` flag redirects startup error logging, and the scripting and healthcheck examples also set `error_log stderr`.
-Their HTTP access log defaults to `logs/access.log` beneath the prefix.
-The command writes the PID beneath `logs` and keeps nginx in the foreground with `daemon off;`.
-For another layout, set absolute writable `pid`, `access_log`, `client_body_temp_path`, and `proxy_temp_path` locations in your configuration.
-Do not add a second `pid` directive through `-g` when your configuration already defines one.
 
 ## njs scripting
 
@@ -78,8 +63,6 @@ The release fixes XML security issues CVE-2026-101025 and CVE-2026-101019 and ch
 Review the [official njs 1.0.2 release notes](https://nginx.org/en/docs/njs/changes.html#njs1.0.2) before upgrading existing scripts that use XML or Fetch.
 Set `js_engine qjs;` in each context that imports an njs script.
 The [official engine guidance](https://nginx.org/en/docs/njs/engine.html) recommends QuickJS for new configurations.
-The target-owned [scripting configuration](examples/njs/scripting.conf) and [script](examples/njs/scripting.js) are repository examples only.
-Neither the default configuration nor the healthcheck module uses them, so images, build outputs, and release archives exclude them.
 
 The existing C module performs active probes against NGINX's selected peer and shares health state across workers.
 The target already compiles njs with QuickJS-NG, but the available JavaScript APIs do not provide the peer and socket operations this checker needs.
