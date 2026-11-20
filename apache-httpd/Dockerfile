@@ -11,7 +11,7 @@ ARG APR_VERSION
 ARG APR_UTIL_VERSION
 ARG TARGET_PREFIX
 
-WORKDIR /tmp
+WORKDIR /build
 RUN --mount=type=cache,id=apache-httpd-apk-${TARGETARCH},sharing=locked,target=/var/cache/apk \
     apk add \
         build-base \
@@ -29,12 +29,12 @@ RUN --mount=type=cache,id=apache-httpd-apk-${TARGETARCH},sharing=locked,target=/
         expat-static \
         brotli-dev \
         brotli-static
-ADD ".cache/downloads/apache-httpd/httpd-${HTTPD_VERSION}.tar.gz" /tmp/
-ADD ".cache/downloads/apache-httpd/apr-${APR_VERSION}.tar.gz" /tmp/
-ADD ".cache/downloads/apache-httpd/apr-util-${APR_UTIL_VERSION}.tar.gz" /tmp/
-RUN mv "/tmp/apr-${APR_VERSION}" "/tmp/httpd-${HTTPD_VERSION}/srclib/apr"
-RUN mv "/tmp/apr-util-${APR_UTIL_VERSION}" "/tmp/httpd-${HTTPD_VERSION}/srclib/apr-util"
-WORKDIR "/tmp/httpd-${HTTPD_VERSION}"
+ADD ".cache/downloads/apache-httpd/httpd-${HTTPD_VERSION}.tar.gz" /build/
+ADD ".cache/downloads/apache-httpd/apr-${APR_VERSION}.tar.gz" /build/
+ADD ".cache/downloads/apache-httpd/apr-util-${APR_UTIL_VERSION}.tar.gz" /build/
+RUN mv "/build/apr-${APR_VERSION}" "/build/httpd-${HTTPD_VERSION}/srclib/apr"
+RUN mv "/build/apr-util-${APR_UTIL_VERSION}" "/build/httpd-${HTTPD_VERSION}/srclib/apr-util"
+WORKDIR "/build/httpd-${HTTPD_VERSION}"
 RUN ./configure \
     --prefix=${TARGET_PREFIX} \
     --enable-pie \
