@@ -36,12 +36,15 @@ RUN file -b "${TARGET_PREFIX}/sbin/dnsmasq" | grep -Eq '^ELF .* (statically link
 RUN readelf -l "${TARGET_PREFIX}/sbin/dnsmasq" | ( ! grep -q INTERP )
 RUN readelf -d "${TARGET_PREFIX}/sbin/dnsmasq" | ( ! grep -q '(NEEDED)' )
 RUN timeout --kill-after=5s 30s strace "${TARGET_PREFIX}/sbin/dnsmasq" -v
+RUN echo "nobody:x:65534:" > /etc/group
+RUN echo "nobody:x:65534:65534:nobody:/home/nobody:/sbin/nologin" > /etc/passwd
 
 FROM scratch
 
 ARG TARGET_PREFIX
 
 COPY --from=verify ${TARGET_PREFIX} .
+COPY --from=verify /etc/passwd /etc/group /etc/
 EXPOSE 53 53/udp 67/udp
 ENTRYPOINT ["./sbin/dnsmasq"]
 CMD ["-k"]

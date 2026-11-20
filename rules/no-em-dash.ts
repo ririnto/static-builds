@@ -1,7 +1,5 @@
 import type { Rule } from "markdownlint";
 
-import { childTokens } from "./token-children.ts";
-
 /**
  * Markdownlint rule rejecting em dashes (U+2014) in Markdown prose while
  * preserving code spans, code blocks, and HTML.
@@ -11,7 +9,7 @@ export default {
   function: (params, onError) => {
     for (const parent of params.parsers.markdownit.tokens) {
       let inCode = false;
-      for (const token of childTokens(parent)) {
+      for (const token of parent.children ?? []) {
         if (
           token.type === "html_inline" &&
           /^<code(?:\s[^>]*)?\s*>$/iu.test(token.content)

@@ -1,6 +1,6 @@
 # NGINX Upstream Healthcheck
 
-This target builds NGINX Open Source stable release 1.30.6 as a static musl PIE with active HTTP and stream health checks, njs, and VTS metrics.
+This target builds the NGINX Open Source stable release pinned in `metadata.json` as a static musl PIE with active HTTP and stream health checks, njs, and VTS metrics.
 The healthcheck code is compiled into the binary as `ngx_http_upstream_healthcheck_module`.
 
 This target owns its sources, operational configuration, account files, and optional examples independently of the nginx target.
@@ -14,7 +14,7 @@ Build metadata selects the NGINX, njs, QuickJS-NG, and VTS release versions.
 
 | Component | Version | Purpose |
 | --- | --- | --- |
-| NGINX Open Source | 1.30.6 | Provides the HTTP and stream servers. |
+| NGINX Open Source | `NGINX_VERSION` | Provides the HTTP and stream servers. |
 | njs | 1.0.2 | Provides JavaScript scripting in HTTP and stream. |
 | QuickJS-NG | 0.18.0 | Provides the recommended JavaScript engine for njs. |
 | nginx-module-vts | 0.2.7 | Provides NGINX traffic metrics. |
@@ -53,23 +53,8 @@ Provide your backend CA at `<prefix>/config/backend-ca.pem`.
 The example uses `backend-ca.pem` because NGINX resolves trusted certificate paths relative to the configuration directory.
 Keep the checker and proxy trust directives pointed at the same bundle.
 
-For an unprivileged local smoke test, use the optional [repository scripting example](examples/njs/scripting.conf) with its adjacent `scripting.js` file:
-
-```sh
-cd /path/to/extracted/archive
-mkdir -p logs client_body_temp proxy_temp
-./sbin/nginx -p "$PWD/" -c /absolute/path/to/repository/nginx-upstream-healthcheck/examples/njs/scripting.conf -e stderr -g 'pid logs/nginx.pid; daemon off;'
-```
-
-Run this command as a non-root user so workers inherit your account without looking up `nobody`.
 For a root master, supply a system `nobody` user and group or choose an existing worker account with the `user` directive.
-The scripting example listens on loopback ports 18081 and 18082 and needs no backend CA.
 Create writable `logs`, `client_body_temp`, and `proxy_temp` directories under the selected prefix before startup.
-The `-e stderr` flag redirects startup error logging, and the scripting and healthcheck examples also set `error_log stderr`.
-Their HTTP access log defaults to `logs/access.log` beneath the prefix.
-The command writes the PID beneath `logs` and keeps nginx in the foreground with `daemon off;`.
-For another layout, set absolute writable `pid`, `access_log`, `client_body_temp_path`, and `proxy_temp_path` locations in your configuration.
-Do not add a second `pid` directive through `-g` when your configuration already defines one.
 
 ## njs scripting
 
@@ -78,8 +63,6 @@ The release fixes XML security issues CVE-2026-101025 and CVE-2026-101019 and ch
 Review the [official njs 1.0.2 release notes](https://nginx.org/en/docs/njs/changes.html#njs1.0.2) before upgrading existing scripts that use XML or Fetch.
 Set `js_engine qjs;` in each context that imports an njs script.
 The [official engine guidance](https://nginx.org/en/docs/njs/engine.html) recommends QuickJS for new configurations.
-The target-owned [scripting configuration](examples/njs/scripting.conf) and [script](examples/njs/scripting.js) are repository examples only.
-Neither the default configuration nor the healthcheck module uses them, so images, build outputs, and release archives exclude them.
 
 The existing C module performs active probes against NGINX's selected peer and shares health state across workers.
 The target already compiles njs with QuickJS-NG, but the available JavaScript APIs do not provide the peer and socket operations this checker needs.
@@ -232,7 +215,7 @@ It does not count a successful recovery as another failure.
 
 ## HAProxy behavior comparison
 
-This repository tracks HAProxy 3.4.7 on the 3.4 series.
+This repository tracks the HAProxy 3.4 series.
 The result names follow layer distinctions documented by the [HAProxy 3.4 configuration manual](https://docs.haproxy.org/3.4/configuration.html).
 The NGINX results classify the point where each probe succeeded or failed while retaining NGINX's selected-peer routing.
 

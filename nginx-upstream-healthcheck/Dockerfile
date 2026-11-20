@@ -88,13 +88,14 @@ RUN file -b "${TARGET_PREFIX}/sbin/nginx" | grep -Eq '^ELF .* (statically linked
 RUN readelf -l "${TARGET_PREFIX}/sbin/nginx" | ( ! grep -q INTERP )
 RUN readelf -d "${TARGET_PREFIX}/sbin/nginx" | ( ! grep -q '(NEEDED)' )
 RUN timeout --kill-after=5s 30s strace "${TARGET_PREFIX}/sbin/nginx" -V
+RUN echo "nobody:x:65534:" > /etc/group
+RUN echo "nobody:x:65534:65534:nobody:/home/nobody:/sbin/nologin" > /etc/passwd
 
 FROM scratch
 
 ARG TARGET_PREFIX
 
 COPY --from=verify ${TARGET_PREFIX} /
-COPY nginx-upstream-healthcheck/passwd /etc/passwd
-COPY nginx-upstream-healthcheck/group /etc/group
+COPY --from=verify /etc/passwd /etc/group /etc/
 EXPOSE 80 443
 ENTRYPOINT ["/sbin/nginx", "-p", "/", "-g", "daemon off;"]

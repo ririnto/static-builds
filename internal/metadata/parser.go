@@ -235,7 +235,7 @@ func (m *Metadata) Target(name string) (*Target, error) {
 	return nil, fmt.Errorf("unknown target '%s'", name)
 }
 
-// TargetFromTag resolves the longest prefix and rejects ambiguous matches.
+// TargetFromTag resolves the longest prefix and validates its version and suffix.
 func (m *Metadata) TargetFromTag(tag string) (*Target, error) {
 	var best *Target
 	ambiguous := false
@@ -254,6 +254,13 @@ func (m *Metadata) TargetFromTag(tag string) (*Target, error) {
 	}
 	if ambiguous {
 		return nil, fmt.Errorf("ambiguous tag '%s': targets share longest tag prefix '%s'", tag, best.TagPrefix)
+	}
+	officialVersion, err := best.OfficialVersion()
+	if err != nil {
+		return nil, err
+	}
+	if suffix, found := strings.CutPrefix(tag, best.TagPrefix+"-"+officialVersion+"-"); !found || suffix == "" {
+		return nil, fmt.Errorf("invalid release tag '%s': expected '%s-%s-<suffix>' with a non-empty suffix", tag, best.TagPrefix, officialVersion)
 	}
 	return best, nil
 }

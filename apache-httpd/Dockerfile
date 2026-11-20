@@ -99,12 +99,15 @@ RUN readelf -d "${TARGET_PREFIX}/bin/rotatelogs" | ( ! grep -q '(NEEDED)' )
 RUN timeout --kill-after=5s 30s strace "${TARGET_PREFIX}/bin/httpd" -V
 RUN "${TARGET_PREFIX}/bin/httpd" -l
 RUN "${TARGET_PREFIX}/bin/httpd" -M
+RUN echo "daemon:x:2:" > /etc/group
+RUN echo "daemon:x:2:2:daemon:/home/nobody:/sbin/nologin" > /etc/passwd
 
 FROM scratch
 
 ARG TARGET_PREFIX
 
 COPY --from=verify ${TARGET_PREFIX} .
+COPY --from=verify /etc/passwd /etc/group /etc/
 EXPOSE 80 443
 ENTRYPOINT ["./bin/httpd"]
 CMD ["-D", "FOREGROUND"]

@@ -2,7 +2,7 @@
 
 This target builds static nginx with njs and VTS compiled into one musl PIE binary.
 Both nginx targets independently build the same njs scripting profile.
-The selected nginx 1.30.6 release belongs to the Open Source Stable series.
+The selected nginx release belongs to the Open Source Stable series.
 NGINX Open Source does not publish a separate LTS line.
 
 ## Modules and Features
@@ -20,19 +20,14 @@ NGINX Open Source does not publish a separate LTS line.
 
 ## Runtime configuration
 
-Both nginx images install their operational base configuration at `/config/nginx.conf` and include HTTP snippets from `/config/conf.d/*.conf`.
-The compiled path is `config/nginx.conf` beneath the selected prefix, and the images use `-p /`.
-The base configuration retains the upstream default HTTP server and supports additional HTTP configuration through `config/conf.d`.
-Mount your own configuration or snippets at those paths.
-No host configuration is changed by the build.
-The images include minimal `nobody` account records for worker processes and run nginx in the foreground.
+The image uses the upstream default configuration installed at `/config/nginx.conf`.
+Mount your own configuration at that path.
+The image includes minimal `nobody` account records for worker processes and runs nginx in the foreground.
 Release archives contain only the binary, so supply your own `config/nginx.conf`, writable logs, and runtime directories when deploying an archive.
 
 ## Scripting Installation
 
 The njs HTTP and stream modules use nginx's standard static `--add-module` installation.
-[scripting.conf](examples/njs/scripting.conf) and [scripting.js](examples/njs/scripting.js) provide optional loopback HTTP and TCP examples.
-They are repository examples, not runtime dependencies, and are excluded from images, build outputs, and release archives.
 Set `js_engine qjs` to select the statically linked QuickJS-NG engine.
 The [official engine guidance](https://nginx.org/en/docs/njs/engine.html) recommends QuickJS for new configurations.
 The optional libxslt dependency is excluded from this target.
@@ -40,15 +35,6 @@ The optional libxslt dependency is excluded from this target.
 The njs 1.0.2 release fixes XML security issues CVE-2026-101025 and CVE-2026-101019 and hardens Fetch response handling.
 It also changes XML node-mutation compatibility and Fetch response validation.
 Review the [official njs 1.0.2 release notes](https://nginx.org/en/docs/njs/changes.html#njs1.0.2) before upgrading existing scripts that use XML or Fetch.
-
-On a compatible Linux host, run the repository example explicitly with the built binary from the repository root:
-
-```sh
-mkdir -p dist/nginx/logs
-./dist/nginx/sbin/nginx -p "$PWD/dist/nginx/" -c "$PWD/nginx/examples/njs/scripting.conf"
-curl http://127.0.0.1:18081/njs
-./dist/nginx/sbin/nginx -p "$PWD/dist/nginx/" -c "$PWD/nginx/examples/njs/scripting.conf" -s quit
-```
 
 The Dockerfile performs these checks before exporting the built installation:
 

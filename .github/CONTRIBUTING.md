@@ -18,7 +18,6 @@ Each matrix job downloads sources, builds and packages them in an isolated check
 GitLab invokes Go tests, golangci-lint, NilAway, shell formatting, and Jsonnet formatting through `go tool task` before generating its package pipeline.
 Branch child pipelines start automatically and offer an optional manual build for each target.
 Tag releases run automatically.
-Local hooks and the GitHub tooling workflow check main, feature, and release-tag Jsonnet rendering.
 Its Go jobs use `golang:alpine` with Go's default `GOTOOLCHAIN=auto` behavior honoring the `go.mod` directive.
 The GitLab package component invokes GoReleaser, after the shared rootless Task driver completes without Docker-in-Docker.
 GitLab reuses signed APK downloads in its declared `APK_CACHE_DIR`, isolated by runner, while refreshing repository indexes on every job.
@@ -28,7 +27,7 @@ The GitHub job runs Go tests, golangci-lint, NilAway, shell formatting, and Json
 
 Install the Node.js version supported by `package.json` and the pnpm version declared there for Node-side tooling.
 Install the Go version declared in `go.mod` for repository tasks and Go-managed contributor tools.
-Install Java 25 or a compatible Java runtime for `pnpm run check:branch-lock`, which also runs through `pnpm check` and Git hooks.
+Install Java 25 or a compatible Java runtime for `pnpm run check:formal-verification`, which also runs through `pnpm check` and Git hooks.
 Use `go tool task test`, `go tool task fmt`, and `go tool task tidy`.
 Invoke managed tools through tool-named Task tasks with arguments after `--`.
 On macOS, Go-managed tools may compile dependencies that require system SDK headers through CGO.
@@ -75,9 +74,8 @@ pnpm run fix
 ```
 
 The root package manifest references Node-side tooling through the pnpm workspace catalog.
-`pnpm-workspace.yaml` defines the catalog-backed `katex` development override required by `micromark-extension-math`.
 The lockfile records the resolved dependency graph.
-`check` runs markdownlint-cli2, rule tests, TypeScript validation, Ultracite, download and manifest Go tests, golangci-lint, NilAway, shell formatting, Jsonnet evaluation, and Jsonnet formatting checks.
+`check` runs markdownlint-cli2, TypeScript validation, Ultracite, formal verification, download and manifest Go tests, golangci-lint, NilAway, shell formatting, and Jsonnet formatting checks.
 Markdown validation uses pnpm and markdownlint-cli2, including the `code-block-style` rule for fenced code blocks.
 `fix` applies the following changes:
 
@@ -93,10 +91,7 @@ Static Builds retains the default `single-title` front matter check, which is st
 Static Builds keeps the stricter table HTML exception by allowing only `br` inside table markup while the shared baseline also allows `code`.
 The local `docs/table-separators` rule requires exactly three hyphens in each table delimiter cell.
 It preserves alignment colons and fixes only the delimiter hyphens.
-The Markdownlint rule tests exercise owned behavior through Markdownlint's public API.
-`check:test` runs the Go command tests and Node's native `**/*.test.ts` discovery in parallel.
-Focused Oxlint tests use its official RuleTester API without retesting the upstream preset or formatter.
-The direct `markdown-it` dependency supplies the parser used by the token-based rules.
+`check:test` runs the Go tests.
 The CLI configuration respects Git ignore files.
 Only the supported `customRules` spelling loads packages through the installed CLI2 loader.
 The lowercase `customrules` spelling does not register rules through this entrypoint.
@@ -119,12 +114,8 @@ The JavaScript and TypeScript lint, formatter, and compiler configurations form 
 The preset supplies native ESLint, TypeScript, Unicorn, Oxc, import, JSDoc, Node, and Promise plugins.
 The same configuration loads repository-owned plugins from `plugins/` to check function-body spacing and adjacent test registrations without replacing the base rules.
 The test spacing rule recognizes registrations imported from Vitest, Jest globals, and Bun, but does not recognize `node:test` registrations.
-`check:ultracite` runs Ultracite with type-aware lint across its discovered files.
+`oxlint.config.ts` enables type-aware lint for both `check:ultracite` and `fix:ultracite`.
 `check:typescript` checks those TypeScript files through `tsconfig.json` and the Node LTS compiler preset.
-Ultracite checks the optional njs examples in each nginx target's `examples/njs/scripting.js` for lint and formatting.
-The njs example is not copied into runtime images or release archives.
-The njs example uses upstream `njs-types` declarations through its own TypeScript configuration.
-That separate configuration preserves the njs runtime globals, which differ from Node's Buffer and module types.
 
 The table maps effective enforcement to engineering qualities rather than adding another prose rule set.
 

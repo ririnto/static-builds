@@ -24,7 +24,7 @@ const collect = (
  * Only the delimiter row that directly follows a table header is a separator.
  * Alignment colons are allowed around the hyphens.
  */
-export default {
+const tableSeparators: Rule = {
   description: "Markdown table separators must use exactly three hyphens",
   function: (params, onError) => {
     for (const row of collect(
@@ -55,4 +55,6 @@ export default {
   names: ["docs/table-separators"],
   parser: "micromark",
   tags: ["docs", "tables"]
-} satisfies Rule;
+};
+
+export default tableSeparators;

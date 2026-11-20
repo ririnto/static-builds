@@ -24,10 +24,6 @@ on:
       - "nginx-upstream-healthcheck/**"
       - "vector/**"
       - "!**/*.md"
-      - "!nginx/examples/**"
-      - "!nginx/tsconfig.json"
-      - "!nginx-upstream-healthcheck/examples/njs/**"
-      - "!nginx-upstream-healthcheck/tsconfig.json"
 
 permissions:
   contents: read

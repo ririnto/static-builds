@@ -1,8 +1,6 @@
 # Download ownership correspondence
 
 Compare this mapping with the working branch before relying on the model.
-The correspondence was inspected against `main` on 2026-11-13.
-The model and implementation may drift independently.
 
 | Model action | Production boundary in `cmd/download/main.go` | Correspondence |
 | --- | --- | --- |
