@@ -290,7 +290,7 @@ The following policies guide version selection.
 | Red Hat UBI | Select a supported version of the UBI minimal image. |
 | Other dependencies | Select stable releases when upstream provides no LTS series. |
 
-GitHub release jobs use the `ubuntu-26.04` LTS runner label.
+GitHub jobs use `ubuntu-latest` for amd64 and `ubuntu-24.04-arm` for native arm64 builds.
 GitLab child pipelines select the release component through `CI_COMMIT_REF_NAME`, which names the current branch or tag.
 The parent job expands the complete component reference before generating the child pipeline.
 
