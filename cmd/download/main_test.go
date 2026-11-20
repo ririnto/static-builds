@@ -84,7 +84,7 @@ set -eu
 while [ "$1" != --output ]; do shift; done
 shift
 output=$1
-printf 'request\n' >> requests
+echo request >> requests
 printf 'partial' > "$output"
 if [ "${DOWNLOAD_TEST_HOLD:-}" = 1 ]; then
     : > started

@@ -261,11 +261,8 @@ Follow the [contribution guide](.github/CONTRIBUTING.md) for documentation style
 
 ### Dependency Updates
 
-`metadata.json` defines source versions and build image versions for every target.
-Each target's `env` declares `"UBI10_MINIMAL_VERSION": "10.3-1795002774"`.
-The Taskfile `build` task reads it with `go tool task manifest -- get-env <target>` and passes it to BuildKit as `--opt build-arg:UBI10_MINIMAL_VERSION=10.3-1795002774`.
-Each Dockerfile declares `ARG UBI10_MINIMAL_VERSION` and consumes the value in `FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify`.
-The registry-implicit `redhat/ubi10-minimal` reference resolves through Docker Hub.
+`metadata.json` defines source versions for every target.
+Dockerfiles use the maintained tags `alpine`, `golang:alpine`, and `redhat/ubi10-minimal`.
 Use the latest supported LTS release when upstream provides an LTS series.
 Use the supported stable release when upstream does not provide an LTS series.
 For nginx, follow the stable release series.
@@ -290,15 +287,14 @@ The following policies guide version selection.
 | Red Hat UBI | Select a supported version of the UBI minimal image. |
 | Other dependencies | Select stable releases when upstream provides no LTS series. |
 
-GitHub release jobs use the `ubuntu-26.04` LTS runner label.
+GitHub jobs use `ubuntu-latest` for amd64 and `ubuntu-24.04-arm` for native arm64 builds.
 GitLab child pipelines select the release component through `CI_COMMIT_REF_NAME`, which names the current branch or tag.
 The parent job expands the complete component reference before generating the child pipeline.
 
 `.github/dependabot.yaml` checks GitHub Actions weekly.
 It groups action updates into one pull request.
 Dependabot does not update the custom version fields in `metadata.json`.
-Docker image tags come from that metadata through build arguments, so Dependabot cannot resolve them from the Dockerfiles.
-Update those values, GitLab CI dependencies, and the Markdown schema reference manually.
+Update the source versions, GitLab CI dependencies, and the Markdown schema reference manually.
 
 ### Target Structure
 
@@ -325,7 +321,6 @@ Each target must follow this structure:
          "bin/your-target"
        ],
        "env": {
-         "ALPINE_VERSION": "3.24.4",
          "YOUR_TARGET_VERSION": "1.0.0"
        }
      }
@@ -335,10 +330,8 @@ Each target must follow this structure:
 3. Create Dockerfile: Implement a multi-stage build:
 
    ```dockerfile
-   ARG ALPINE_VERSION
-
    # Build stage
-   FROM alpine:${ALPINE_VERSION} AS build
+   FROM alpine AS build
    ARG YOUR_TARGET_VERSION
    ADD ".cache/downloads/your-target/your-target-${YOUR_TARGET_VERSION}.tar.gz" /build/
    # ... build steps ...

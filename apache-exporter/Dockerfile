@@ -1,9 +1,7 @@
 # syntax=docker/dockerfile:1
-ARG GO_VERSION
-ARG UBI10_MINIMAL_VERSION
 ARG TARGET_PREFIX=/out
 
-FROM golang:${GO_VERSION}-alpine AS build
+FROM golang:alpine AS build
 ARG TARGETARCH
 ARG BUILD_TARGET=apache-exporter
 ARG APACHE_EXPORTER_VERSION
@@ -23,7 +21,7 @@ RUN --mount=type=cache,id=apache-exporter-go-build-${TARGETARCH},sharing=locked,
         -ldflags "-X github.com/prometheus/common/version.Version=${APACHE_EXPORTER_VERSION}" \
         -o ${TARGET_PREFIX}/bin/apache-exporter .
 
-FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
+FROM redhat/ubi10-minimal AS verify
 SHELL ["/bin/bash", "-eo", "pipefail", "-c"]
 ARG TARGETARCH
 ARG BUILD_TARGET=apache-exporter

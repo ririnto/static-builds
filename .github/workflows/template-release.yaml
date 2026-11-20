@@ -19,7 +19,7 @@ on:
 
 jobs:
   release:
-    runs-on: ubuntu-26.04
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       security-events: write
@@ -94,7 +94,7 @@ jobs:
   publish:
     needs: release
     if: ${{ inputs.upload_release }}
-    runs-on: ubuntu-26.04
+    runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:

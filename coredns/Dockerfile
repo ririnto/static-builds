@@ -1,9 +1,7 @@
 # syntax=docker/dockerfile:1
-ARG GOLANG_IMAGE_TAG
-ARG UBI10_MINIMAL_VERSION
 ARG TARGET_PREFIX=/home/nobody
 
-FROM golang:${GOLANG_IMAGE_TAG} AS build
+FROM golang:alpine AS build
 ARG TARGETARCH
 ARG BUILD_TARGET=coredns
 ARG COREDNS_VERSION
@@ -23,7 +21,7 @@ RUN --mount=type=cache,id=coredns-go-build-${TARGETARCH},sharing=locked,target=/
         CGO_ENABLED=0 \
         BUILDOPTS="-v -trimpath"
 
-FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
+FROM redhat/ubi10-minimal AS verify
 SHELL ["/bin/bash", "-eo", "pipefail", "-c"]
 ARG TARGETARCH
 ARG BUILD_TARGET=coredns

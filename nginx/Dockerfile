@@ -1,9 +1,7 @@
 # syntax=docker/dockerfile:1
-ARG ALPINE_VERSION
-ARG UBI10_MINIMAL_VERSION
 ARG TARGET_PREFIX=/home/nobody
 
-FROM alpine:${ALPINE_VERSION} AS build
+FROM alpine AS build
 ARG TARGETARCH
 ARG BUILD_TARGET=nginx
 ARG NGINX_VERSION
@@ -71,7 +69,7 @@ RUN ./configure \
 RUN make "-j$(nproc)"
 RUN make install
 
-FROM redhat/ubi10-minimal:${UBI10_MINIMAL_VERSION} AS verify
+FROM redhat/ubi10-minimal AS verify
 SHELL ["/bin/bash", "-eo", "pipefail", "-c"]
 ARG TARGETARCH
 ARG BUILD_TARGET=nginx
