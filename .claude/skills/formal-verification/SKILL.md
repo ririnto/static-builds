@@ -10,5 +10,5 @@ description: Run and maintain the repository's formal checks when changing model
 Compare the model's source mapping and assumptions with the implementation you changed.
 Run `pnpm run check:formal-verification` from the repository root to check the models and their statecharts.
 After changing a model or its projection, run `pnpm run generate:formal-verification` and review the resulting statechart.
-Use the pstack `statechart` skill to inspect explored states or trace a counterexample.
-Replay counterexamples through the affected production command and update the source mapping when production boundaries change.
+If TLC reports an invariant violation, read the counterexample in the check output and use the source mapping to replay the actions through the affected production command.
+Update the source mapping when production boundaries change.

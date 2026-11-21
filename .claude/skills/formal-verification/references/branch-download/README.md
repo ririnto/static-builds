@@ -18,10 +18,10 @@ The model omits:
 - Transport descendants and real network behavior.
 - Timing bounds and termination guarantees.
 
-The [generated statechart](statechart.mmd) follows downloader 1 and shows that a transport can retain the lock after parent exit.
+The [generated statechart](../../assets/branch-download/statechart.mmd) follows downloader 1 and shows that a transport can retain the lock after parent exit.
 Downloader 2 remains part of every invariant check.
 The projection hides only transitions that stay within the same displayed state, including downloader 2's activity.
-Chart arrows come from TLC's explored transitions rather than a separately maintained transition list.
+The [generation script](../../scripts/branch-download/statechart.mjs) projects TLC's explored transitions into the Mermaid chart.
 
 ## Verification results
 
