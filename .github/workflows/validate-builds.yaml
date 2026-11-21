@@ -22,6 +22,7 @@ on:
       - "monit/**"
       - "nginx/**"
       - "nginx-upstream-healthcheck/**"
+      - "node-exporter/**"
       - "vector/**"
       - "!**/*.md"
 
