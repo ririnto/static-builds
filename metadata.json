@@ -208,6 +208,22 @@
     ],
     "version_env_var": "VECTOR_VERSION"
   },
+  "node-exporter": {
+    "tag_prefix": "node-exporter",
+    "release_files": ["bin/node_exporter", "LICENSE", "NOTICE"],
+    "env": {
+      "GO_VERSION": "1",
+      "NODE_EXPORTER_VERSION": "1.13.1",
+      "UBI10_MINIMAL_VERSION": "10.3-1795002774"
+    },
+    "downloads": [
+      {
+        "url": "https://github.com/prometheus/node_exporter/archive/refs/tags/v{NODE_EXPORTER_VERSION}.tar.gz",
+        "name": "node-exporter-{NODE_EXPORTER_VERSION}.tar.gz"
+      }
+    ],
+    "version_env_var": "NODE_EXPORTER_VERSION"
+  },
   "monit": {
     "tag_prefix": "monit",
     "release_files": ["bin/monit"],

@@ -12,6 +12,7 @@ on:
       - "dnsmasq-*"
       - "vector-*"
       - "monit-*"
+      - "node-exporter-*"
 
 jobs:
   resolve-target:
