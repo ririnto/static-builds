@@ -10,7 +10,15 @@ This target builds a static PIE `haproxy` binary for musl-based deployments.
 - Regex stack: `USE_PCRE2=1` and `USE_PCRE2_JIT=1`.
 - Embedded subsystems: `USE_LUA=1`, `USE_PROMEX=1`, and the HAProxy OpenTelemetry addon via `EXTRA_MAKE`.
 - OpenTelemetry addon variables: `OTEL_STATIC=1` and `OTEL_USE_VARS=1`.
-- Linux runtime features: `USE_EPOLL=1`, `USE_TPROXY=1`, `USE_LINUX_TPROXY=1`, `USE_LINUX_SPLICE=1`, `USE_SHM_OPEN=1`, `USE_TFO=1`, and `USE_CPU_AFFINITY=1`.
+- Linux runtime features:
+
+  - `USE_EPOLL=1`
+  - `USE_TPROXY=1`
+  - `USE_LINUX_TPROXY=1`
+  - `USE_LINUX_SPLICE=1`
+  - `USE_SHM_OPEN=1`
+  - `USE_TFO=1`
+  - `USE_CPU_AFFINITY=1`
 - Explicit threading policy: `USE_THREAD=0` with `USE_PTHREAD_EMULATION=1`.
 
 ### Runtime/Packaging Profile
