@@ -52,7 +52,7 @@ runStatechart({
     import.meta.url
   ),
   output: new URL(
-    "../../references/branch-download/statechart.mmd",
+    "../../assets/branch-download/statechart.mmd",
     import.meta.url
   ),
   stateLabel
