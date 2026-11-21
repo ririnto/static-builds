@@ -42,7 +42,13 @@ The output below is a historical snapshot, not verification of the version curre
 The recorded version output identifies CoreDNS 1.14.1 on `linux/amd64` with Go 1.26.0.
 The [Dockerfile](Dockerfile) builds with `CGO_ENABLED=0` and `BUILDOPTS="-v -trimpath"` and checks the built artifact in its Dockerfile verify stage before export.
 
-The historical capture date, repository revision, release tag, exact invocation, and host or container environment are unknown.
+The following details about the historical capture are unknown:
+
+- Capture date
+- Repository revision
+- Release tag
+- Exact invocation
+- Host or container environment
 The source-backed commands below capture the same introspection surfaces, but do not establish how the historical output was collected.
 
 ### Regenerate the snapshot
@@ -59,7 +65,15 @@ TAG=coredns-local go tool task snapshot -- coredns
 ./dist/coredns/coredns -plugins
 ```
 
-Record the capture date, repository revision, selected metadata versions, build platform, build environment, exact commands, and results with any replacement output.
+Record these details with any replacement output:
+
+- Capture date
+- Repository revision
+- Selected metadata versions
+- Build platform
+- Build environment
+- Exact commands
+- Results
 Preserve errors and distinguish build results from the host captures above.
 A current-metadata build produces a new snapshot and does not reconstruct the unknown historical environment.
 The historical output below has been preserved without running these commands for this documentation change.

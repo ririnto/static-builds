@@ -15,7 +15,6 @@ Use the repository's `.markdownlint-cli2.jsonc` when running Markdown lint.
 The [GitHub validation workflow](workflows/check.yaml) runs Go-managed tooling checks on every pull request without building targets or publishing releases.
 The separate [build validation workflow](workflows/validate-builds.yaml) runs nonpublishing GoReleaser snapshots on build-relevant pull requests, using native amd64 for every metadata target and native arm64 for all except Vector's fixed x86_64 archive.
 Each matrix job downloads sources, builds and packages them in an isolated checkout and distribution directory, then uploads an architecture-named package without sharing release caches or credentials.
-GitLab invokes Go tests, golangci-lint, NilAway, shell formatting, and Jsonnet formatting through `go tool task` before generating its package pipeline.
 Branch child pipelines start automatically and offer an optional manual build for each target.
 Tag releases run automatically.
 Its Go jobs use `golang:alpine` with Go's default `GOTOOLCHAIN=auto` behavior honoring the `go.mod` directive.
@@ -23,7 +22,14 @@ The GitLab package component invokes GoReleaser, after the shared rootless Task 
 GitLab reuses signed APK downloads in its declared `APK_CACHE_DIR`, isolated by runner, while refreshing repository indexes on every job.
 Node, pnpm, and Java checks run through local contributor hooks.
 It also supports manual runs.
-The GitHub job runs Go tests, golangci-lint, NilAway, shell formatting, and Jsonnet checks.
+The GitHub job runs these checks.
+GitLab runs the same checks through `go tool task` before generating its package pipeline:
+
+- Go tests
+- golangci-lint
+- NilAway
+- Shell formatting
+- Jsonnet formatting
 
 Install the Node.js version supported by `package.json` and the pnpm version declared there for Node-side tooling.
 Install the Go version declared in `go.mod` for repository tasks and Go-managed contributor tools.
@@ -55,7 +61,13 @@ Local container builds use compose.yaml with a golang-based non-root image and t
 Run `mkdir -p .cache dist`, `docker compose build build`, and `docker compose run --rm build <target>` from the repository root.
 The dedicated container relaxes seccomp and masked system paths as described in the [official rootless Docker guidance](https://github.com/moby/buildkit/blob/v0.34.2/docs/rootless.md#docker).
 It keeps BuildKit's process sandbox, uses the native snapshotter without a FUSE device, and never mounts the Docker socket.
-Direct local builds require a non-root user on a configured Linux host with BuildKit, RootlessKit, runc, subordinate UID/GID mappings, and unprivileged user namespaces.
+Run direct local builds as a non-root user on a Linux host with these prerequisites:
+
+- BuildKit
+- RootlessKit
+- runc
+- Subordinate UID/GID mappings
+- Unprivileged user namespaces
 Go manages the BuildKit client and daemon through `go.mod`.
 GitHub installs distribution-packaged `rootlesskit`, `uidmap`, and `runc` without changing host security controls.
 Use Compose on macOS and Windows.
@@ -75,7 +87,17 @@ pnpm run fix
 
 The root package manifest references Node-side tooling through the pnpm workspace catalog.
 The lockfile records the resolved dependency graph.
-`check` runs markdownlint-cli2, TypeScript validation, Ultracite, formal verification, download and manifest Go tests, golangci-lint, NilAway, shell formatting, and Jsonnet formatting checks.
+`check` runs these checks:
+
+- markdownlint-cli2
+- TypeScript validation
+- Ultracite
+- Formal verification
+- Download and manifest Go tests
+- golangci-lint
+- NilAway
+- Shell formatting
+- Jsonnet formatting
 Markdown validation uses pnpm and markdownlint-cli2, including the `code-block-style` rule for fenced code blocks.
 `fix` applies the following changes:
 
@@ -111,7 +133,16 @@ Dockerfiles copy explicit target inputs and release packaging selects only metad
 
 The JavaScript and TypeScript lint, formatter, and compiler configurations form one contributor-tooling group.
 `oxlint.config.ts` extends `ultracite/oxlint/core` and preserves its environment, ignore patterns, rules, and test overrides.
-The preset supplies native ESLint, TypeScript, Unicorn, Oxc, import, JSDoc, Node, and Promise plugins.
+The preset supplies these native plugins:
+
+- ESLint
+- TypeScript
+- Unicorn
+- Oxc
+- import
+- JSDoc
+- Node
+- Promise
 The same configuration loads repository-owned plugins from `plugins/` to check function-body spacing and adjacent test registrations without replacing the base rules.
 The test spacing rule recognizes registrations imported from Vitest, Jest globals, and Bun, but does not recognize `node:test` registrations.
 `oxlint.config.ts` enables type-aware lint for both `check:ultracite` and `fix:ultracite`.

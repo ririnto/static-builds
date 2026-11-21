@@ -74,12 +74,25 @@ The pnpm build script runs download, build, and nonpublishing packaging in order
 
 ### Independent targets
 
-Each target owns its Dockerfile inputs, downloaded archives, mutable build caches, exported installation, release-file selection, and package names.
+Each target owns the following:
+
+- Dockerfile inputs
+- Downloaded archives
+- Mutable build caches
+- Exported installation
+- Release-file selection
+- Package names
 The build task uses the repository context directly.
 `.dockerignore` excludes generated output, private tooling state, and lock or partial-download files.
 The Dockerfile channel points directly at the selected target directory.
 No temporary context copy or cleanup is needed.
-Neither nginx target reads the other's configuration, account files, examples, binaries, or packages.
+Neither nginx target reads these files from the other:
+
+- Configuration
+- Account files
+- Examples
+- Binaries
+- Packages
 Both compile their own NGINX, njs, QuickJS-NG, and VTS sources using their own metadata entry.
 Common base images and the Go tools remain reusable infrastructure, not artifacts produced by another target.
 Explicit output or cache overrides must use different destinations when building different targets.
@@ -393,7 +406,18 @@ Targets share the same root contract, but some targets vary in builder image, re
 
 - Document approved target-specific variations in that target's `README.md`.
 - Keep the root `README.md` focused on shared repository behavior.
-- Treat `nginx`, `nginx-upstream-healthcheck`, `apache-exporter`, `apache-httpd`, `coredns`, `vector`, `haproxy`, `dnsmasq`, `monit`, and `node-exporter` differences as documented target profiles, not as undocumented exceptions.
+Use the documented profiles for these targets rather than treating their differences as undocumented exceptions:
+
+- [`nginx`](nginx/README.md)
+- [`nginx-upstream-healthcheck`](nginx-upstream-healthcheck/README.md)
+- [`apache-exporter`](apache-exporter/README.md)
+- [`apache-httpd`](apache-httpd/README.md)
+- [`coredns`](coredns/README.md)
+- [`vector`](vector/README.md)
+- [`haproxy`](haproxy/README.md)
+- [`dnsmasq`](dnsmasq/README.md)
+- [`monit`](monit/README.md)
+- [`node-exporter`](node-exporter/README.md)
 
 ### Best Practices
 
@@ -475,7 +499,10 @@ Release tags use the format `<prefix>-<version>-<suffix>`.
 - `version` is the exact value named by the component's `version_env_var` in `metadata.json`.
 - `suffix` is non-empty free-form text and can contain dashes and dots.
   The workflow treats the suffix as an opaque string.
-  Tags with characters outside ASCII letters, digits, underscores, periods, and dashes, or with more than 128 characters, still publish binary releases but skip GHCR.
+  Tags that fail either GHCR requirement still publish binary releases:
+
+  - Use only ASCII letters, digits, underscores, periods, and dashes.
+  - Use at most 128 characters.
 
 Valid examples:
 
@@ -560,7 +587,13 @@ Selected release contents:
 - It invokes the upstream daemonless script as that user without Docker services.
 - The runner must permit unprivileged user namespaces and rootless mounts.
 - `feature/*` branches append `-beta` to the package version.
-- Build orchestration, release-file selection, packaging, generated archive checksums, and tag-triggered publication use GoReleaser on both hosts.
+- Both hosts use GoReleaser for these tasks:
+
+  - Build orchestration
+  - Release-file selection
+  - Packaging
+  - Archive checksum generation
+  - Tag-triggered publication
 - The generated child pipeline includes the local component at `templates/static-release.yml`.
 - GitLab component discovery requires the conventional `templates/*.yml` filename, so `templates/static-release.yml` remains the supported exception to the `.yaml` filename rule.
 - The parent configuration uses the supported custom configuration path documented by [GitLab](https://docs.gitlab.com/ci/pipelines/settings/#specify-a-custom-cicd-configuration-file), while the local component follows [GitLab's component discovery convention](https://docs.gitlab.com/ci/components/).

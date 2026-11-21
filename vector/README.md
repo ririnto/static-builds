@@ -46,7 +46,13 @@ The recorded version output identifies Vector 0.53.0 for `x86_64-unknown-linux-m
 That timestamp is part of the binary's version report, not an established capture date.
 The [Dockerfile](Dockerfile) unpacks the upstream musl release binary and checks the binary in its Dockerfile verify stage before export.
 
-The historical capture date, repository revision, release tag, exact invocation, and host or container environment are unknown.
+The following details about the historical capture are unknown:
+
+- Capture date
+- Repository revision
+- Release tag
+- Exact invocation
+- Host or container environment
 The source-backed commands below capture the same introspection surfaces, but do not establish how the historical output was collected.
 
 ### Regenerate the snapshot
@@ -63,7 +69,15 @@ TAG=vector-local go tool task snapshot -- vector
 ./dist/vector/bin/vector list
 ```
 
-Record the capture date, repository revision, selected metadata versions, build platform, build environment, exact commands, and results with any replacement output.
+Record these details with any replacement output:
+
+- Capture date
+- Repository revision
+- Selected metadata versions
+- Build platform
+- Build environment
+- Exact commands
+- Results
 Preserve errors and distinguish build results from the host captures above.
 A current-metadata build produces a new snapshot and does not reconstruct the unknown historical environment.
 The historical output below has been preserved without running these commands for this documentation change.

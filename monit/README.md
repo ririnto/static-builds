@@ -40,7 +40,20 @@ Command line options and services (from `monit -h`):
 - Syntax check via `-t` flag
 - Verbose modes: `-v` and `-vv`
 
-Commands include: `start`, `stop`, `restart`, `monitor`, `unmonitor`, `reload`, `status`, `summary`, `report`, `quit`, `validate`, and `procmatch`.
+Monit supports commands including:
+
+- `start`
+- `stop`
+- `restart`
+- `monitor`
+- `unmonitor`
+- `reload`
+- `status`
+- `summary`
+- `report`
+- `quit`
+- `validate`
+- `procmatch`
 
 ## Runtime Introspection Output
 
@@ -50,7 +63,13 @@ The output below is a historical snapshot, not verification of the version curre
 The recorded version output identifies Monit 5.35.2 with SSL, IPv6, compression, and large-file support, without PAM.
 The [Dockerfile](Dockerfile) relinks the binary as static PIE and checks the built artifact in its Dockerfile verify stage before export.
 
-The historical capture date, repository revision, release tag, exact invocation, and host or container environment are unknown.
+The following details about the historical capture are unknown:
+
+- Capture date
+- Repository revision
+- Release tag
+- Exact invocation
+- Host or container environment
 The source-backed commands below capture the same introspection surfaces, but do not establish how the historical output was collected.
 
 ### Regenerate the snapshot
@@ -67,7 +86,15 @@ TAG=monit-local go tool task snapshot -- monit
 ./dist/monit/bin/monit -h
 ```
 
-Record the capture date, repository revision, selected metadata versions, build platform, build environment, exact commands, and results with any replacement output.
+Record these details with any replacement output:
+
+- Capture date
+- Repository revision
+- Selected metadata versions
+- Build platform
+- Build environment
+- Exact commands
+- Results
 Preserve errors and distinguish build results from the host captures above.
 A current-metadata build produces a new snapshot and does not reconstruct the unknown historical environment.
 The historical output below has been preserved without running these commands for this documentation change.

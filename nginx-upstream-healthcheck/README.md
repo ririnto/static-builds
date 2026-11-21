@@ -27,7 +27,14 @@ Release tags use the `nginx-upstream-healthcheck` prefix and take their version 
 
 Release archives contain only `sbin/nginx`.
 Documentation and optional configuration examples remain in the repository and are excluded from images, build outputs, and release archives.
-The [healthcheck example](examples/config/nginx.conf) shows HTTP, HTTPS, TLS-only, stream TCP, TLS stream, and protected localhost metrics configurations.
+The [healthcheck example](examples/config/nginx.conf) shows these configurations:
+
+- HTTP
+- HTTPS
+- TLS-only
+- Stream TCP
+- TLS stream
+- Protected localhost metrics
 It uses `backend-ca.pem` beside the configuration as an example trust bundle, which you must provide for your backends.
 Replace its resolver and backend names for your environment before using it.
 Canonical `metadata.json` selects only the binary for release packaging.
@@ -184,9 +191,27 @@ Use a separate VTS endpoint when you also need traffic metrics.
 | Upstream state | Active probes, scheduler freshness, configured concurrency, and checker errors. |
 
 HTTP peer metrics use the `nginx_healthcheck_` prefix and stream peer metrics use `nginx_stream_healthcheck_`.
-Both families include peer readiness, administrative state, checks, failures, transitions, one-hot result classification, duration, state age, last check time, and rise and fall streaks.
+Both families include these peer metrics:
+
+- Readiness
+- Administrative state
+- Checks
+- Failures
+- Transitions
+- One-hot result classification
+- Duration
+- State age
+- Last check time
+- Rise and fall streaks
 HTTP metrics also expose the last parsed HTTP status code.
-Upstream metrics expose the last peer scan, active probes, checker worker PID, concurrency, concurrency-limited scans, and memory failures.
+Upstream metrics expose:
+
+- Last peer scan
+- Active probes
+- Checker worker PID
+- Concurrency
+- Concurrency-limited scans
+- Memory failures
 
 An untested peer reports check status `-1` and must not be treated as a successful check.
 Peer check status is `-1` before a result, `0` for failure, and `1` for success.
