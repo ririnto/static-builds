@@ -50,11 +50,16 @@ tasks:
     vars:
       RELEASE_FILES:
         sh: go tool task manifest -- get-release-files {{index .CLI_ARGS_LIST 0 | shellQuote}}
+      GORELEASER_TOOLCHAIN: &goreleaser-toolchain
+        sh: |-
+          set -e
+          root_toolchain=$(go env GOVERSION)
+          GOTOOLCHAIN="$root_toolchain+auto" go -C internal/tools/goreleaser env GOVERSION
     env:
       TARGET: "{{index .CLI_ARGS_LIST 0}}"
       RELEASE_FILES: "{{.RELEASE_FILES}}"
     cmds:
-      - go tool -modfile=internal/tools/goreleaser/go.mod goreleaser {{range slice .CLI_ARGS_LIST 1}}{{. | shellQuote}} {{end}}
+      - GOTOOLCHAIN={{.GORELEASER_TOOLCHAIN | shellQuote}} go tool -modfile=internal/tools/goreleaser/go.mod goreleaser {{range slice .CLI_ARGS_LIST 1}}{{. | shellQuote}} {{end}}
 
   jsonnet:
     desc: Render the GitLab package pipeline
@@ -80,7 +85,14 @@ tasks:
     desc: Tidy the root and GoReleaser modules
     cmds:
       - go mod tidy {{range .CLI_ARGS_LIST}}{{. | shellQuote}} {{end}}
-      - go -C internal/tools/goreleaser mod tidy {{range .CLI_ARGS_LIST}}{{. | shellQuote}} {{end}}
+      - task: tidy-goreleaser
+
+  tidy-goreleaser:
+    internal: true
+    vars:
+      GORELEASER_TOOLCHAIN: *goreleaser-toolchain
+    cmds:
+      - GOTOOLCHAIN={{.GORELEASER_TOOLCHAIN | shellQuote}} go -C internal/tools/goreleaser mod tidy {{range .CLI_ARGS_LIST}}{{. | shellQuote}} {{end}}
 
   shfmt:
     desc: Format maintained shell scripts
