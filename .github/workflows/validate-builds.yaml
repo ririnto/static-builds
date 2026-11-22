@@ -57,7 +57,6 @@ jobs:
     name: Build ${{ matrix.target }} (${{ matrix.arch }})
     needs: matrix
     runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
-    timeout-minutes: 360
     strategy:
       fail-fast: false
       max-parallel: 4
