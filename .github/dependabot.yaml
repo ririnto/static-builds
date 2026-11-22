@@ -27,3 +27,21 @@ updates:
         update-types:
           - minor
           - patch
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+    allow:
+      - dependency-type: direct
+      - dependency-type: indirect
+        dependency-name: github.com/go-task/task/v3
+      - dependency-type: indirect
+        dependency-name: github.com/golangci/golangci-lint/v2
+      - dependency-type: indirect
+        dependency-name: github.com/google/go-jsonnet
+      - dependency-type: indirect
+        dependency-name: github.com/goreleaser/goreleaser/v2
+      - dependency-type: indirect
+        dependency-name: go.uber.org/nilaway
+      - dependency-type: indirect
+        dependency-name: mvdan.cc/sh/v3
