@@ -28,7 +28,9 @@ updates:
           - minor
           - patch
   - package-ecosystem: gomod
-    directory: /
+    directories:
+      - /
+      - /internal/tools/goreleaser
     schedule:
       interval: weekly
     allow:
@@ -41,6 +43,8 @@ updates:
         dependency-name: github.com/google/go-jsonnet
       - dependency-type: indirect
         dependency-name: github.com/goreleaser/goreleaser/v2
+      - dependency-type: indirect
+        dependency-name: github.com/moby/buildkit
       - dependency-type: indirect
         dependency-name: go.uber.org/nilaway
       - dependency-type: indirect
