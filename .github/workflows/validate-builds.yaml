@@ -84,6 +84,9 @@ jobs:
         uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
+          cache-dependency-path: |
+            go.sum
+            internal/tools/goreleaser/go.sum
 
       - name: Set up rootless BuildKit
         uses: ./.github/actions/setup-buildkit

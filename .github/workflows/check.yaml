@@ -20,6 +20,12 @@ jobs:
         uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
+          cache-dependency-path: |
+            go.sum
+            internal/tools/goreleaser/go.sum
+
+      - name: Check Go module files
+        run: go tool task tidy -- -diff
 
       - name: Check Go commands
         run: go tool task test

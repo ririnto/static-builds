@@ -25,6 +25,7 @@ It also supports manual runs.
 The GitHub job runs these checks.
 GitLab runs the same checks through `go tool task` before generating its package pipeline:
 
+- Go module checks
 - Go tests
 - golangci-lint
 - NilAway
@@ -38,7 +39,7 @@ Use `go tool task test`, `go tool task fmt`, and `go tool task tidy`.
 Invoke managed tools through tool-named Task tasks with arguments after `--`.
 On macOS, Go-managed tools may compile dependencies that require system SDK headers through CGO.
 Export `SDKROOT=$(xcrun --show-sdk-path)` when the compiler or linker cannot locate the system SDK.
-The following tools are managed through `go.mod`:
+The following tools are managed through the root `go.mod`:
 
 - Task
 - shfmt
@@ -46,8 +47,10 @@ The following tools are managed through `go.mod`:
 - jsonnetfmt
 - golangci-lint
 - NilAway
-- GoReleaser
 - buildctl
+
+The [GoReleaser module](../internal/tools/goreleaser/go.mod) keeps GoReleaser's test dependencies separate from BuildKit's dependencies.
+`go tool task tidy` updates both modules.
 
 Kong parses the download and metadata command arguments and provides their help output.
 NilAway checks repository packages through `go tool task nilaway -- ./...`.
@@ -93,6 +96,7 @@ The lockfile records the resolved dependency graph.
 - TypeScript validation
 - Ultracite
 - Formal verification
+- Go module checks
 - Download and manifest Go tests
 - golangci-lint
 - NilAway

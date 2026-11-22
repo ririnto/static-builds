@@ -8,6 +8,7 @@
     "build:package": "go tool task goreleaser --",
     "check": "run-p check:*",
     "check:formal-verification": "pnpm --filter @static-builds/formal-verification run check",
+    "check:go-mod": "go tool task tidy -- -diff",
     "check:golangci-lint": "go tool task golangci-lint -- run ./...",
     "check:jsonnetfmt": "go tool task jsonnetfmt -- --test",
     "check:markdownlint-cli2": "markdownlint-cli2",

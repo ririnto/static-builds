@@ -54,7 +54,7 @@ tasks:
       TARGET: "{{index .CLI_ARGS_LIST 0}}"
       RELEASE_FILES: "{{.RELEASE_FILES}}"
     cmds:
-      - go tool goreleaser {{range slice .CLI_ARGS_LIST 1}}{{. | shellQuote}} {{end}}
+      - go tool -modfile=internal/tools/goreleaser/go.mod goreleaser {{range slice .CLI_ARGS_LIST 1}}{{. | shellQuote}} {{end}}
 
   jsonnet:
     desc: Render the GitLab package pipeline
@@ -77,9 +77,10 @@ tasks:
       - go fmt ./... {{range .CLI_ARGS_LIST}}{{. | shellQuote}} {{end}}
 
   tidy:
-    desc: Tidy Go module dependencies
+    desc: Tidy the root and GoReleaser modules
     cmds:
       - go mod tidy {{range .CLI_ARGS_LIST}}{{. | shellQuote}} {{end}}
+      - go -C internal/tools/goreleaser mod tidy {{range .CLI_ARGS_LIST}}{{. | shellQuote}} {{end}}
 
   shfmt:
     desc: Format maintained shell scripts
