@@ -186,8 +186,8 @@ catalogs:
       specifier: ^9.1.7
       version: 9.1.7
     markdownlint:
-      specifier: ^0.42.1
-      version: 0.42.1
+      specifier: ^0.42.2
+      version: 0.42.2
     markdownlint-cli2:
       specifier: ^0.24.1
       version: 0.24.1
@@ -210,8 +210,8 @@ catalogs:
       specifier: ^7.0.2
       version: 7.0.2
     ultracite:
-      specifier: ^8.2.1
-      version: 8.2.1
+      specifier: ^8.3.1
+      version: 8.3.1
 
 importers:
 
@@ -231,7 +231,7 @@ importers:
         version: 9.1.7
       markdownlint:
         specifier: 'catalog:'
-        version: 0.42.1
+        version: 0.42.2
       markdownlint-cli2:
         specifier: 'catalog:'
         version: 0.24.1
@@ -252,7 +252,7 @@ importers:
         version: 7.0.2
       ultracite:
         specifier: 'catalog:'
-        version: 8.2.1(oxfmt@0.79.0)(oxlint@1.94.0(oxlint-tsgolint@7.0.2007))
+        version: 8.3.1(oxfmt@0.79.0)(oxlint@1.94.0(oxlint-tsgolint@7.0.2007))
 
   .claude/skills/formal-verification:
     devDependencies:
@@ -990,6 +990,10 @@ packages:
     resolution: {integrity: sha512-Otolm9JX12iO2NG5cetlKfzGygpiLSlHuqXKxoT6HGhN5HtbxprJPicKZqqCQd88qOvUi/TEs3o1AmcYioVscA==}
     engines: {node: '>=22'}
 
+  markdownlint@0.42.2:
+    resolution: {integrity: sha512-IhlUBVT+kHBX+u3EjEsQdFB4q0Rl0Hx+JsGsvVkonNut1/n8Kv8yXzwk0pazC9uF35JlwMZ+LxV4CQ9YNAbG8w==}
+    engines: {node: '>=22'}
+
   mdurl@2.1.0:
     resolution: {integrity: sha512-1+HBaOx0zi/dQWht8rNv9MYf9qqpqL/kxI0hXImU6Y547zM6Sni8BQibt7ifgMcYtQg41ao3Ivd6cnSM86inpg==}
 
@@ -1299,17 +1303,17 @@ packages:
   ufo@1.6.4:
     resolution: {integrity: sha512-JFNbkD1Svwe0KvGi8GOeLcP4kAWQ609twvCdcHxq1oSL8svv39ZuSvajcD8B+5D0eL4+s1Is2D/O6KN3qcTeRA==}
 
-  ultracite@8.2.1:
-    resolution: {integrity: sha512-+HAwOkdpdNaf6Fr+JEh0YkikJU4vjRO977kMAvtOsk8YWk+VG3rdy7gyFLgbO1Edv+k5hhL/3CKAiEmUlvt3ow==}
+  ultracite@8.3.1:
+    resolution: {integrity: sha512-+jssQlohRRovLzbTl2MPpHIM8L4n4duIdiclrK5XZI7ljtrVgMzaOmrLzkQnu2v8n/He7FwV+St/FCdWjnLbCw==}
     engines: {node: ^22.22.2 || >=24.15.0}
     hasBin: true
     peerDependencies:
-      '@biomejs/biome': ^2.6.2
+      '@biomejs/biome': ^2.6.7
       eslint: ^10.9.0
       oxfmt: '>=0.71.0 <1'
-      oxlint: ^1.90.0
+      oxlint: ^1.94.0
       prettier: ^3.5.3
-      stylelint: ^17.0.0
+      stylelint: ^18.0.0
     peerDependenciesMeta:
       '@biomejs/biome':
         optional: true
@@ -1879,6 +1883,21 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  markdownlint@0.42.2:
+    dependencies:
+      micromark: 4.0.3
+      micromark-core-commonmark: 2.0.4
+      micromark-extension-directive: 4.0.0
+      micromark-extension-gfm-autolink-literal: 2.1.0
+      micromark-extension-gfm-footnote: 2.1.0
+      micromark-extension-gfm-table: 2.1.2
+      micromark-extension-math: 3.1.0
+      micromark-util-types: 2.0.3
+      re2js: 2.9.1
+      string-width: 8.3.0
+    transitivePeerDependencies:
+      - supports-color
+
   mdurl@2.1.0: {}
 
   memorystream@0.3.1: {}
@@ -2299,7 +2318,7 @@ snapshots:
 
   ufo@1.6.4: {}
 
-  ultracite@8.2.1(oxfmt@0.79.0)(oxlint@1.94.0(oxlint-tsgolint@7.0.2007)):
+  ultracite@8.3.1(oxfmt@0.79.0)(oxlint@1.94.0(oxlint-tsgolint@7.0.2007)):
     dependencies:
       '@clack/prompts': 1.8.1
       cli-truncate: 6.1.1
