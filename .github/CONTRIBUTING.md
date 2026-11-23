@@ -48,7 +48,6 @@ The following tools are managed through the root `go.mod`:
 - golangci-lint
 - NilAway
 - buildctl
-- runc
 
 The [GoReleaser module](../internal/tools/goreleaser/go.mod) keeps GoReleaser's test dependencies separate from BuildKit's dependencies.
 `go tool task tidy` updates both modules.
@@ -74,10 +73,6 @@ Run direct local builds as a non-root user on a Linux host with these prerequisi
 - Unprivileged user namespaces
 Go manages the BuildKit client and daemon through `go.mod`.
 GitHub installs distribution-packaged `rootlesskit`, `uidmap`, and `runc` without changing host security controls.
-To build the repository's runc on Linux, install a C compiler, C library headers, `pkg-config`, and libseccomp development files.
-Run `go tool task build-runc -- /absolute/path/to/runc` to build a seccomp-enabled executable.
-To test the executable with daemonless BuildKit, use an absolute runc path without whitespace or shell glob characters.
-Add `--oci-worker=true --oci-worker-binary=/absolute/path/to/runc` to `BUILDKITD_FLAGS`.
 Use Compose on macOS and Windows.
 GitLab builds use a non-root user with subordinate UID and GID ranges of `100000:65536`.
 The runner must permit unprivileged user namespaces and rootless mounts.
