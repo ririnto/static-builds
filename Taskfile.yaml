@@ -35,6 +35,11 @@ tasks:
     cmds:
       - go tool buildctl {{range .CLI_ARGS_LIST}}{{. | shellQuote}} {{end}}
 
+  build-runc:
+    desc: Build runc with seccomp on Linux (-- <output>)
+    cmds:
+      - CGO_ENABLED=1 go build -mod=readonly -trimpath -buildmode=pie -tags 'seccomp urfave_cli_no_docs' -o {{index .CLI_ARGS_LIST 0 | shellQuote}} github.com/opencontainers/runc
+
   download:
     desc: Download a target's sources (-- <target>)
     cmds:
