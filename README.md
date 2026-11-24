@@ -34,15 +34,17 @@ The selected worker must support local filesystem export, cache import/export, a
 Use a native worker or separately configured emulation when the worker architecture differs from the selected platform.
 The Taskfile forwards explicit output, cache and network arguments from its caller without selecting a cache backend.
 
-The following tools are managed through `go.mod`:
+The root Go module manages these tools for local commands, GitHub Actions, GitLab CI, and Compose:
 
 - Task
 - shfmt
 - Jsonnet
 - jsonnetfmt
 - golangci-lint
+- NilAway
 - GoReleaser
 - buildctl
+- buildkitd
 
 The pnpm version declared in `package.json` provides equivalent package-script entrypoints.
 Target compilers are installed in Dockerfile stages, so they are not host prerequisites.
