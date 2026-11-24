@@ -205,7 +205,23 @@ GoReleaser writes `dist/packages/<TARGET>-<TAG>.tgz` and `dist/packages/<TARGET>
 The command cleans the shared GoReleaser output directory.
 Run one release per checkout and copy packages you want to keep elsewhere first.
 Each archive has a `.sha256` sidecar containing its SHA-256 checksum, not a cryptographic signature.
+The sidecar contains exactly 64 hexadecimal characters, with no filename or trailing newline.
 These checksums describe the distributed archive and do not enforce checksums on downloaded upstream sources.
+
+To verify the example archive, run the following command from the repository root.
+Set `archive` to the path to your `.tgz` file if you used a different target or tag.
+
+```sh
+(
+  set -e
+  archive=dist/packages/dnsmasq-dnsmasq-local.tgz
+  digest=$(shasum -a 256 <"$archive")
+  printf '%s' "${digest%% *}" | cmp - "$archive.sha256"
+)
+```
+
+The command exits with status `0` when the digests match and a nonzero status otherwise.
+
 Snapshot mode neither creates a tag nor publishes a release.
 Packaging entrypoints enable verbose output and use a six-hour GoReleaser timeout.
 Use `--timeout` to choose a different limit, and remember that this cannot extend a CI runner or project timeout.
