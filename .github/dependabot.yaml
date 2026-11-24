@@ -28,9 +28,7 @@ updates:
           - minor
           - patch
   - package-ecosystem: gomod
-    directories:
-      - /
-      - /internal/tools/goreleaser
+    directory: /
     schedule:
       interval: weekly
     allow:

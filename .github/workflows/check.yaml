@@ -20,15 +20,19 @@ jobs:
         uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
-          cache-dependency-path: |
-            go.sum
-            internal/tools/goreleaser/go.sum
+          cache-dependency-path: go.sum
 
       - name: Check Go module files
         run: go tool task tidy -- -diff
 
       - name: Check Go commands
         run: go tool task test
+
+      - name: Check release tooling
+        run: |-
+          go tool task goreleaser -- coredns check
+          go tool task buildctl -- --version
+          go tool buildkitd --version
 
       - name: Lint Go source
         run: go tool task golangci-lint -- run ./...

@@ -32,6 +32,8 @@ GitLab runs the same checks through `go tool task` before generating its package
 - Shell formatting
 - Jsonnet formatting
 
+The GitHub job also checks the GoReleaser configuration and runs `--version` on `buildctl` and `buildkitd`.
+
 Install the Node.js version supported by `package.json` and the pnpm version declared there for Node-side tooling.
 Install the Go version declared in `go.mod` for repository tasks and Go-managed contributor tools.
 Install Java 25 or a compatible Java runtime for `pnpm run check:formal-verification`, which also runs through `pnpm check` and Git hooks.
@@ -47,10 +49,14 @@ The following tools are managed through the root `go.mod`:
 - jsonnetfmt
 - golangci-lint
 - NilAway
+- GoReleaser
 - buildctl
+- buildkitd
 
-The [GoReleaser module](../internal/tools/goreleaser/go.mod) keeps GoReleaser's test dependencies separate from BuildKit's dependencies.
-`go tool task tidy` updates both modules.
+`go tool task tidy` updates the root `go.mod` and `go.sum`.
+GoReleaser's test dependency Dockertest still imports `github.com/opencontainers/runc/libcontainer/user`, a package removed from runc.
+The root module resolves the old import to an earlier release of `github.com/moby/sys/user`.
+BuildKit uses the canonical import path, and Go rejects using the same module version under both paths.
 
 Kong parses the download and metadata command arguments and provides their help output.
 NilAway checks repository packages through `go tool task nilaway -- ./...`.
