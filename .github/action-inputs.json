@@ -1,0 +1,153 @@
+{
+  "actions/cache@v6": {
+    "commit": "55cc8345863c7cc4c66a329aec7e433d2d1c52a9",
+    "inputs": {
+      "path": null,
+      "key": null,
+      "restore-keys": null,
+      "upload-chunk-size": null,
+      "enableCrossOsArchive": "false",
+      "fail-on-cache-miss": "false",
+      "lookup-only": "false",
+      "save-always": "false"
+    }
+  },
+  "actions/checkout@v7": {
+    "commit": "3d3c42e5aac5ba805825da76410c181273ba90b1",
+    "inputs": {
+      "repository": { "context": "GitHub repository" },
+      "ref": {
+        "context": "Event ref and SHA for the workflow repository, otherwise the requested repository's default branch"
+      },
+      "token": { "context": "GitHub token" },
+      "ssh-key": null,
+      "ssh-known-hosts": null,
+      "ssh-strict": "true",
+      "ssh-user": "git",
+      "persist-credentials": "true",
+      "path": { "context": "Checkout at the root of the GitHub workspace" },
+      "clean": "true",
+      "filter": { "default": null },
+      "sparse-checkout": { "default": null },
+      "sparse-checkout-cone-mode": "true",
+      "fetch-depth": "1",
+      "fetch-tags": "false",
+      "show-progress": "true",
+      "lfs": "false",
+      "submodules": "false",
+      "set-safe-directory": "true",
+      "github-server-url": { "context": "GitHub server URL" },
+      "allow-unsafe-pr-checkout": "false"
+    }
+  },
+  "actions/download-artifact@v8": {
+    "commit": "9000827ccba6bdab643e8b6fd33ac0654aef8333",
+    "inputs": {
+      "name": null,
+      "artifact-ids": null,
+      "path": {
+        "context": "GITHUB_WORKSPACE when set, otherwise the current working directory"
+      },
+      "pattern": null,
+      "merge-multiple": "false",
+      "github-token": {
+        "context": "Current repository and workflow run when omitted"
+      },
+      "repository": { "context": "GitHub repository" },
+      "run-id": { "context": "GitHub run ID" },
+      "skip-decompress": "false",
+      "digest-mismatch": "error"
+    }
+  },
+  "actions/setup-go@v7": {
+    "commit": "d8cbb8045d7f43706b9177cceb36c1f91a6644d5",
+    "inputs": {
+      "go-version": {
+        "context": "Version from go-version-file when supplied, otherwise the installed Go toolchain"
+      },
+      "go-version-file": null,
+      "check-latest": "false",
+      "token": {
+        "context": "GitHub token on github.com, otherwise an empty string"
+      },
+      "cache": "true",
+      "cache-dependency-path": {
+        "context": "With caching enabled, falls back to go.mod at the GitHub workspace root"
+      },
+      "architecture": { "context": "Runner architecture" },
+      "go-download-base-url": {
+        "context": "GO_DOWNLOAD_BASE_URL when set, otherwise the standard Go download URL"
+      }
+    }
+  },
+  "actions/upload-artifact@v7": {
+    "commit": "cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+    "inputs": {
+      "name": "artifact",
+      "path": null,
+      "if-no-files-found": "warn",
+      "retention-days": { "context": "Repository retention policy" },
+      "compression-level": "6",
+      "overwrite": "false",
+      "include-hidden-files": "false",
+      "archive": "true"
+    }
+  },
+  "aquasecurity/trivy-action@v0.36.0": {
+    "commit": "ed142fd0673e97e23eac54620cfb913e5ce36c25",
+    "inputs": {
+      "scan-type": "image",
+      "image-ref": null,
+      "input": "",
+      "scan-ref": ".",
+      "exit-code": null,
+      "ignore-unfixed": "false",
+      "vuln-type": "os,library",
+      "severity": "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL",
+      "format": "table",
+      "template": "",
+      "output": "",
+      "skip-dirs": "",
+      "skip-files": "",
+      "cache-dir": { "context": ".cache/trivy under the GitHub workspace" },
+      "timeout": "",
+      "ignore-policy": "",
+      "hide-progress": null,
+      "list-all-pkgs": "false",
+      "scanners": "",
+      "trivyignores": "",
+      "github-pat": null,
+      "trivy-config": null,
+      "tf-vars": null,
+      "limit-severities-for-sarif": null,
+      "docker-host": null,
+      "version": "v0.70.0",
+      "cache": "true",
+      "skip-setup-trivy": "false",
+      "token-setup-trivy": { "context": "GitHub token" }
+    }
+  },
+  "crazy-max/ghaction-github-runtime@v4": {
+    "commit": "04d248b84655b509d8c44dc1d6f990c879747487",
+    "inputs": {
+      "github-token": { "context": "GitHub token" }
+    }
+  },
+  "github/codeql-action/upload-sarif@v4": {
+    "commit": "915412ff23e8b7659517e607487dbeae018f2934",
+    "inputs": {
+      "sarif_file": "../results",
+      "checkout_path": { "context": "GitHub workspace" },
+      "ref": {
+        "context": "GITHUB_REF when omitted or for fork pull requests. Override together with sha"
+      },
+      "sha": {
+        "context": "GITHUB_SHA when omitted or for fork pull requests. Override together with ref"
+      },
+      "token": { "context": "GitHub token" },
+      "matrix": { "context": "Job matrix" },
+      "category": null,
+      "wait-for-processing": "true"
+    }
+  }
+}

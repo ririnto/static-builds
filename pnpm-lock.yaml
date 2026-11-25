@@ -212,6 +212,9 @@ catalogs:
     ultracite:
       specifier: ^8.3.1
       version: 8.3.1
+    yaml:
+      specifier: ^2.9.1
+      version: 2.9.1
 
 importers:
 
@@ -253,6 +256,9 @@ importers:
       ultracite:
         specifier: 'catalog:'
         version: 8.3.1(oxfmt@0.79.0)(oxlint@1.94.0(oxlint-tsgolint@7.0.2007))
+      yaml:
+        specifier: 'catalog:'
+        version: 2.9.1
 
   .claude/skills/formal-verification:
     devDependencies:

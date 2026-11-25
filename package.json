@@ -15,8 +15,10 @@
     "check:nilaway": "go tool task nilaway -- ./...",
     "check:shfmt": "go tool task shfmt -- -d",
     "check:test": "go tool task test",
+    "check:test-workflow-input-defaults": "node --test tests/workflow-input-defaults.test.ts",
     "check:typescript": "tsc --noEmit",
     "check:ultracite": "ultracite check",
+    "check:workflow-input-defaults": "node rules/workflow-input-defaults.ts",
     "download": "go tool task download --",
     "fix": "run-p fix:*",
     "fix:formal-verification": "pnpm --filter @static-builds/formal-verification run fix",
@@ -43,7 +45,8 @@
     "oxlint": "catalog:",
     "oxlint-tsgolint": "catalog:",
     "typescript": "catalog:",
-    "ultracite": "catalog:"
+    "ultracite": "catalog:",
+    "yaml": "catalog:"
   },
   "engines": {
     "node": "^24.22.3"
