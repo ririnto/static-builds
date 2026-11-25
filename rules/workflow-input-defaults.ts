@@ -17,9 +17,6 @@ const approvedActions = new Map<string, ApprovedAction>(
 );
 const workflowsDirectory = ".github/workflows";
 
-/**
- * Read a literal scalar without evaluating GitHub Actions expressions.
- */
 const literal = (node: unknown): string | number | boolean | null => {
   if (isScalar(node) && node.anchor === undefined) {
     const value: unknown = node.value;
