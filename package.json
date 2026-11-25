@@ -13,7 +13,7 @@
     "check:jsonnetfmt": "go tool task jsonnetfmt -- --test",
     "check:markdownlint-cli2": "markdownlint-cli2",
     "check:nilaway": "go tool task nilaway -- ./...",
-    "check:shfmt": "go tool task shfmt -- -d",
+    "check:shfmt": "go tool task shfmt -- -d && node rules/prefer-echo.ts && node --test rules/prefer-echo.test.ts",
     "check:test": "go tool task test",
     "check:typescript": "tsc --noEmit",
     "check:ultracite": "ultracite check",
