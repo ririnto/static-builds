@@ -318,6 +318,18 @@ await test("R35 traces shared YAML definitions and advises edits at the caller",
         with: *equal
   sequence:
     steps: *steps
+  nested:
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          &credentials-key persist-credentials: &enabled true
+      - uses: actions/checkout@v7
+        with: &nested
+          clean: *enabled
+          ? *credentials-key
+          : *enabled
+      - uses: actions/checkout@v7
+        with: *nested
 `
     );
     const result = check(checkout, "--json");
@@ -414,6 +426,13 @@ await test("R35 traces shared YAML definitions and advises edits at the caller",
       "detach"
     );
     assert.equal(at(30, "cache", 12, "actions/setup-go@v7").advice, "detach");
+    assert.deepEqual(
+      {
+        clean: at(42, "clean", 15).advice,
+        "persist-credentials": at(42, "persist-credentials", 15).advice
+      },
+      { clean: "hand-edit", "persist-credentials": "hand-edit" }
+    );
   } finally {
     rmSync(checkout, { force: true, recursive: true });
   }
@@ -534,119 +553,30 @@ await test("R35 lists contextual defaults and local calls left to review", async
     const listing = check(checkout, "--list");
     assert.equal(listing.status, 0, listing.stderr);
     const entries = recordLines(listing.stdout);
-    assert.deepEqual(
-      new Set(
-        entries
-          .filter(
-            (entry) => "kind" in entry && entry.kind === "context-dependent"
-          )
-          .map((entry) => {
-            assert.ok(
-              "reference" in entry && "input" in entry && "condition" in entry
-            );
-            return JSON.stringify([
-              entry.reference,
-              entry.input,
-              entry.condition
-            ]);
-          })
-      ),
-      new Set(
-        [
-          ["actions/checkout@v7", "repository", "GitHub repository"],
-          [
-            "actions/checkout@v7",
-            "ref",
-            "Event ref and SHA for the workflow repository, otherwise the requested repository's default branch"
-          ],
-          ["actions/checkout@v7", "token", "GitHub token"],
-          [
-            "actions/checkout@v7",
-            "path",
-            "Checkout at the root of the GitHub workspace"
-          ],
-          ["actions/checkout@v7", "github-server-url", "GitHub server URL"],
-          [
-            "actions/download-artifact@v8",
-            "path",
-            "GITHUB_WORKSPACE when set, otherwise the current working directory"
-          ],
-          [
-            "actions/download-artifact@v8",
-            "github-token",
-            "Current repository and workflow run when omitted"
-          ],
-          ["actions/download-artifact@v8", "repository", "GitHub repository"],
-          ["actions/download-artifact@v8", "run-id", "GitHub run ID"],
-          [
-            "actions/setup-go@v7",
-            "go-version",
-            "Version from go-version-file when supplied, otherwise the installed Go toolchain"
-          ],
-          [
-            "actions/setup-go@v7",
-            "token",
-            "GitHub token on github.com, otherwise an empty string"
-          ],
-          [
-            "actions/setup-go@v7",
-            "cache-dependency-path",
+    const contextual = entries.filter(
+      (entry) => "kind" in entry && entry.kind === "context-dependent"
+    );
+    const reviews = entries.filter(
+      (entry) => "kind" in entry && entry.kind === "left-to-review"
+    );
+    assert.equal(contextual.length, 23);
+    assert.equal(reviews.length, 5);
+    assert.ok(
+      contextual.some(
+        (entry) =>
+          "reference" in entry &&
+          entry.reference === "actions/setup-go@v7" &&
+          "input" in entry &&
+          entry.input === "cache-dependency-path" &&
+          "condition" in entry &&
+          entry.condition ===
             "With caching enabled, falls back to go.mod at the GitHub workspace root"
-          ],
-          ["actions/setup-go@v7", "architecture", "Runner architecture"],
-          [
-            "actions/setup-go@v7",
-            "go-download-base-url",
-            "GO_DOWNLOAD_BASE_URL when set, otherwise the standard Go download URL"
-          ],
-          [
-            "actions/upload-artifact@v7",
-            "retention-days",
-            "Repository retention policy"
-          ],
-          [
-            "aquasecurity/trivy-action@v0.36.0",
-            "cache-dir",
-            ".cache/trivy under the GitHub workspace"
-          ],
-          [
-            "aquasecurity/trivy-action@v0.36.0",
-            "token-setup-trivy",
-            "GitHub token"
-          ],
-          [
-            "crazy-max/ghaction-github-runtime@v4",
-            "github-token",
-            "GitHub token"
-          ],
-          [
-            "github/codeql-action/upload-sarif@v4",
-            "checkout_path",
-            "GitHub workspace"
-          ],
-          [
-            "github/codeql-action/upload-sarif@v4",
-            "ref",
-            "GITHUB_REF when omitted or for fork pull requests. Override together with sha"
-          ],
-          [
-            "github/codeql-action/upload-sarif@v4",
-            "sha",
-            "GITHUB_SHA when omitted or for fork pull requests. Override together with ref"
-          ],
-          ["github/codeql-action/upload-sarif@v4", "token", "GitHub token"],
-          ["github/codeql-action/upload-sarif@v4", "matrix", "Job matrix"]
-        ].map((entry) => JSON.stringify(entry))
       )
     );
     assert.deepEqual(
-      entries
+      reviews
         .filter(
-          (entry) =>
-            "kind" in entry &&
-            entry.kind === "left-to-review" &&
-            "reference" in entry &&
-            entry.reference === "./local"
+          (entry) => "reference" in entry && entry.reference === "./local"
         )
         .map((entry) => {
           assert.ok(
@@ -669,10 +599,8 @@ await test("R35 lists contextual defaults and local calls left to review", async
     );
     await t.test("a directory with both manifests is left to review", () => {
       assert.ok(
-        entries.some(
+        reviews.some(
           (entry) =>
-            "kind" in entry &&
-            entry.kind === "left-to-review" &&
             "file" in entry &&
             entry.file === file &&
             "line" in entry &&

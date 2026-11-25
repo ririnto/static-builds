@@ -655,10 +655,12 @@ for (const [file, { document, lines, tokens }] of workflows) {
             aliases.get(node)?.some((alias) => !knownUses.has(alias)) === true
         );
         let advice: Advice = "omit";
-        if (mappingAlias !== undefined) {
+        if (isAlias(value)) {
+          advice = "hand-edit";
+        } else if (mappingAlias !== undefined) {
           advice = "detach";
         } else if (
-          inputAlias !== undefined ||
+          isAlias(key) ||
           scalarIsShared ||
           outsideConsumer ||
           matching.length !== callers.length
