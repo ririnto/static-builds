@@ -21,7 +21,7 @@
       "ssh-key": null,
       "ssh-known-hosts": null,
       "ssh-strict": "true",
-      "ssh-user": { "context": "Git applies its transport default" },
+      "ssh-user": "git",
       "persist-credentials": "true",
       "path": null,
       "clean": "true",
@@ -52,7 +52,7 @@
       "repository": { "context": "GitHub repository" },
       "run-id": { "context": "GitHub run ID" },
       "skip-decompress": "false",
-      "digest-mismatch": null
+      "digest-mismatch": "error"
     }
   },
   "actions/setup-go@v7": {
@@ -90,7 +90,7 @@
       "image-ref": null,
       "input": "",
       "scan-ref": ".",
-      "exit-code": "0",
+      "exit-code": null,
       "ignore-unfixed": "false",
       "vuln-type": "os,library",
       "severity": "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL",
@@ -102,7 +102,7 @@
       "cache-dir": { "context": "GitHub workspace" },
       "timeout": "",
       "ignore-policy": "",
-      "hide-progress": "false",
+      "hide-progress": null,
       "list-all-pkgs": "false",
       "scanners": "",
       "trivyignores": "",

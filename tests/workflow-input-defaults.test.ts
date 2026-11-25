@@ -42,6 +42,13 @@ await test("R35 reports only literals equal to declared defaults for the exact r
           fetch-depth: 1
       - uses: actions/checkout@v6
         with: *checkout-inputs
+      - uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          exit-code: 0
+          hide-progress: false
+      - uses: actions/download-artifact@v8
+        with:
+          digest-mismatch: ignore
 `;
     writeFileSync(
       path.join(directory, "reusable.yml"),
@@ -72,11 +79,12 @@ await test("R35 reports only literals equal to declared defaults for the exact r
       controls
         .replace("fetch-depth: 0", "fetch-depth: 1")
         .replace("publish: false", "publish: true")
+        .replace("digest-mismatch: ignore", "digest-mismatch: error")
     );
     const failing = check();
     assert.equal(failing.status, 1, failing.stderr);
     const diagnostics = failing.stderr.trim().split("\n");
-    assert.equal(diagnostics.length, 2, failing.stderr);
+    assert.equal(diagnostics.length, 3, failing.stderr);
     assert.match(
       diagnostics[0] ?? "",
       /caller\.yaml:10:11: R35\/workflow-input-defaults: Omit "fetch-depth" for "actions\/checkout@v7"/u
@@ -84,6 +92,10 @@ await test("R35 reports only literals equal to declared defaults for the exact r
     assert.match(
       diagnostics[1] ?? "",
       /caller\.yaml:21:7: R35\/workflow-input-defaults: Omit "publish" for "\.\/\.github\/workflows\/reusable\.yml"/u
+    );
+    assert.match(
+      diagnostics[2] ?? "",
+      /caller\.yaml:36:11: R35\/workflow-input-defaults: Omit "digest-mismatch" for "actions\/download-artifact@v8"/u
     );
   } finally {
     rmSync(checkout, { force: true, recursive: true });
