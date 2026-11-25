@@ -3,12 +3,17 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/pem"
 	"errors"
 	"fmt"
+	"net"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"syscall"
 	"testing"
 	"time"
@@ -412,5 +417,138 @@ func TestDownloadHelpWithoutMetadata(t *testing.T) {
 	command.Env = append(os.Environ(), "METADATA_PATH_OVERRIDE="+filepath.Join(t.TempDir(), "absent.json"))
 	if output, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("help failed: %v\n%s", err, output)
+	}
+}
+
+type downloadRedirectCase struct {
+	name, path string
+	requests   int32
+	fails      bool
+}
+
+func TestDownloadRedirectPolicy(t *testing.T) {
+	for _, transport := range []string{"curl", "wget"} {
+		t.Run(transport, func(t *testing.T) {
+			executable, err := exec.LookPath(transport)
+			if err != nil {
+				t.Skipf("requires installed %s: %v", transport, err)
+			}
+			tools := map[string]string{transport: executable}
+			cases := []downloadRedirectCase{
+				{name: "HTTPS chain", path: "https", requests: 3},
+				{name: "HTTP downgrade", path: "downgrade", requests: 2, fails: true},
+			}
+			if transport == "wget" {
+				for _, helper := range []string{"timeout", "gtimeout", "ssl_client", "openssl"} {
+					if path, err := exec.LookPath(helper); err == nil {
+						tools[helper] = path
+					}
+				}
+				if tools["timeout"] == "" && tools["gtimeout"] == "" {
+					t.Skip("wget fallback requires timeout or gtimeout")
+				}
+				help, err := exec.CommandContext(t.Context(), executable, "--help").CombinedOutput()
+				if len(bytes.TrimSpace(help)) == 0 {
+					t.Skipf("cannot read wget's supported options: %v", err)
+				}
+				cases = []downloadRedirectCase{{name: "unsupported policy", path: "direct", fails: true}}
+				if bytes.Contains(help, []byte("--max-redirect")) {
+					cases = []downloadRedirectCase{
+						{name: "direct HTTPS", path: "direct", requests: 1},
+						{name: "redirect refused", path: "https", requests: 1, fails: true},
+						{name: "downgrade refused", path: "downgrade", requests: 1, fails: true},
+					}
+				}
+			}
+			path := t.TempDir()
+			for name, executable := range tools {
+				if err := os.Symlink(executable, filepath.Join(path, name)); err != nil {
+					t.Fatal(err)
+				}
+			}
+			for _, test := range cases {
+				t.Run(test.name, func(t *testing.T) {
+					checkDownloadRedirect(t, transport, path, test)
+				})
+			}
+		})
+	}
+}
+
+func checkDownloadRedirect(t *testing.T, transport, path string, test downloadRedirectCase) {
+	t.Helper()
+	const (
+		branchURL  = "/archive/refs/heads/"
+		previous   = "existing archive"
+		downloaded = "secure source"
+	)
+	var httpsRequests, httpRequests, tlsConnections atomic.Int32
+	clear := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		httpRequests.Add(1)
+		_, _ = w.Write([]byte("insecure source"))
+	}))
+	t.Cleanup(clear.Close)
+	secure := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		httpsRequests.Add(1)
+		switch r.URL.Path {
+		case branchURL + "https", branchURL + "downgrade":
+			http.Redirect(w, r, "/hop/"+strings.TrimPrefix(r.URL.Path, branchURL), http.StatusFound)
+		case "/hop/https":
+			http.Redirect(w, r, "/archive", http.StatusFound)
+		case "/hop/downgrade":
+			http.Redirect(w, r, clear.URL+"/archive", http.StatusFound)
+		case branchURL + "direct", "/archive":
+			_, _ = w.Write([]byte(downloaded))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	secure.Config.ConnState = func(_ net.Conn, state http.ConnState) {
+		if state == http.StateNew {
+			tlsConnections.Add(1)
+		}
+	}
+	secure.StartTLS()
+	t.Cleanup(secure.Close)
+	root := t.TempDir()
+	archive := filepath.Join(".cache", "downloads", "fixture", "source.tar.gz")
+	if err := os.MkdirAll(filepath.Join(root, filepath.Dir(archive)), 0755); err != nil {
+		t.Fatal(err)
+	}
+	caPath := filepath.Join(root, "ca.pem")
+	metadata := fmt.Sprintf(`{"fixture":{"env":{"VERSION":"1"},"downloads":[{"url":%q,"name":"source.tar.gz"}]}}`, secure.URL+branchURL+test.path)
+	for name, content := range map[string][]byte{
+		"metadata.json": []byte(metadata),
+		archive:         []byte(previous),
+		".curlrc":       {},
+		"ca.pem":        pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: secure.Certificate().Raw}),
+		"wgetrc":        []byte("ca_certificate = " + caPath + "\n"),
+	} {
+		if err := os.WriteFile(filepath.Join(root, name), content, 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	command, output := downloadCommand(t, root, "PATH="+path, "CURL_HOME="+root, "CURL_CA_BUNDLE="+caPath,
+		"WGETRC="+filepath.Join(root, "wgetrc"), "NO_PROXY=*", "no_proxy=*", "http_proxy=", "https_proxy=",
+		"DOWNLOAD_CONNECT_TIMEOUT=3", "DOWNLOAD_MAX_TIME=5")
+	if err := command.Run(); (err != nil) != test.fails {
+		t.Fatalf("download error = %v, want failure %t\n%s", err, test.fails, output)
+	}
+	wantArchive := downloaded
+	if test.fails {
+		wantArchive = previous
+		if transport == "wget" && (!strings.Contains(output.String(), "--max-redirect=0") || !strings.Contains(output.String(), "Use curl")) {
+			t.Fatalf("missing wget policy diagnostic: %s", output)
+		}
+	}
+	assertDownload(t, root, wantArchive)
+	if got := httpsRequests.Load(); got != test.requests {
+		t.Fatalf("HTTPS requests = %d, want %d", got, test.requests)
+	}
+	if got := httpRequests.Load(); got != 0 {
+		t.Fatalf("HTTP requests = %d, want 0", got)
+	}
+	if got := tlsConnections.Load(); test.requests == 0 && got != 0 {
+		t.Fatalf("HTTPS connections = %d, want 0", got)
 	}
 }

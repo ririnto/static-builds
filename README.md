@@ -13,12 +13,15 @@ Build statically-linked binaries using Docker multi-stage builds for portable, m
 ## Prerequisites
 
 Local container builds require Docker Compose 2.17 or later and access to a running Linux Docker daemon.
-The Compose tooling image supplies Go and rootless BuildKit, so Go does not need to be installed on the host.
+The Compose tooling image supplies Go, `curl`, and rootless BuildKit, so Go does not need to be installed on the host.
 Direct rootless builds and contributor checks still require the Go version declared in `go.mod`.
 Local builds and both CI hosts use [.goreleaser.yaml](.goreleaser.yaml) to orchestrate building, metadata-selected files, archiving, SHA-256 checksums, and release publication.
 See the [state machine inventory](.github/state-machines.md), [Taskfile](Taskfile.yaml), [download command](cmd/download/main.go), and [metadata command](cmd/metadata/main.go).
 
-Install `curl` or `wget` to download target sources, and allow network access to their upstream hosts.
+Install `curl` to download target sources and allow network access to their upstream hosts.
+The downloader configures `curl` to follow only HTTPS redirects.
+When `curl` is unavailable, `wget` can download direct HTTPS URLs with redirects disabled.
+The `wget` fallback requires `--max-redirect=0`, which BusyBox `wget` does not support.
 The `wget` fallback also requires GNU Coreutils or BusyBox `timeout`, or GNU Coreutils `gtimeout` on macOS, to enforce the per-attempt wall-clock deadline.
 Both downloaders honor `DOWNLOAD_MAX_TIME`, which defaults to 300 seconds per attempt.
 Target download URLs and build arguments come from [metadata.json](metadata.json).
@@ -588,7 +591,7 @@ Selected release contents:
   Branch builds are optional manual jobs, so their failures do not fail the parent.
   Automatic tag build and publication failures do.
 - The package component uses `golang:alpine` and invokes Task build before GoReleaser packaging.
-- When `curl` is absent, `go tool task download -- <target>` uses the image's BusyBox `wget` and `timeout` fallback.
+- The package job installs `curl` so `go tool task download -- <target>` can follow HTTPS redirects.
 - Contributor validation and pipeline generation use `golang:alpine` with Go's default `GOTOOLCHAIN=auto` behavior honoring the `go.mod` directive.
 - The prepare job exports the rendered child pipeline, and package jobs invoke named Taskfile tasks without a separate toolchain download.
 - GitLab branch package builds retain artifacts without publishing Releases.
