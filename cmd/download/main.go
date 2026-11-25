@@ -133,7 +133,7 @@ func download(ctx context.Context, url, destination string) (err error) {
 		}
 		var command *exec.Cmd
 		if curl != "" {
-			command = exec.CommandContext(ctx, curl, "--fail", "--location", "--silent", "--show-error", "--connect-timeout", connectTimeout, "--max-time", maxTime, "--output", path, url)
+			command = exec.CommandContext(ctx, curl, "--fail", "--location", "--proto-redir", "=https", "--silent", "--show-error", "--connect-timeout", connectTimeout, "--max-time", maxTime, "--output", path, url)
 		} else {
 			limiter, err := lookPath("timeout")
 			if err != nil {
@@ -148,7 +148,7 @@ func download(ctx context.Context, url, destination string) (err error) {
 			if limiter == "" {
 				return fmt.Errorf("wget downloads require timeout (GNU Coreutils or BusyBox) or gtimeout")
 			}
-			command = exec.CommandContext(ctx, limiter, "-k", "1", maxTime, "wget", "-q", "-T", connectTimeout, "-O", path, url)
+			command = exec.CommandContext(ctx, limiter, "-k", "1", maxTime, "wget", "--max-redirect=0", "-nv", "-T", connectTimeout, "-O", path, url)
 		}
 		// Keep ownership while an orphaned transport may still write after SIGKILL.
 		command.ExtraFiles = []*os.File{lock}
@@ -190,6 +190,14 @@ func download(ctx context.Context, url, destination string) (err error) {
 			if err := pause(ctx, time.Duration(delay)*time.Second); err != nil {
 				return err
 			}
+		} else if curl == "" {
+			return fmt.Errorf(
+				"download retries exhausted: wget needs --max-redirect=0 and can only download direct HTTPS URLs. Use curl for HTTPS redirects or if wget lacks this option",
+			)
+		} else if status == 2 {
+			return fmt.Errorf(
+				"download retries exhausted: curl requires --proto-redir to enforce HTTPS-only redirects. Use wget with --max-redirect=0 for direct HTTPS downloads",
+			)
 		}
 	}
 	return fmt.Errorf("download retries exhausted")
