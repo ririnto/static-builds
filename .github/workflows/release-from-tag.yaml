@@ -48,4 +48,3 @@ jobs:
     with:
       target: ${{ needs.resolve-target.outputs.target }}
       tag: ${{ github.ref_name }}
-      upload_release: true
