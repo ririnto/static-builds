@@ -16,14 +16,16 @@
     "commit": "3d3c42e5aac5ba805825da76410c181273ba90b1",
     "inputs": {
       "repository": { "context": "GitHub repository" },
-      "ref": { "context": "Event ref or repository default branch" },
+      "ref": {
+        "context": "Event ref and SHA for the workflow repository, otherwise the requested repository's default branch"
+      },
       "token": { "context": "GitHub token" },
       "ssh-key": null,
       "ssh-known-hosts": null,
       "ssh-strict": "true",
       "ssh-user": "git",
       "persist-credentials": "true",
-      "path": null,
+      "path": { "context": "Checkout at the root of the GitHub workspace" },
       "clean": "true",
       "filter": { "default": null },
       "sparse-checkout": { "default": null },
@@ -43,7 +45,9 @@
     "inputs": {
       "name": null,
       "artifact-ids": null,
-      "path": { "context": "Runner workspace" },
+      "path": {
+        "context": "GITHUB_WORKSPACE when set, otherwise the current working directory"
+      },
       "pattern": null,
       "merge-multiple": "false",
       "github-token": {
@@ -58,17 +62,21 @@
   "actions/setup-go@v7": {
     "commit": "d8cbb8045d7f43706b9177cceb36c1f91a6644d5",
     "inputs": {
-      "go-version": null,
+      "go-version": {
+        "context": "Version from go-version-file when supplied, otherwise the installed Go toolchain"
+      },
       "go-version-file": null,
       "check-latest": "false",
-      "token": { "context": "GitHub server URL and token" },
+      "token": {
+        "context": "GitHub token on github.com, otherwise an empty string"
+      },
       "cache": "true",
       "cache-dependency-path": {
-        "context": "Falls back to go.mod at the repository root when omitted"
+        "context": "With caching enabled, falls back to go.mod at the GitHub workspace root"
       },
       "architecture": { "context": "Runner architecture" },
       "go-download-base-url": {
-        "context": "GO_DOWNLOAD_BASE_URL environment variable"
+        "context": "GO_DOWNLOAD_BASE_URL when set, otherwise the standard Go download URL"
       }
     }
   },
@@ -101,7 +109,7 @@
       "output": "",
       "skip-dirs": "",
       "skip-files": "",
-      "cache-dir": { "context": "GitHub workspace" },
+      "cache-dir": { "context": ".cache/trivy under the GitHub workspace" },
       "timeout": "",
       "ignore-policy": "",
       "hide-progress": null,
@@ -130,8 +138,12 @@
     "inputs": {
       "sarif_file": "../results",
       "checkout_path": { "context": "GitHub workspace" },
-      "ref": { "context": "GITHUB_REF and pull request origin" },
-      "sha": { "context": "GITHUB_SHA and pull request origin" },
+      "ref": {
+        "context": "GITHUB_REF when omitted or for fork pull requests. Override together with sha"
+      },
+      "sha": {
+        "context": "GITHUB_SHA when omitted or for fork pull requests. Override together with ref"
+      },
       "token": { "context": "GitHub token" },
       "matrix": { "context": "Job matrix" },
       "category": null,
