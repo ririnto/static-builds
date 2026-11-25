@@ -5,8 +5,6 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 
-import metadata from "../.github/action-inputs.json" with { type: "json" };
-
 const check = (checkout: string, ...options: string[]) =>
   spawnSync(
     "pnpm",
@@ -421,6 +419,65 @@ await test("R35 traces shared YAML definitions and advises edits at the caller",
   }
 });
 
+await test("R35 lists unavailable action metadata without diagnosing the calls", () => {
+  const checkout = mkdtempSync(
+    path.join(tmpdir(), "workflow-input-unavailable-")
+  );
+  try {
+    const directory = path.join(checkout, ".github", "workflows");
+    mkdirSync(directory, { recursive: true });
+    const file = ".github/workflows/unavailable.yaml";
+    writeFileSync(
+      path.join(checkout, file),
+      `jobs:
+  external:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: example/action@v1
+        with:
+          label: standard
+  local:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ./unreadable
+        with:
+          label: standard
+`
+    );
+    mkdirSync(path.join(checkout, "unreadable"));
+    writeFileSync(
+      path.join(checkout, "unreadable", "action.yaml"),
+      "inputs: [\n"
+    );
+    const result = check(checkout, "--json");
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.stdout.trim(), "");
+    assert.equal(result.stderr.trim(), "");
+    const listing = check(checkout, "--list");
+    assert.equal(listing.status, 0, listing.stderr);
+    assert.deepEqual(
+      new Set(
+        recordLines(listing.stdout)
+          .filter((entry) => "kind" in entry && entry.kind === "left-to-review")
+          .map((entry) => {
+            assert.ok(
+              "file" in entry && "line" in entry && "reference" in entry
+            );
+            return JSON.stringify([entry.file, entry.line, entry.reference]);
+          })
+      ),
+      new Set(
+        [
+          [file, 5, "example/action@v1"],
+          [file, 11, "./unreadable"]
+        ].map((entry) => JSON.stringify(entry))
+      )
+    );
+  } finally {
+    rmSync(checkout, { force: true, recursive: true });
+  }
+});
+
 await test("R35 lists contextual defaults and local calls left to review", async (t) => {
   const checkout = mkdtempSync(path.join(tmpdir(), "workflow-input-review-"));
   try {
@@ -495,13 +552,91 @@ await test("R35 lists contextual defaults and local calls left to review", async
           })
       ),
       new Set(
-        Object.entries(metadata).flatMap(([reference, { inputs }]) =>
-          Object.entries(inputs).flatMap(([input, value]) =>
-            value !== null && typeof value === "object" && "context" in value
-              ? [JSON.stringify([reference, input, value.context])]
-              : []
-          )
-        )
+        [
+          ["actions/checkout@v7", "repository", "GitHub repository"],
+          [
+            "actions/checkout@v7",
+            "ref",
+            "Event ref and SHA for the workflow repository, otherwise the requested repository's default branch"
+          ],
+          ["actions/checkout@v7", "token", "GitHub token"],
+          [
+            "actions/checkout@v7",
+            "path",
+            "Checkout at the root of the GitHub workspace"
+          ],
+          ["actions/checkout@v7", "github-server-url", "GitHub server URL"],
+          [
+            "actions/download-artifact@v8",
+            "path",
+            "GITHUB_WORKSPACE when set, otherwise the current working directory"
+          ],
+          [
+            "actions/download-artifact@v8",
+            "github-token",
+            "Current repository and workflow run when omitted"
+          ],
+          ["actions/download-artifact@v8", "repository", "GitHub repository"],
+          ["actions/download-artifact@v8", "run-id", "GitHub run ID"],
+          [
+            "actions/setup-go@v7",
+            "go-version",
+            "Version from go-version-file when supplied, otherwise the installed Go toolchain"
+          ],
+          [
+            "actions/setup-go@v7",
+            "token",
+            "GitHub token on github.com, otherwise an empty string"
+          ],
+          [
+            "actions/setup-go@v7",
+            "cache-dependency-path",
+            "With caching enabled, falls back to go.mod at the GitHub workspace root"
+          ],
+          ["actions/setup-go@v7", "architecture", "Runner architecture"],
+          [
+            "actions/setup-go@v7",
+            "go-download-base-url",
+            "GO_DOWNLOAD_BASE_URL when set, otherwise the standard Go download URL"
+          ],
+          [
+            "actions/upload-artifact@v7",
+            "retention-days",
+            "Repository retention policy"
+          ],
+          [
+            "aquasecurity/trivy-action@v0.36.0",
+            "cache-dir",
+            ".cache/trivy under the GitHub workspace"
+          ],
+          [
+            "aquasecurity/trivy-action@v0.36.0",
+            "token-setup-trivy",
+            "GitHub token"
+          ],
+          [
+            "crazy-max/ghaction-github-runtime@v4",
+            "github-token",
+            "GitHub token"
+          ],
+          [
+            "github/codeql-action/upload-sarif@v4",
+            "checkout_path",
+            "GitHub workspace"
+          ],
+          [
+            "github/codeql-action/upload-sarif@v4",
+            "ref",
+            "GITHUB_REF when omitted or for fork pull requests. Override together with sha"
+          ],
+          [
+            "github/codeql-action/upload-sarif@v4",
+            "sha",
+            "GITHUB_SHA when omitted or for fork pull requests. Override together with ref"
+          ],
+          ["github/codeql-action/upload-sarif@v4", "token", "GitHub token"],
+          ["github/codeql-action/upload-sarif@v4", "matrix", "Job matrix"]
+        ].map((entry) => JSON.stringify(entry))
       )
     );
     assert.deepEqual(

@@ -550,22 +550,27 @@ for (const [file, { document, lines, tokens }] of workflows) {
           const localManifest = manifest(directory);
           if (localManifest.kind === "ambiguous") {
             reason = "Directory has both action.yml and action.yaml";
-          } else if (workspace && precedingRisk !== null) {
-            reason = precedingRisk;
           } else if (localManifest.kind === "available") {
-            action = localManifest.defaults;
+            reason = workspace ? precedingRisk : null;
+            if (reason === null) {
+              action = localManifest.defaults;
+            }
           }
         }
       }
       if (options.list === true) {
-        if (reason !== null) {
+        if (reference !== null && !target && !action) {
           const use = structure.slice(0, -1).find(isAlias) ?? uses?.value;
           if (isNode(use) && use.range) {
             listEntry({
               kind: "left-to-review",
               ...location(file, lines, use.range[0]),
               reference,
-              reason
+              reason:
+                reason ??
+                (local
+                  ? "Local input metadata is unavailable"
+                  : "No approved metadata for this external reference")
             });
           }
         }
