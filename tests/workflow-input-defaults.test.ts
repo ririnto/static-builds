@@ -1,39 +1,15 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import {
-  copyFileSync,
-  mkdirSync,
-  mkdtempSync,
-  rmSync,
-  symlinkSync,
-  writeFileSync
-} from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
-import { fileURLToPath } from "node:url";
 
 await test("R35 reports only literals equal to declared defaults for the exact reference", () => {
   const checkout = mkdtempSync(path.join(tmpdir(), "workflow-input-defaults-"));
   try {
     const directory = path.join(checkout, ".github", "workflows");
     mkdirSync(directory, { recursive: true });
-    mkdirSync(path.join(checkout, "rules"));
-    for (const file of [
-      "package.json",
-      "rules/workflow-input-defaults.ts",
-      ".github/action-inputs.json"
-    ]) {
-      copyFileSync(
-        new URL(`../${file}`, import.meta.url),
-        path.join(checkout, file)
-      );
-    }
-    symlinkSync(
-      fileURLToPath(new URL("../node_modules", import.meta.url)),
-      path.join(checkout, "node_modules"),
-      "junction"
-    );
     const workflow = path.join(directory, "caller.yaml");
     const controls = `name: Caller
 on: push
@@ -45,13 +21,16 @@ jobs:
         with:
           fetch-depth: 1
       - uses: actions/checkout@v7
-        with:
-          FETCH-DEPTH: 0
+        with: &unshared
+          FETCH-DEPTH: &unused 0
           filter: "null"
           clean: \${{ true }}
       - uses: actions/upload-artifact@v7
         with:
           retention-days: 0
+      - uses: actions/setup-go@v7
+        with:
+          cache-dependency-path: go.mod
       - uses: example/action@v1
         with:
           fetch-depth: 1
@@ -63,16 +42,11 @@ jobs:
       implicit-flag: true
       implicit-count: 1
       implicit-text: custom
+      midpoint: 100000000000001
       required-text: ""
-  shared:
+  actions:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/checkout@v7
-        with: &checkout-inputs
-          fetch-depth: 1
-      - uses: actions/checkout@v6
-        with: *checkout-inputs
       - uses: aquasecurity/trivy-action@v0.36.0
         with:
           exit-code: 0
@@ -80,14 +54,39 @@ jobs:
       - uses: actions/download-artifact@v8
         with:
           digest-mismatch: ignore
+      - uses: $/.github/actions/alternate
+        with:
+          local-label: custom
+      - uses: $/.github/actions/fixture
+        with:
+          scientific-midpoint: 1234567890123445
+  safe-local:
+    runs-on: ubuntu-latest
+    steps:
       - uses: ./.github/actions/fixture
         with:
           LOCAL-RATE: 0.00002
           local-null: custom
           local-optional: ""
-      - uses: $/.github/actions/alternate
+          midpoint: 100000000000000.5
+  other-checkout:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
         with:
-          local-label: custom
+          repository: example/other
+          ref: older
+      - uses: ./.github/actions/fixture
+        with:
+          LOCAL-RATE: "1E-05"
+      - uses: $/.github/actions/fixture@old
+        with:
+          LOCAL-RATE: "1E-05"
+      - uses: $/.github/actions/missing
+  invalid-call:
+    uses: $/.github/workflows/reusable.yml@v1
+    with:
+      publish: true
 `;
     writeFileSync(
       path.join(directory, "reusable.yml"),
@@ -101,6 +100,9 @@ on:
       fraction:
         type: number
         default: 0.5
+      midpoint:
+        type: number
+        default: 100000000000000.5
       implicit-flag:
         type: boolean
       implicit-count:
@@ -131,6 +133,12 @@ inputs:
     default: null
   local-optional:
     description: Optional value
+  midpoint:
+    description: Fixed-point midpoint
+    default: "100000000000001"
+  scientific-midpoint:
+    description: Scientific midpoint
+    default: "1.23456789012345E+15"
 runs:
   using: composite
   steps:
@@ -149,92 +157,113 @@ runs:
         .replace("default: 1e-5", "default: standard")
     );
     const check = () =>
-      spawnSync("pnpm", ["run", "check:workflow-input-defaults"], {
-        cwd: checkout,
-        encoding: "utf-8"
-      });
+      spawnSync(
+        "pnpm",
+        [
+          "--silent",
+          "run",
+          "check:workflow-input-defaults",
+          "--repository",
+          checkout,
+          "--json"
+        ],
+        { cwd: new URL("../", import.meta.url), encoding: "utf-8" }
+      );
     writeFileSync(workflow, controls);
     const passing = check();
     assert.equal(passing.status, 0, passing.stderr);
-    assert.doesNotMatch(passing.stderr, /R35\//u);
+    assert.equal(passing.stdout.trim(), "");
     writeFileSync(
       workflow,
-      controls
-        .replace("FETCH-DEPTH: 0", "FETCH-DEPTH: 1")
+      `${controls
+        .replace("FETCH-DEPTH: &unused 0", "FETCH-DEPTH: &unused 1")
         .replace('filter: "null"', "filter: null")
         .replace("publish: false", "publish: true")
         .replace("fraction: 0.25", "fraction: 0.5")
         .replace("implicit-flag: true", "implicit-flag: false")
         .replace("implicit-count: 1", "implicit-count: 0")
         .replace("implicit-text: custom", 'implicit-text: ""')
+        .replace("midpoint: 100000000000001", "midpoint: 100000000000000")
         .replace("digest-mismatch: ignore", "digest-mismatch: error")
         .replace("LOCAL-RATE: 0.00002", 'LOCAL-RATE: "1E-05"')
         .replace("local-null: custom", "local-null: null")
-        .replace("local-label: custom", "local-label: standard")
         .replace(
-          "uses: ./.github/workflows/reusable.yml",
-          "uses: $/.github/workflows/reusable.yml"
-        )
+          "local-label: custom",
+          "local-label: standard"
+        )}  anchor-source:
+    runs-on: ubuntu-latest
+    steps: &sequence
+      - &step
+        &uses-key uses: &reference actions/checkout@v7
+        &with-key with: &inputs
+          fetch-depth: &depth 1
+  alias-step:
+    runs-on: ubuntu-latest
+    steps:
+      - *step
+      - ? *uses-key
+        : *reference
+        ? *with-key
+        : *inputs
+      - uses: *reference
+        with:
+          fetch-depth: *depth
+  alias-sequence:
+    runs-on: ubuntu-latest
+    steps: *sequence
+`
     );
     const failing = check();
     assert.equal(failing.status, 1, failing.stderr);
+    const diagnostics = failing.stdout
+      .trim()
+      .split("\n")
+      .map((line) => {
+        const record: unknown = JSON.parse(line);
+        assert.ok(
+          record !== null &&
+            typeof record === "object" &&
+            "code" in record &&
+            "file" in record &&
+            "input" in record &&
+            "reference" in record &&
+            "line" in record &&
+            "column" in record
+        );
+        const { code, file, input, reference, line: row, column } = record;
+        return JSON.stringify([code, file, input, reference, row, column]);
+      });
+    const expected = [
+      ["FETCH-DEPTH", "actions/checkout@v7", 12, 11],
+      ["filter", "actions/checkout@v7", 13, 11],
+      ["publish", "./.github/workflows/reusable.yml", 27, 7],
+      ["fraction", "./.github/workflows/reusable.yml", 28, 7],
+      ["implicit-flag", "./.github/workflows/reusable.yml", 29, 7],
+      ["implicit-count", "./.github/workflows/reusable.yml", 30, 7],
+      ["implicit-text", "./.github/workflows/reusable.yml", 31, 7],
+      ["midpoint", "./.github/workflows/reusable.yml", 32, 7],
+      ["digest-mismatch", "actions/download-artifact@v8", 43, 11],
+      ["local-label", "$/.github/actions/alternate", 46, 11],
+      ["LOCAL-RATE", "./.github/actions/fixture", 55, 11],
+      ["local-null", "./.github/actions/fixture", 56, 11],
+      ["fetch-depth", "actions/checkout@v7", 83, 11],
+      ["fetch-depth", "actions/checkout@v7", 87, 9],
+      ["fetch-depth", "actions/checkout@v7", 91, 11],
+      ["fetch-depth", "actions/checkout@v7", 94, 24],
+      ["fetch-depth", "actions/checkout@v7", 97, 12]
+    ];
+    assert.equal(diagnostics.length, expected.length);
     assert.deepEqual(
-      [
-        ...failing.stderr.matchAll(
-          /R35\/workflow-input-defaults:[^"\n]*"(?<input>[^"\n]+)"[^"\n]*"(?<reference>[^"\n]+)"/gu
+      new Set(diagnostics),
+      new Set(
+        expected.map((row) =>
+          JSON.stringify([
+            "R35/workflow-input-defaults",
+            ".github/workflows/caller.yaml",
+            ...row
+          ])
         )
-      ]
-        .map(({ groups }) => [groups?.input, groups?.reference].join(" "))
-        .toSorted(),
-      [
-        "FETCH-DEPTH actions/checkout@v7",
-        "filter actions/checkout@v7",
-        "publish $/.github/workflows/reusable.yml",
-        "fraction $/.github/workflows/reusable.yml",
-        "implicit-flag $/.github/workflows/reusable.yml",
-        "implicit-count $/.github/workflows/reusable.yml",
-        "implicit-text $/.github/workflows/reusable.yml",
-        "digest-mismatch actions/download-artifact@v8",
-        "LOCAL-RATE ./.github/actions/fixture",
-        "local-null ./.github/actions/fixture",
-        "local-label $/.github/actions/alternate"
-      ].toSorted(),
-      failing.stderr
-    );
-    assert.equal(
-      [...failing.stderr.matchAll(/R35\//gu)].length,
-      11,
-      failing.stderr
-    );
-    writeFileSync(
-      workflow,
-      `on: push
-jobs:
-  invalid-workflow:
-    uses: $/.github/workflows/reusable.yml@v1
-  invalid-action:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: $/.github/actions/missing
-`
-    );
-    const invalid = check();
-    assert.equal(invalid.status, 1, invalid.stderr);
-    assert.deepEqual(
-      [
-        ...invalid.stderr.matchAll(
-          /R35\/invalid-self-reference:[^"\n]*"(?<reference>[^"\n]+)"/gu
-        )
-      ]
-        .map(({ groups }) => groups?.reference ?? "")
-        .toSorted(),
-      ["$/.github/actions/missing", "$/.github/workflows/reusable.yml@v1"],
-      invalid.stderr
-    );
-    assert.equal(
-      [...invalid.stderr.matchAll(/R35\//gu)].length,
-      2,
-      invalid.stderr
+      )
     );
   } finally {
     rmSync(checkout, { force: true, recursive: true });

@@ -63,7 +63,9 @@
       "check-latest": "false",
       "token": { "context": "GitHub server URL and token" },
       "cache": "true",
-      "cache-dependency-path": null,
+      "cache-dependency-path": {
+        "context": "Falls back to go.mod at the repository root when omitted"
+      },
       "architecture": { "context": "Runner architecture" },
       "go-download-base-url": {
         "context": "GO_DOWNLOAD_BASE_URL environment variable"

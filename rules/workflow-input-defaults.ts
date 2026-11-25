@@ -1,8 +1,18 @@
-import { readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
+import { readdirSync, readFileSync, realpathSync } from "node:fs";
 import path from "node:path";
 import process from "node:process";
+import { parseArgs } from "node:util";
 
-import { isMap, isScalar, isSeq, LineCounter, parseDocument } from "yaml";
+import {
+  isAlias,
+  isMap,
+  isScalar,
+  isSeq,
+  LineCounter,
+  parseDocument,
+  visit
+} from "yaml";
+import type { Document } from "yaml";
 
 import metadata from "../.github/action-inputs.json" with { type: "json" };
 
@@ -40,7 +50,27 @@ const implicitDefaults = new Map<string, boolean | number | string>([
   ["string", ""]
 ]);
 
-const repository = realpathSync(".");
+const { values: options } = parseArgs({
+  options: {
+    json: { type: "boolean" },
+    repository: { type: "string" }
+  }
+});
+const repository = realpathSync(options.repository ?? ".");
+
+const resolve = (document: Document, node: unknown): unknown =>
+  isAlias(node) ? node.resolve(document) : node;
+
+const field = (document: Document, map: unknown, name: string): unknown =>
+  isMap(map)
+    ? map.items.find(({ key }) => {
+        const resolved = resolve(document, key);
+        return isScalar(resolved) && resolved.value === name;
+      })?.value
+    : undefined;
+
+const readField = (document: Document, map: unknown, name: string): unknown =>
+  resolve(document, field(document, map, name));
 
 const literal = (
   node: unknown
@@ -48,7 +78,7 @@ const literal = (
   if (node === null) {
     return null;
   }
-  if (isScalar(node) && node.anchor === undefined) {
+  if (isScalar(node)) {
     const value: unknown = node.value;
     if (typeof value === "string" && !value.includes("${{")) {
       return value;
@@ -68,19 +98,49 @@ const literal = (
   return undefined;
 };
 
-const actionInput = (value: string | number | boolean | null): string => {
+const isMidpoint = (value: number, digits: bigint, exponent: number) => {
+  const midpoint = digits * 10n - 5n;
+  const places = 15 - exponent;
+  if (places <= 0) {
+    return (
+      Number.isInteger(value) &&
+      BigInt(value) === midpoint * 10n ** BigInt(-places)
+    );
+  }
+  const fives = 5n ** BigInt(places);
+  const scaled = value * 2 ** places;
+  return (
+    midpoint % fives === 0n &&
+    Number.isInteger(scaled) &&
+    BigInt(scaled) === midpoint / fives
+  );
+};
+
+const runnerNumber = (value: number): string => {
+  const magnitude = Math.abs(value);
+  const [mantissa = "", power] = magnitude.toExponential(14).split("e");
+  const exponent = Number(power);
+  const rounded = BigInt(mantissa.replace(".", ""));
+  // GitHub's runner uses .NET G15, which rounds exact midpoints to even.
+  const digits =
+    rounded % 2n === 1n && isMidpoint(magnitude, rounded, exponent)
+      ? rounded - 1n
+      : rounded;
+  const sign = value < 0 || Object.is(value, -0) ? "-" : "";
+  const significant = String(digits).padStart(15, "0");
+  if (exponent >= 15 || exponent < -4) {
+    const fraction = significant.slice(1).replace(/0+$/u, "");
+    const significand =
+      fraction === "" ? significant[0] : `${significant[0]}.${fraction}`;
+    const powerDigits = String(Math.abs(exponent)).padStart(2, "0");
+    return `${sign}${significand}E${exponent < 0 ? "-" : "+"}${powerDigits}`;
+  }
+  return `${sign}${Number(`${digits}e${exponent - 14}`)}`;
+};
+
+const inputText = (value: string | number | boolean | null): string => {
   if (typeof value === "number") {
-    if (Object.is(value, -0)) {
-      return "-0";
-    }
-    const [mantissa = "", power] = value.toExponential(14).split("e");
-    const exponent = Number(power);
-    if (exponent >= 15 || exponent < -4) {
-      const trimmed = mantissa.replace(/0+$/u, "").replace(/\.$/u, "");
-      const digits = String(Math.abs(exponent)).padStart(2, "0");
-      return `${trimmed}E${exponent < 0 ? "-" : "+"}${digits}`;
-    }
-    return String(Number(value.toPrecision(15)));
+    return runnerNumber(value);
   }
   return value === null ? "" : String(value);
 };
@@ -95,35 +155,25 @@ const readYaml = (file: string, lineCounter?: LineCounter) => {
   return document;
 };
 
-const repositoryFile = (file: string): string | null => {
-  if (statSync(file, { throwIfNoEntry: false })?.isFile() === true) {
-    const resolved = realpathSync(file);
-    if (resolved.startsWith(`${repository}${path.sep}`)) {
-      return resolved;
-    }
-  }
-  return null;
-};
-
 const localActionDefaults = (file: string): Map<string, string> => {
   const defaults = new Map<string, string>();
-  const inputs = readYaml(file).get("inputs", true);
+  const document = readYaml(file);
+  const inputs = readField(document, document.contents, "inputs");
   if (isMap(inputs)) {
-    for (const { key, value: declaration } of inputs.items) {
-      if (
-        isScalar(key) &&
-        typeof key.value === "string" &&
-        isMap(declaration)
-      ) {
-        const entry = declaration.items.find(
-          ({ key: field }) =>
-            isScalar(field) &&
-            typeof field.value === "string" &&
-            field.value.toLowerCase() === "default"
-        );
-        const value = literal(entry?.value);
-        if (value !== undefined) {
-          defaults.set(key.value.toLowerCase(), actionInput(value));
+    for (const { key, value } of inputs.items) {
+      const name = literal(resolve(document, key));
+      const declaration = resolve(document, value);
+      if (typeof name === "string" && isMap(declaration)) {
+        const entry = declaration.items.find(({ key: fieldName }) => {
+          const fieldValue = literal(resolve(document, fieldName));
+          return (
+            typeof fieldValue === "string" &&
+            fieldValue.toLowerCase() === "default"
+          );
+        });
+        const input = literal(resolve(document, entry?.value));
+        if (input !== undefined) {
+          defaults.set(name.toLowerCase(), inputText(input));
         }
       }
     }
@@ -131,23 +181,20 @@ const localActionDefaults = (file: string): Map<string, string> => {
   return defaults;
 };
 
-const reusableInputsFor = (trigger: unknown) => {
-  if (isMap(trigger)) {
-    const call = trigger.get("workflow_call", true);
-    if (isMap(call)) {
-      const inputs = call.get("inputs", true);
-      return isMap(inputs) ? inputs : true;
+const manifestDefaults = (directory: string): Map<string, string> | null => {
+  for (const filename of ["action.yml", "action.yaml"]) {
+    try {
+      const file = realpathSync(path.join(repository, directory, filename));
+      return file.startsWith(`${repository}${path.sep}`)
+        ? localActionDefaults(file)
+        : null;
+    } catch (error) {
+      if (
+        !(error instanceof Error && "code" in error && error.code === "ENOENT")
+      ) {
+        return null;
+      }
     }
-    if (literal(call) === null) {
-      return true;
-    }
-  }
-  if (
-    literal(trigger) === "workflow_call" ||
-    (isSeq(trigger) &&
-      trigger.items.some((item) => literal(item) === "workflow_call"))
-  ) {
-    return true;
   }
   return null;
 };
@@ -156,15 +203,35 @@ const report = (
   file: string,
   lines: LineCounter,
   offset: number,
-  message: string
+  input: string,
+  reference: string,
+  shared: boolean,
+  removedAnchors: readonly string[]
 ) => {
   const { line, col } = lines.linePos(offset);
-  process.stderr.write(`${file.slice(2)}:${line}:${col}: ${message}\n`);
+  const code = "R35/workflow-input-defaults";
+  const filename = file.slice(2);
+  if (options.json === true) {
+    process.stdout.write(
+      `${JSON.stringify({ code, file: filename, input, reference, line, column: col })}\n`
+    );
+  } else {
+    const advice = shared ? "Review the shared definition of" : "Omit";
+    const anchors =
+      removedAnchors.length > 0
+        ? ` Removing the input also removes ${removedAnchors.join(", ")}.`
+        : "";
+    process.stderr.write(
+      `${filename}:${line}:${col}: ${code}: ${advice} "${input}" for "${reference}". It equals the default.${anchors}\n`
+    );
+  }
   process.exitCode = 1;
 };
 
 const workflows = new Map(
-  readdirSync(workflowsDirectory, { withFileTypes: true })
+  readdirSync(path.join(repository, workflowsDirectory), {
+    withFileTypes: true
+  })
     .filter(
       (entry) =>
         entry.isFile() &&
@@ -175,124 +242,166 @@ const workflows = new Map(
     .map((name) => {
       const file = `${workflowsDirectory}/${name}`;
       const lines = new LineCounter();
-      return [`./${file}`, { document: readYaml(file, lines), lines }];
+      return [
+        `./${file}`,
+        { document: readYaml(path.join(repository, file), lines), lines }
+      ];
     })
 );
 
+const localPath = (reference: string): string | null => {
+  const relative = reference.slice(2);
+  if (
+    relative.includes("\\") ||
+    relative.includes("\0") ||
+    relative.startsWith("/") ||
+    relative.split("/").includes("..") ||
+    (reference.startsWith("$/") && relative.includes("@"))
+  ) {
+    return null;
+  }
+  return `./${relative}`;
+};
+
+const reusableDefaults = (reference: string) => {
+  const filename = localPath(reference);
+  const document = filename === null ? null : workflows.get(filename)?.document;
+  if (document) {
+    const trigger = readField(document, document.contents, "on");
+    const call = readField(document, trigger, "workflow_call");
+    const inputs = readField(document, call, "inputs");
+    if (isMap(inputs)) {
+      return { document, inputs };
+    }
+  }
+  return null;
+};
+
+const matchesReusableDefault = (
+  target: NonNullable<ReturnType<typeof reusableDefaults>>,
+  name: string,
+  input: string | number | boolean | null
+): boolean => {
+  const { document, inputs } = target;
+  const declaration = readField(document, inputs, name);
+  const type = literal(readField(document, declaration, "type"));
+  const caller = input === null && type === "string" ? "" : input;
+  if (
+    !isMap(declaration) ||
+    literal(readField(document, declaration, "required")) === true ||
+    type !== typeof caller
+  ) {
+    return false;
+  }
+  const node = field(document, declaration, "default");
+  const value =
+    node === undefined
+      ? implicitDefaults.get(type)
+      : literal(resolve(document, node));
+  if (typeof value === "number" && typeof caller === "number") {
+    return runnerNumber(value) === runnerNumber(caller);
+  }
+  return (value === null && type === "string" ? "" : value) === caller;
+};
+
 for (const [file, { document, lines }] of workflows) {
-  const jobs = document.get("jobs", true);
+  const jobs = readField(document, document.contents, "jobs");
   if (!isMap(jobs)) {
     continue;
   }
-  for (const { value: job } of jobs.items) {
-    if (!isMap(job)) {
-      continue;
+  const aliased = new Set<unknown>();
+  visit(document, {
+    Alias(_key, alias) {
+      const definition = alias.resolve(document);
+      if (definition) {
+        aliased.add(definition);
+      }
     }
-    const steps = job.get("steps", true);
-    for (const invocation of isSeq(steps) ? steps.items : [job]) {
-      if (!isMap(invocation)) {
-        continue;
-      }
-      const reference = invocation.get("uses", true);
+  });
+  for (const { value: rawJob } of jobs.items) {
+    const job = resolve(document, rawJob);
+    const rawSteps = field(document, job, "steps");
+    const steps = resolve(document, rawSteps);
+    const reusable = !isSeq(steps);
+    const invocations = reusable ? [rawJob] : steps.items;
+    for (const [index, rawInvocation] of invocations.entries()) {
+      const invocation = resolve(document, rawInvocation);
+      const rawInputs = field(document, invocation, "with");
+      const inputs = resolve(document, rawInputs);
+      const reference = literal(readField(document, invocation, "uses"));
       if (
-        !isScalar(reference) ||
-        typeof reference.value !== "string" ||
-        !reference.range
+        !isMap(inputs) ||
+        inputs.items.length === 0 ||
+        typeof reference !== "string"
       ) {
         continue;
       }
-      const uses = reference.value;
-      const self = uses.startsWith("$/");
-      const local = self || uses.startsWith("./");
-      const relative = uses.slice(2);
-      const localPath = `./${relative}`;
-      const safeLocalPath =
-        local &&
-        !uses.includes("${{") &&
-        !uses.includes("\\") &&
-        !relative.includes("\0") &&
-        !relative.startsWith("/") &&
-        !relative.split("/").includes("..") &&
-        (!self || (!uses.includes("@") && relative.length > 0));
-      const reusable = invocation === job;
-      const reusableInputs =
-        reusable && safeLocalPath
-          ? reusableInputsFor(
-              workflows.get(localPath)?.document.get("on", true)
-            )
-          : null;
-      const manifest =
-        !reusable && safeLocalPath
-          ? (repositoryFile(`${localPath}/action.yml`) ??
-            repositoryFile(`${localPath}/action.yaml`))
-          : null;
-      if (
-        self &&
-        !(reusable
-          ? reusableInputs !== null
-          : manifest !== null ||
-            (safeLocalPath &&
-              (repositoryFile(`${localPath}/Dockerfile`) !== null ||
-                repositoryFile(`${localPath}/dockerfile`) !== null)))
-      ) {
-        report(
-          file,
-          lines,
-          reference.range[0],
-          `R35/invalid-self-reference: Invalid same-repository reference "${uses}".`
-        );
+
+      const workspace = reference.startsWith("./");
+      const self = reference.startsWith("$/");
+      const local = workspace || self;
+      const target = reusable && local ? reusableDefaults(reference) : null;
+      let action: ReadonlyMap<string, unknown> | null | undefined;
+      if (!reusable) {
+        if (local) {
+          // Prior steps can replace the runner workspace behind a ./ reference.
+          const directory =
+            workspace && index > 0 ? null : localPath(reference);
+          action = directory === null ? null : manifestDefaults(directory);
+        } else {
+          action = approvedActions.get(reference);
+        }
+      }
+      if (!target && !action) {
         continue;
       }
-      const inputs = invocation.get("with", true);
-      if (!isMap(inputs) || inputs.anchor !== undefined) {
-        continue;
-      }
-      const externalAction =
-        reusable || local ? null : approvedActions.get(uses);
-      const action =
-        manifest === null ? externalAction : localActionDefaults(manifest);
+
+      const sharedCollection =
+        aliased.has(jobs) ||
+        aliased.has(job) ||
+        aliased.has(steps) ||
+        aliased.has(invocation) ||
+        aliased.has(inputs);
       for (const { key, value } of inputs.items) {
-        const input = literal(value);
-        if (
-          !isScalar(key) ||
-          typeof key.value !== "string" ||
-          !key.range ||
-          key.anchor !== undefined ||
-          input === undefined
-        ) {
+        const inputKey = resolve(document, key);
+        const inputValue = resolve(document, value);
+        const name = literal(inputKey);
+        const input = literal(inputValue);
+        if (typeof name !== "string" || input === undefined) {
           continue;
         }
-        const name = key.value;
-        const declaration = isMap(reusableInputs)
-          ? reusableInputs.get(name, true)
-          : null;
         const actionDefault = action?.get(name.toLowerCase());
-        const reusableType = isMap(declaration)
-          ? declaration.get("type")
-          : null;
-        const reusableInput =
-          input === null && reusableType === "string" ? "" : input;
-        const defaultValue =
-          isMap(declaration) && declaration.has("default")
-            ? literal(declaration.get("default", true))
-            : implicitDefaults.get(typeof reusableInput);
-        if (
-          (typeof actionDefault === "string" &&
+        const matches = target
+          ? matchesReusableDefault(target, name, input)
+          : typeof actionDefault === "string" &&
             !actionDefault.includes("${{") &&
-            actionDefault === actionInput(input)) ||
-          (isMap(declaration) &&
-            declaration.get("required") !== true &&
-            reusableType === typeof reusableInput &&
-            (defaultValue === null && reusableType === "string"
-              ? ""
-              : defaultValue) === reusableInput)
-        ) {
-          report(
-            file,
-            lines,
-            key.range[0],
-            `R35/workflow-input-defaults: Omit "${name}" for "${uses}". It equals the declared default.`
+            actionDefault === inputText(input);
+        if (matches) {
+          const alias = [rawSteps, rawInvocation, rawInputs, key, value].find(
+            isAlias
           );
+          const location =
+            alias?.range ?? (isScalar(inputKey) ? inputKey.range : null);
+          if (location) {
+            const shared =
+              sharedCollection ||
+              aliased.has(inputKey) ||
+              aliased.has(inputValue);
+            const removedAnchors = [inputKey, inputValue].flatMap((node) =>
+              isScalar(node) && node.anchor !== undefined && !shared
+                ? [node.anchor]
+                : []
+            );
+            report(
+              file,
+              lines,
+              location[0],
+              name,
+              reference,
+              shared,
+              removedAnchors
+            );
+          }
         }
       }
     }
