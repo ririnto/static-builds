@@ -82,16 +82,72 @@ tasks:
       - go mod tidy {{range .CLI_ARGS_LIST}}{{. | shellQuote}} {{end}}
 
   shfmt:
-    desc: Format maintained shell scripts
+    desc: Format or lint maintained shell scripts
     vars:
       SHELL_PATHS:
         sh: git ls-files -z '*.sh' '.husky/pre-*'
       SHELL_FILES:
         ref: 'splitList "\x00" .SHELL_PATHS | compact'
+      PREFER_ECHO: |-
+        local lines = std.split(std.extVar('source'), '\n');
+        local alnum = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+        local plain(text) =
+          text != '' && std.member(alnum, text[0]) &&
+          std.all([std.member(alnum + ' .,:_/-', ch) for ch in std.stringChars(text)]);
+        local literal(word) =
+          if std.length(word) > 1 && std.member(["'", '"'], word[0]) &&
+             std.endsWith(word, word[0])
+          then std.substr(word, 1, std.length(word) - 2)
+          else '';
+        local matches(stmt) =
+          local args = std.get(stmt.Cmd, 'Args', []);
+          if std.get(stmt.Cmd, 'Type') != 'CallExpr' || stmt.Pos.Line != stmt.End.Line ||
+             !std.member([2, 3], std.length(args))
+          then false
+          else
+            local line = lines[stmt.Pos.Line - 1];
+            local span(start, end) = std.substr(line, start.Col - 1, end.Col - start.Col);
+            local words = [span(arg.Pos, arg.End) for arg in args];
+            local fmt = literal(words[1]);
+            words[0] == 'printf' &&
+            span(args[0].Pos, args[std.length(args) - 1].End) == std.stripChars(line, ' \t') &&
+            (if std.length(words) == 2 then
+               std.endsWith(fmt, '\\n') && plain(std.substr(fmt, 0, std.length(fmt) - 2))
+             else fmt == '%s\\n' && plain(literal(words[2])));
+        local reports(node) =
+          if std.isArray(node) then std.flatMap(reports, node)
+          else if !std.isObject(node) ||
+                  std.member(['BinaryCmd', 'CmdSubst', 'ProcSubst'], std.get(node, 'Type', ''))
+          then []
+          else
+            (if std.objectHas(node, 'Cmd') && matches(node) then [node.Pos.Line] else []) +
+            std.flatMap(reports, std.objectValues(node));
+        std.join('\n', [
+          '%s:%d: R32/prefer-echo: Use echo for this plain printf line.' % [std.extVar('path'), line]
+          for line in reports(std.extVar('tree'))
+        ])
     cmds:
       - for:
           var: SHELL_FILES
-        cmd: go tool shfmt -i 2 -ci {{range .CLI_ARGS_LIST}}{{. | shellQuote}} {{end}}-- {{.ITEM | shellQuote}}
+        cmd: |-
+          set -eo pipefail
+          file={{.ITEM | shellQuote}}
+          go tool shfmt -i 2 -ci {{range .CLI_ARGS_LIST}}{{. | shellQuote}} {{end}}-- "$file"
+          {{if or (has "-d" .CLI_ARGS_LIST) (has "--diff" .CLI_ARGS_LIST)}}
+          if grep -Eq '^[[:blank:]]*printf[[:blank:]]' -- "$file"; then
+            diagnostics=$(
+              go tool shfmt --to-json --filename "$file" < "$file" |
+                go tool jsonnet -S --ext-str "path=$file" --ext-str-file "source=$file" \
+                  --ext-code-file tree=/dev/stdin -e {{.PREFER_ECHO | shellQuote}}
+            )
+            if [ -n "$diagnostics" ]; then
+              echo "$diagnostics" >&2
+              exit 1
+            fi
+          elif [ "$?" -ne 1 ]; then
+            exit 1
+          fi
+          {{end}}
 
   golangci-lint:
     desc: Lint Go source
