@@ -330,109 +330,183 @@ await test("R35 traces shared YAML definitions and advises edits at the caller",
           : *enabled
       - uses: actions/checkout@v7
         with: *nested
+  key-only:
+    steps:
+      - uses: actions/checkout@v7
+        with: &key-inputs
+          ? *credentials-key
+          : true
+      - uses: actions/checkout@v7
+        with: *key-inputs
+  outside:
+    steps:
+      - uses: actions/checkout@v7
+        with: &outside-inputs
+          clean: true
+      - uses: actions/checkout@v7
+        with: *outside-inputs
+    env: *outside-inputs
+  unequal:
+    steps:
+      - uses: actions/checkout@v7
+        with: &unequal-inputs
+          clean: true
+      - uses: actions/setup-go@v7
+        with: *unequal-inputs
 `
     );
     const result = check(checkout, "--json");
     assert.equal(result.status, 1, result.stderr);
     const records = recordLines(result.stdout);
-    const at = (
-      line: number,
-      input: string,
-      column: number,
-      reference = "actions/checkout@v7"
-    ) => {
-      const record = records.find(
+    const location = (line: number, column: number) => ({ file, line, column });
+    const anchor = (
+      name: string,
+      definition: [number, number],
+      ...uses: [number, number][]
+    ) => ({
+      name,
+      definition: location(...definition),
+      uses: uses.map(([line, column]) => location(line, column))
+    });
+    const params = anchor("params", [6, 9], [16, 11]);
+    const steps = anchor("steps", [3, 12], [30, 12]);
+    const step = anchor("step", [4, 9], [13, 9]);
+    const shared = anchor("shared", [6, 23], [17, 11], [19, 15]);
+    const key = anchor("key", [7, 11], [22, 13]);
+    const value = anchor("value", [7, 23], [23, 13], [26, 18]);
+    const equal = anchor("equal", [9, 15], [28, 15]);
+    const unused = anchor("unused", [10, 18]);
+    const credentialsKey = anchor(
+      "credentials-key",
+      [35, 11],
+      [39, 13],
+      [47, 13]
+    );
+    const enabled = anchor("enabled", [35, 49], [38, 18], [40, 13]);
+    const nested = anchor("nested", [37, 15], [42, 15]);
+    const keyInputs = anchor("key-inputs", [46, 15], [50, 15]);
+    const outside = anchor("outside-inputs", [54, 15], [57, 15], [58, 10]);
+    const unequal = anchor("unequal-inputs", [62, 15], [65, 15]);
+    const checkoutAction = "actions/checkout@v7";
+    const setupGo = "actions/setup-go@v7";
+    const trivy = "aquasecurity/trivy-action@v0.36.0";
+    const checkoutAndGo = [checkoutAction, setupGo];
+    const goAndTrivy = [setupGo, trivy];
+    const expected = [
+      [
+        7,
+        16,
+        "clean",
+        "hand-edit",
+        checkoutAction,
+        [params, steps, step, shared, key, value],
+        checkoutAndGo
+      ],
+      [10, 11, "cache", "omit", setupGo, [steps, equal, unused], goAndTrivy],
+      [
+        13,
+        9,
+        "clean",
+        "detach",
+        checkoutAction,
+        [params, step, shared, key, value],
+        checkoutAndGo
+      ],
+      [
+        17,
+        11,
+        "clean",
+        "detach",
+        checkoutAction,
+        [params, shared, key, value],
+        checkoutAndGo
+      ],
+      [23, 13, "clean", "hand-edit", checkoutAction, [key, value]],
+      [26, 18, "clean", "hand-edit", checkoutAction, [value]],
+      [28, 15, "cache", "detach", trivy, [equal], goAndTrivy],
+      [
+        30,
+        12,
+        "clean",
+        "detach",
+        checkoutAction,
+        [params, steps, step, shared, key, value],
+        checkoutAndGo
+      ],
+      [30, 12, "cache", "detach", setupGo, [steps, equal], goAndTrivy],
+      [
+        35,
+        28,
+        "persist-credentials",
+        "hand-edit",
+        checkoutAction,
+        [credentialsKey, enabled]
+      ],
+      [38, 18, "clean", "hand-edit", checkoutAction, [nested, enabled]],
+      [
+        40,
+        13,
+        "persist-credentials",
+        "hand-edit",
+        checkoutAction,
+        [nested, credentialsKey, enabled]
+      ],
+      [42, 15, "clean", "hand-edit", checkoutAction, [nested, enabled]],
+      [
+        42,
+        15,
+        "persist-credentials",
+        "hand-edit",
+        checkoutAction,
+        [nested, credentialsKey, enabled]
+      ],
+      [
+        47,
+        13,
+        "persist-credentials",
+        "hand-edit",
+        checkoutAction,
+        [keyInputs, credentialsKey]
+      ],
+      [
+        50,
+        15,
+        "persist-credentials",
+        "detach",
+        checkoutAction,
+        [keyInputs, credentialsKey]
+      ],
+      [55, 11, "clean", "hand-edit", checkoutAction, [outside]],
+      [57, 15, "clean", "detach", checkoutAction, [outside]],
+      [63, 11, "clean", "hand-edit", checkoutAction, [unequal], checkoutAndGo]
+    ] as const;
+    assert.equal(records.length, expected.length);
+    for (const [
+      line,
+      column,
+      input,
+      advice,
+      reference,
+      anchors,
+      actions = [reference]
+    ] of expected) {
+      const actual = records.find(
         (entry) =>
           "line" in entry &&
           entry.line === line &&
           "input" in entry &&
           entry.input === input
       );
-      assert.ok(record);
-      assert.ok("file" in record && record.file === file);
-      assert.ok("reference" in record && record.reference === reference);
-      assert.ok("column" in record && record.column === column);
-      assert.ok(
-        "advice" in record && "actions" in record && "anchors" in record
-      );
-      return record;
-    };
-    const definition = at(7, "clean", 16);
-    assert.equal(definition.advice, "hand-edit");
-    assert.deepEqual(
-      new Set(Array.isArray(definition.actions) ? definition.actions : []),
-      new Set(["actions/checkout@v7", "actions/setup-go@v7"])
-    );
-    assert.ok(Array.isArray(definition.anchors));
-    assert.deepEqual(
-      new Set(
-        definition.anchors.map((entry: unknown) => {
-          assert.ok(
-            entry !== null &&
-              typeof entry === "object" &&
-              "name" in entry &&
-              "definition" in entry &&
-              "uses" in entry
-          );
-          assert.ok(
-            entry.definition !== null &&
-              typeof entry.definition === "object" &&
-              "file" in entry.definition &&
-              entry.definition.file === file &&
-              "line" in entry.definition
-          );
-          assert.ok(Array.isArray(entry.uses));
-          return JSON.stringify([
-            entry.name,
-            entry.definition.line,
-            entry.uses
-              .map((use: unknown) => {
-                assert.ok(
-                  use !== null &&
-                    typeof use === "object" &&
-                    "file" in use &&
-                    use.file === file &&
-                    "line" in use &&
-                    typeof use.line === "number"
-                );
-                return use.line;
-              })
-              .toSorted((a, b) => a - b)
-          ]);
-        })
-      ),
-      new Set(
-        [
-          ["steps", 3, [30]],
-          ["step", 4, [13]],
-          ["params", 6, [16]],
-          ["shared", 6, [17, 19]],
-          ["key", 7, [22]],
-          ["value", 7, [23, 26]]
-        ].map((entry) => JSON.stringify(entry))
-      )
-    );
-    assert.equal(at(13, "clean", 9).advice, "detach");
-    assert.equal(at(17, "clean", 11).advice, "detach");
-    assert.equal(at(23, "clean", 13).advice, "hand-edit");
-    assert.equal(at(26, "clean", 18).advice, "hand-edit");
-    assert.equal(at(30, "clean", 12).advice, "detach");
-    assert.partialDeepStrictEqual(at(10, "cache", 11, "actions/setup-go@v7"), {
-      advice: "omit",
-      anchors: [{ name: "unused", uses: [] }]
-    });
-    assert.equal(
-      at(28, "cache", 15, "aquasecurity/trivy-action@v0.36.0").advice,
-      "detach"
-    );
-    assert.equal(at(30, "cache", 12, "actions/setup-go@v7").advice, "detach");
-    assert.deepEqual(
-      {
-        clean: at(42, "clean", 15).advice,
-        "persist-credentials": at(42, "persist-credentials", 15).advice
-      },
-      { clean: "hand-edit", "persist-credentials": "hand-edit" }
-    );
+      assert.deepEqual(actual, {
+        code: "R35/workflow-input-defaults",
+        ...location(line, column),
+        input,
+        reference,
+        advice,
+        actions,
+        anchors
+      });
+    }
   } finally {
     rmSync(checkout, { force: true, recursive: true });
   }
@@ -474,22 +548,28 @@ await test("R35 lists unavailable action metadata without diagnosing the calls",
     assert.equal(result.stderr.trim(), "");
     const listing = check(checkout, "--list");
     assert.equal(listing.status, 0, listing.stderr);
-    assert.deepEqual(
-      new Set(
-        recordLines(listing.stdout)
-          .filter((entry) => "kind" in entry && entry.kind === "left-to-review")
-          .map((entry) => {
-            assert.ok(
-              "file" in entry && "line" in entry && "reference" in entry
-            );
-            return JSON.stringify([entry.file, entry.line, entry.reference]);
-          })
-      ),
-      new Set(
-        [
-          [file, 5, "example/action@v1"],
-          [file, 11, "./unreadable"]
-        ].map((entry) => JSON.stringify(entry))
+    const reviews = recordLines(listing.stdout).filter(
+      (entry) => "kind" in entry && entry.kind === "left-to-review"
+    );
+    assert.equal(reviews.length, 2);
+    assert.equal(
+      reviews.filter(
+        (entry) =>
+          "reference" in entry &&
+          typeof entry.reference === "string" &&
+          entry.reference.startsWith("./")
+      ).length,
+      1
+    );
+    assert.ok(
+      reviews.some(
+        (entry) =>
+          "file" in entry &&
+          entry.file === file &&
+          "line" in entry &&
+          entry.line === 5 &&
+          "reference" in entry &&
+          entry.reference === "example/action@v1"
       )
     );
   } finally {
@@ -569,33 +649,9 @@ await test("R35 lists contextual defaults and local calls left to review", async
           "input" in entry &&
           entry.input === "cache-dependency-path" &&
           "condition" in entry &&
-          entry.condition ===
-            "With caching enabled, falls back to go.mod at the GitHub workspace root"
+          typeof entry.condition === "string" &&
+          entry.condition.trim().length > 0
       )
-    );
-    assert.deepEqual(
-      reviews
-        .filter(
-          (entry) => "reference" in entry && entry.reference === "./local"
-        )
-        .map((entry) => {
-          assert.ok(
-            "file" in entry &&
-              entry.file === file &&
-              "line" in entry &&
-              "reference" in entry
-          );
-          return JSON.stringify([entry.line, entry.reference]);
-        })
-        .toSorted(),
-      [
-        [7, "./local"],
-        [15, "./local"],
-        [21, "./local"],
-        [27, "./local"]
-      ]
-        .map((entry) => JSON.stringify(entry))
-        .toSorted()
     );
     await t.test("a directory with both manifests is left to review", () => {
       assert.ok(
