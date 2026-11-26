@@ -70,7 +70,7 @@ const chartSvgs = new Set(
   chartSources.map((file) => `${file.slice(0, -4)}.svg`)
 );
 const script = /\.[cm]?[jt]s$/u;
-const extraSkillScript = /\.(?:bash|fish|jsx|ksh|py[iw]?|sh|tsx|zsh)$/u;
+const extraScript = /\.(?:bash|fish|jsx|ksh|py[iw]?|sh|tsx|zsh)$/u;
 const skillScriptMetadata = new Set([".json", ".md", ".yaml", ".yml"]);
 const skillScriptHeader =
   /^(?:#!|import[ \t]+(?:[*{"']|[\w.]+(?:[ \t]+(?:as|from)[ \t]+|[ \t]*(?:[,;\r\n]|$)))|export[ \t]+(?:async|class|const|default|function)\b|from[ \t]+[\w.]+[ \t]+import[ \t]+|(?:async[ \t]+)?def[ \t]+\w+[ \t]*\(|set[ \t]+-[a-z]|(?:print|console\.log)[ \t]*\(|printf[ \t]+["'])/u;
@@ -80,24 +80,32 @@ const isSkillScript = (
   extension: string
 ): boolean =>
   script.test(extension) ||
-  extraSkillScript.test(extension) ||
+  extraScript.test(extension) ||
   (section === "scripts" && !skillScriptMetadata.has(extension)) ||
   skillScriptHeader.test(sourceOf(file).trimStart());
 const modelFile =
-  /(?<![\p{L}\p{N}_.-])[\p{L}\p{N}_-][\p{L}\p{N}_.-]*\.tla(?![\p{L}\p{N}_.-])/u;
+  /(?<![\p{L}\p{N}_.-])(?<stem>[\p{L}\p{N}_-][\p{L}\p{N}_.-]*)\.tla(?![\p{L}\p{N}_.-])/gu;
 const tlcTool =
   /(?<![\w.-])(?:tlc2\.TLC|tla2tools(?:-[\w.-]+)?\.jar)(?![\w.-])/u;
 const peleImport =
   /^\s*import\b(?:[^"'();]*?\bfrom)?\s*(?<quote>["'])pele\k<quote>/mu;
 const peleImportCall =
   /(?<![\w$.])(?:import|require)\s*\(\s*(?<quote>["'])pele\k<quote>\s*\)/u;
-const isFormalScript = (file: string): boolean => {
+const isFormalScript = (file: string, extension: string): boolean => {
+  const hasScriptExtension =
+    script.test(extension) || extraScript.test(extension);
+  if (!hasScriptExtension && extension !== "") {
+    return false;
+  }
   const source = sourceOf(file);
   return (
-    modelFile.test(source) ||
-    tlcTool.test(source) ||
-    peleImport.test(source) ||
-    peleImportCall.test(source)
+    (hasScriptExtension || source.startsWith("#!")) &&
+    ([...source.matchAll(modelFile)].some(({ groups }) =>
+      modelNames.has(normalizeName(groups?.stem ?? ""))
+    ) ||
+      tlcTool.test(source) ||
+      peleImport.test(source) ||
+      peleImportCall.test(source))
   );
 };
 for (const file of files) {
@@ -141,10 +149,7 @@ for (const file of files) {
       nested.length > 0) &&
     (inSkill
       ? isSkillScript(file, section, extension)
-      : (script.test(extension) ||
-          extension === ".sh" ||
-          extension === ".py") &&
-        isFormalScript(file))
+      : isFormalScript(file, extension))
   ) {
     expected = "scripts/ or scripts/<model>/ with a .ts filename";
   }
