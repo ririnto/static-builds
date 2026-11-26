@@ -57,13 +57,10 @@ ARG TARGETARCH
 ARG CENTOS_VERSION
 ARG TARGET_PREFIX
 RUN --mount=type=cache,id=monit-yum-${TARGETARCH},sharing=locked,target=/var/cache/yum \
-    if [ "$TARGETARCH" = arm64 ]; then \
-        vault="https://vault.centos.org/altarch/${CENTOS_VERSION}/os/aarch64/"; \
-    else \
-        vault="https://vault.centos.org/${CENTOS_VERSION}/os/x86_64/"; \
-    fi; \
-    sed -i '/^\[base\]/,/^\[/s/^mirrorlist=/#mirrorlist=/' /etc/yum.repos.d/CentOS-Base.repo; \
-    sed -i "/^\\[base\\]/,/^\\[/s|^#\\?baseurl=.*|baseurl=$vault|" /etc/yum.repos.d/CentOS-Base.repo; \
+    sed -ri \
+        -e '/^\[base\]/,/^\[/s/^mirrorlist=/#mirrorlist=/' \
+        -e '/^\[base\]/,/^\[/s|^#?baseurl=https?://mirror\.centos\.org/(centos/)?(altarch/)?\$releasever/|baseurl=https://vault.centos.org/\2'"${CENTOS_VERSION}"'/|' \
+        /etc/yum.repos.d/CentOS-Base.repo; \
     yum -y --disablerepo='*' --enablerepo=base --setopt=base.gpgcheck=1 install file binutils strace
 COPY --from=verify ${TARGET_PREFIX} ${TARGET_PREFIX}
 # Use readelf for linkage because older file versions mislabel static PIE.
