@@ -465,7 +465,7 @@ Contributor checks do not establish runtime acceptance of the custom healthcheck
 
 The `BranchLock` statechart shows how the parent and transport hold the archive lock during a branch download, including after the parent exits.
 
-![BranchLock statechart](.claude/skills/formal-verification/assets/branch-download/statechart.svg)
+![BranchLock statechart](.claude/skills/formal-verification/references/branch-download/statechart.svg)
 
 Run `pnpm run render:statecharts` to regenerate the SVG from the tracked Mermaid source.
 

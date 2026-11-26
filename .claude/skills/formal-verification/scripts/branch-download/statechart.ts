@@ -46,7 +46,7 @@ runStatechart({
     import.meta.url
   ),
   output: new URL(
-    "../../assets/branch-download/statechart.mmd",
+    "../../references/branch-download/statechart.mmd",
     import.meta.url
   ),
   stateLabel
