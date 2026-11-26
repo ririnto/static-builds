@@ -359,7 +359,7 @@ Each target must follow this structure:
          "bin/your-target"
        ],
        "env": {
-         "ALPINE_VERSION": "3.24.4",
+         "ALPINE_VERSION": "3.23.8",
          "YOUR_TARGET_VERSION": "1.0.0"
        }
      }
