@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" class="pele pele-state" viewBox="0 0 925 679" width="925" height="679" style="max-width:100%;height:auto;--_bg:var(--pele-bg,#fff);--_fg:var(--pele-fg,#1f1f1f);--_m:var(--pele-muted,#6e6e6e);--_l:var(--pele-line,#1f1f1f);--_s:var(--pele-surface,#f3f3f3);--_a:var(--pele-surface-alt,#e6e6e6);--_b:var(--pele-border,#8a8a8a);--_c:var(--pele-accent,#5b7bd5);color:var(--_fg);--_fm:var(--pele-font-mono,monospace);font:16px sans-serif;letter-spacing:normal;word-spacing:normal;text-transform:none;direction:ltr;font-family:var(--pele-font,sans-serif)" fill="var(--_fg)" role="graphics-document document" aria-roledescription="state">
+<style>
+.pele {
+  --pele-bg: #ffffff;
+  --pele-fg: #1c1c1c;
+  --pele-muted: #656565;
+  --pele-line: #808080;
+  --pele-surface: #fcfcfc;
+  --pele-surface-alt: #f1f1f1;
+  --pele-border: #c9c9c9;
+}
+.pele .blue rect { fill: #c3e0ff; }
+.pele .orange rect { fill: #f0d3bf; }
+.pele .purple rect { fill: #e3d5ff; }
+.pele .yellow rect { fill: #f0dcbf; }
+.pele .teal rect { fill: #bfe3df; }
+.pele .tan rect { fill: #e5d9ce; }
+.pele .pink rect { fill: #ffcbe6; }
+.pele .breaks rect {
+  fill: #ffecee !important;
+  stroke: #e72e3b !important;
+  stroke-width: 2.5px !important;
+}
+.pele .breaks text {
+  fill: #cd2834 !important;
+}
+.pele .mayBreak rect {
+  fill: #fff3e6 !important;
+  stroke: #e8730c !important;
+  stroke-width: 2.5px !important;
+}
+.pele .mayBreak text {
+  fill: #b85a06 !important;
+}
+.pele .bugPath rect {
+  stroke: #1680f3 !important;
+  stroke-width: 2.5px !important;
+}
+.pele .repeats rect {
+  stroke: #9b35d6 !important;
+  stroke-width: 2.5px !important;
+  stroke-dasharray: 6 3;
+}
+@media (prefers-color-scheme: dark) {
+  .pele {
+    --pele-bg: #1f1f1f;
+    --pele-fg: #f5f5f5;
+    --pele-muted: #acacac;
+    --pele-line: #939393;
+    --pele-surface: #121212;
+    --pele-surface-alt: #2c2c2c;
+    --pele-border: #4e4e4e;
+  }
+  .pele .blue rect { fill: #1b3857; }
+  .pele .orange rect { fill: #573117; }
+  .pele .purple rect { fill: #3c2e57; }
+  .pele .yellow rect { fill: #573d17; }
+  .pele .teal rect { fill: #174641; }
+  .pele .tan rect { fill: #3d3127; }
+  .pele .pink rect { fill: #57233e; }
+  .pele .breaks rect {
+    fill: #2e2021 !important;
+    stroke: #cf2b35 !important;
+  }
+  .pele .breaks text {
+    fill: #ff6463 !important;
+  }
+  .pele .mayBreak rect {
+    fill: #2e2619 !important;
+    stroke: #d0700f !important;
+  }
+  .pele .mayBreak text {
+    fill: #ffa257 !important;
+  }
+  .pele .bugPath rect {
+    stroke: #116dd2 !important;
+  }
+  .pele .repeats rect {
+    stroke: #9a3fcf !important;
+  }
+}
+</style>
+<g class="pele-edges" fill="none" stroke="var(--_l)" stroke-linecap="round"><g class="pele-edge pele-transition" data-id="edge0"><path d="M748.2,22L748.2,59"/><path class="pele-marker" d="M748.2,66L744.84,58L751.56,58Z" fill="var(--_l)" stroke="none"/></g><g class="pele-edge pele-transition" data-id="edge1"><path d="M232.8,354C232.8,363.25 114.27,363.25 114.27,372.5L114.27,416"/><path class="pele-marker" d="M114.27,423L110.91,415L117.63,415Z" fill="var(--_l)" stroke="none"/></g><g class="pele-edge pele-transition" data-id="edge2"><path d="M341.34,354C341.34,363.25 414.62,363.25 414.62,372.5L414.62,416"/><path class="pele-marker" d="M414.62,423L411.26,415L417.98,415Z" fill="var(--_l)" stroke="none"/></g><g class="pele-edge pele-transition" data-id="edge3"><path d="M584.04,223C584.04,227.63 287.07,236.88 287.07,241.5L287.07,285"/><path class="pele-marker" d="M287.07,292L283.71,284L290.43,284Z" fill="var(--_l)" stroke="none"/></g><g class="pele-edge pele-transition" data-id="edge4"><path d="M600.87,223L600.87,601.5"/><path class="pele-marker" d="M600.87,608.5L597.51,600.5L604.23,600.5Z" fill="var(--_l)" stroke="none"/></g><g class="pele-edge pele-transition" data-id="edge5"><path d="M661.45,223C661.45,257.5 749.86,257.5 749.86,292L749.86,485C749.86,540.25 616.87,540.25 616.87,595.5L616.87,601.5"/><path class="pele-marker" d="M616.87,608.5L613.51,600.5L620.23,600.5Z" fill="var(--_l)" stroke="none"/></g><g class="pele-edge pele-transition" data-id="edge6"><path d="M114.27,485L114.27,528.5C114.27,560.74 196.21,580.5 329.91,580.5C463.6,580.5 545.54,586.49 545.54,596.25L545.54,601.5"/><path class="pele-marker" d="M545.54,608.5L542.18,600.5L548.9,600.5Z" fill="var(--_l)" stroke="none"/></g><g class="pele-edge pele-transition" data-id="edge7"><path d="M698.83,110C698.83,119.25 622.74,119.25 622.74,128.5L622.74,172"/><path class="pele-marker" d="M622.74,179L619.38,171L626.1,171Z" fill="var(--_l)" stroke="none"/></g><g class="pele-edge pele-transition" data-id="edge8"><path d="M797.57,110C797.57,144.5 873.65,144.5 873.65,179L873.65,485C873.65,540.25 632.87,540.25 632.87,595.5L632.87,601.5"/><path class="pele-marker" d="M632.87,608.5L629.51,600.5L636.23,600.5Z" fill="var(--_l)" stroke="none"/></g><g class="pele-edge pele-transition" data-id="edge9"><path d="M340.13,485L340.13,528.5C340.13,553.3 382.19,568.5 450.83,568.5C519.47,568.5 561.54,578.76 561.54,595.5L561.54,601.5"/><path class="pele-marker" d="M561.54,608.5L558.18,600.5L564.9,600.5Z" fill="var(--_l)" stroke="none"/></g><g class="pele-edge pele-transition" data-id="edge10"><path d="M489.11,485L489.11,528.5C489.11,545.86 505.91,556.5 533.33,556.5C560.74,556.5 577.54,571.32 577.54,595.5L577.54,601.5"/><path class="pele-marker" d="M577.54,608.5L574.18,600.5L580.9,600.5Z" fill="var(--_l)" stroke="none"/></g></g><g class="pele-edge-labels" font-size="14"><g class="pele-edge-label" data-id="edge1"><rect x="73.31" y="374.5" width="81.92" height="21" rx="3" fill="var(--_bg)"/><text x="114.27" y="389.9" text-anchor="middle">Parent exits</text></g><g class="pele-edge-label" data-id="edge2"><rect x="317.26" y="374.5" width="194.72" height="21" rx="3" fill="var(--_bg)"/><text x="414.62" y="389.9" text-anchor="middle">Transport closes its descriptor</text></g><g class="pele-edge-label" data-id="edge3"><rect x="184.26" y="243.5" width="205.62" height="21" rx="3" fill="var(--_bg)"/><text x="287.07" y="258.9" text-anchor="middle">Transport inherits the descriptor</text></g><g class="pele-edge-label" data-id="edge4"><rect x="512.84" y="312.5" width="176.06" height="21" rx="3" fill="var(--_bg)"/><text x="600.87" y="327.9" text-anchor="middle">Parent closes its descriptor</text></g><g class="pele-edge-label" data-id="edge5"><rect x="708.9" y="312.5" width="81.92" height="21" rx="3" fill="var(--_bg)"/><text x="749.86" y="327.9" text-anchor="middle">Parent exits</text></g><g class="pele-edge-label" data-id="edge6"><rect x="16.91" y="505.5" width="194.72" height="21" rx="3" fill="var(--_bg)"/><text x="114.27" y="520.9" text-anchor="middle">Transport closes its descriptor</text></g><g class="pele-edge-label" data-id="edge7"><rect x="543.65" y="130.5" width="158.18" height="21" rx="3" fill="var(--_bg)"/><text x="622.74" y="145.9" text-anchor="middle">Parent acquires the lock</text></g><g class="pele-edge-label" data-id="edge8"><rect x="832.69" y="312.5" width="81.92" height="21" rx="3" fill="var(--_bg)"/><text x="873.65" y="327.9" text-anchor="middle">Parent exits</text></g><g class="pele-edge-label" data-id="edge9"><rect x="252.1" y="505.5" width="176.06" height="21" rx="3" fill="var(--_bg)"/><text x="340.13" y="520.9" text-anchor="middle">Parent closes its descriptor</text></g><g class="pele-edge-label" data-id="edge10"><rect x="448.15" y="505.5" width="81.92" height="21" rx="3" fill="var(--_bg)"/><text x="489.11" y="520.9" text-anchor="middle">Parent exits</text></g></g><g class="pele-nodes"><g class="pele-node pele-state" data-id="s0" transform="translate(287.07,323)"><rect x="-106.27" y="-31" width="212.54" height="62" rx="10" fill="var(--_s)" stroke="var(--_b)"/><text class="pele-label" text-anchor="middle" xml:space="preserve"><tspan x="0" y="-4.9">Parent and transport hold</tspan><tspan x="0" y="16.1">the lock</tspan></text></g><g class="pele-node pele-state" data-id="s1" transform="translate(622.74,201)"><rect x="-90.7" y="-22" width="181.41" height="44" rx="10" fill="var(--_s)" stroke="var(--_b)"/><text class="pele-label" x="0" y="5.6" text-anchor="middle">Parent holds the lock</text></g><g class="pele-node pele-state" data-id="s2" transform="translate(593.14,639.5)"><rect x="-83.6" y="-31" width="167.2" height="62" rx="10" fill="var(--_s)" stroke="var(--_b)"/><text class="pele-label" text-anchor="middle" xml:space="preserve"><tspan x="0" y="-4.9">Parent stopped, no</tspan><tspan x="0" y="16.1">descriptor remains</tspan></text></g><g class="pele-node pele-state" data-id="s3" transform="translate(114.27,454)"><rect x="-106.27" y="-31" width="212.54" height="62" rx="10" fill="var(--_s)" stroke="var(--_b)"/><text class="pele-label" text-anchor="middle" xml:space="preserve"><tspan x="0" y="-4.9">Parent stopped, transport</tspan><tspan x="0" y="16.1">holds the lock</tspan></text></g><g class="pele-node pele-state" data-id="s4" transform="translate(748.2,88)"><rect x="-101.37" y="-22" width="202.74" height="44" rx="10" fill="var(--_s)" stroke="var(--_b)"/><text class="pele-label" x="0" y="5.6" text-anchor="middle">Parent waits for the lock</text></g><g class="pele-node pele-state" data-id="s5" transform="translate(414.62,454)"><rect x="-108.05" y="-31" width="216.1" height="62" rx="10" fill="var(--_s)" stroke="var(--_b)"/><text class="pele-label" text-anchor="middle" xml:space="preserve"><tspan x="0" y="-4.9">Transport stopped, parent</tspan><tspan x="0" y="16.1">holds the lock</tspan></text></g><g class="pele-node pele-state-start" data-id="root_start" transform="translate(748.2,15)"><circle r="7" fill="var(--_l)"/></g></g></svg>

@@ -203,6 +203,9 @@ catalogs:
     oxlint-tsgolint:
       specifier: ^7.0.2008
       version: 7.0.2008
+    pele:
+      specifier: ^1.13.0
+      version: 1.13.0
     tla-chaos-loop:
       specifier: ^1.1.0
       version: 1.1.0
@@ -250,6 +253,9 @@ importers:
       oxlint-tsgolint:
         specifier: 'catalog:'
         version: 7.0.2008
+      pele:
+        specifier: 'catalog:'
+        version: 1.13.0
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
@@ -1167,6 +1173,10 @@ packages:
 
   pathe@2.0.3:
     resolution: {integrity: sha512-WUjGcAqP1gQacoQe+OBJsFA7Ld4DyXuUIjZ5cc75cLHvJ7dtNsTugphxIADwspS+AraAUePCKrSVtPLFj/F88w==}
+
+  pele@1.13.0:
+    resolution: {integrity: sha512-Ie8UKY9x00MsuR3jO6AzUwzK2Z6MIV3Tf4EDdITiuk8Uaz8K7g0R082WqsqNaSU8DdgkrRvZThzhit83mi/uiw==}
+    engines: {node: '>=20'}
 
   picomatch@2.3.2:
     resolution: {integrity: sha512-V7+vQEJ06Z+c5tSye8S+nHUfI51xoXIXjHQ99cQtKUkQqqO1kO/KCJUfZXuB47h/YBlDhah2H3hdUGXn8ie0oA==}
@@ -2179,6 +2189,8 @@ snapshots:
   path-key@4.0.0: {}
 
   pathe@2.0.3: {}
+
+  pele@1.13.0: {}
 
   picomatch@2.3.2: {}
 

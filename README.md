@@ -461,6 +461,14 @@ Go lint uses `go tool task golangci-lint -- run ./...` checks, and shell formatt
 Builds verify static linking with readelf and executable startup with strace, plus module, plugin, and feature listings in Dockerfile stages without per-target verify scripts or upstream functional test duplication.
 Contributor checks do not establish runtime acceptance of the custom healthcheck module.
 
+### Formal verification
+
+The `BranchLock` statechart shows how the parent and transport hold the archive lock during a branch download, including after the parent exits.
+
+![BranchLock statechart](.claude/skills/formal-verification/assets/branch-download/statechart.svg)
+
+Run `pnpm run render:statecharts` to regenerate the SVG from the tracked Mermaid source.
+
 ## Release Process
 
 ### Creating a Release
