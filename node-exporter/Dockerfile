@@ -1,6 +1,7 @@
 # syntax=docker/dockerfile:1
 ARG GO_VERSION
 ARG UBI10_MINIMAL_VERSION
+ARG CENTOS_VERSION
 ARG TARGET_PREFIX=/out
 
 FROM golang:${GO_VERSION}-alpine AS build
@@ -27,15 +28,35 @@ ARG TARGET_PREFIX
 RUN --mount=type=cache,id=node-exporter-dnf-${TARGETARCH},sharing=locked,target=/var/cache/dnf \
     microdnf -y install file binutils strace
 COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
+# Use readelf for linkage because older file versions mislabel static PIE.
 RUN test -x "${TARGET_PREFIX}/bin/node_exporter"
-RUN file -b "${TARGET_PREFIX}/bin/node_exporter" | grep -Eq '^ELF .* (statically linked|static-pie linked)(,|$)'
-RUN readelf -l "${TARGET_PREFIX}/bin/node_exporter" | ( ! grep -q INTERP )
-RUN readelf -d "${TARGET_PREFIX}/bin/node_exporter" | ( ! grep -q '(NEEDED)' )
+RUN file -b "${TARGET_PREFIX}/bin/node_exporter" | grep '^ELF '
+RUN readelf -l "${TARGET_PREFIX}/bin/node_exporter" | ( ! grep INTERP )
+RUN readelf -d "${TARGET_PREFIX}/bin/node_exporter" | ( ! grep '(NEEDED)' )
+RUN timeout --kill-after=5s 30s strace -qq -e trace=execve "${TARGET_PREFIX}/bin/node_exporter" --version 2>&1 \
+    | grep -F "node_exporter, version ${NODE_EXPORTER_VERSION} "
+
+FROM centos:${CENTOS_VERSION} AS verify-centos
+SHELL ["/bin/bash", "-eo", "pipefail", "-c"]
+ARG TARGETARCH
+ARG CENTOS_VERSION
+ARG TARGET_PREFIX
+ARG NODE_EXPORTER_VERSION
+RUN sed -ri '/^\[base\]/,/^\[/s/^mirrorlist=/#mirrorlist=/' /etc/yum.repos.d/CentOS-Base.repo
+RUN sed -ri '/^\[base\]/,/^\[/s|^#?baseurl=https?://mirror\.centos\.org/(centos/)?(altarch/)?\$releasever/|baseurl=https://vault.centos.org/\2'"${CENTOS_VERSION}"'/|' /etc/yum.repos.d/CentOS-Base.repo
+RUN --mount=type=cache,id=node-exporter-yum-${TARGETARCH},sharing=locked,target=/var/cache/yum \
+    yum -y --disablerepo='*' --enablerepo=base --setopt=base.gpgcheck=1 install file binutils strace
+COPY --from=verify ${TARGET_PREFIX} ${TARGET_PREFIX}
+# Use readelf for linkage because older file versions mislabel static PIE.
+RUN test -x "${TARGET_PREFIX}/bin/node_exporter"
+RUN file -b "${TARGET_PREFIX}/bin/node_exporter" | grep '^ELF '
+RUN readelf -l "${TARGET_PREFIX}/bin/node_exporter" | ( ! grep INTERP )
+RUN readelf -d "${TARGET_PREFIX}/bin/node_exporter" | ( ! grep '(NEEDED)' )
 RUN timeout --kill-after=5s 30s strace -qq -e trace=execve "${TARGET_PREFIX}/bin/node_exporter" --version 2>&1 \
     | grep -F "node_exporter, version ${NODE_EXPORTER_VERSION} "
 
 FROM scratch
 ARG TARGET_PREFIX
-COPY --from=verify ${TARGET_PREFIX} .
+COPY --from=verify-centos ${TARGET_PREFIX} .
 EXPOSE 9100
 ENTRYPOINT ["./bin/node_exporter"]

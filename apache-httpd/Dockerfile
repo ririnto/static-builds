@@ -1,6 +1,7 @@
 # syntax=docker/dockerfile:1
 ARG ALPINE_VERSION
 ARG UBI10_MINIMAL_VERSION
+ARG CENTOS_VERSION
 ARG TARGET_PREFIX=/home/nobody
 
 FROM alpine:${ALPINE_VERSION} AS build
@@ -88,25 +89,49 @@ ARG TARGET_PREFIX
 RUN --mount=type=cache,id=apache-httpd-dnf-${TARGETARCH},sharing=locked,target=/var/cache/dnf \
     microdnf -y install file binutils strace
 COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
+# Use readelf for linkage because older file versions mislabel static PIE.
 RUN test -x "${TARGET_PREFIX}/bin/httpd"
 RUN test -x "${TARGET_PREFIX}/bin/rotatelogs"
-RUN file -b "${TARGET_PREFIX}/bin/httpd" | grep -Eq '^ELF .* (statically linked|static-pie linked)(,|$)'
-RUN readelf -l "${TARGET_PREFIX}/bin/httpd" | ( ! grep -q INTERP )
-RUN readelf -d "${TARGET_PREFIX}/bin/httpd" | ( ! grep -q '(NEEDED)' )
-RUN file -b "${TARGET_PREFIX}/bin/rotatelogs" | grep -Eq '^ELF .* (statically linked|static-pie linked)(,|$)'
-RUN readelf -l "${TARGET_PREFIX}/bin/rotatelogs" | ( ! grep -q INTERP )
-RUN readelf -d "${TARGET_PREFIX}/bin/rotatelogs" | ( ! grep -q '(NEEDED)' )
+RUN file -b "${TARGET_PREFIX}/bin/httpd" | grep '^ELF '
+RUN readelf -l "${TARGET_PREFIX}/bin/httpd" | ( ! grep INTERP )
+RUN readelf -d "${TARGET_PREFIX}/bin/httpd" | ( ! grep '(NEEDED)' )
+RUN LC_ALL=C readelf -h "${TARGET_PREFIX}/bin/rotatelogs" | grep -E '^[[:space:]]*Type:[[:space:]]+(EXEC|DYN)([[:space:]]|$)'
+RUN readelf -l "${TARGET_PREFIX}/bin/rotatelogs" | ( ! grep INTERP )
+RUN readelf -d "${TARGET_PREFIX}/bin/rotatelogs" | ( ! grep '(NEEDED)' )
 RUN timeout --kill-after=5s 30s strace "${TARGET_PREFIX}/bin/httpd" -V
 RUN "${TARGET_PREFIX}/bin/httpd" -l
 RUN "${TARGET_PREFIX}/bin/httpd" -M
 RUN echo "daemon:x:2:" > /etc/group
 RUN echo "daemon:x:2:2:daemon:/home/nobody:/sbin/nologin" > /etc/passwd
 
+FROM centos:${CENTOS_VERSION} AS verify-centos
+SHELL ["/bin/bash", "-eo", "pipefail", "-c"]
+ARG TARGETARCH
+ARG CENTOS_VERSION
+ARG TARGET_PREFIX
+RUN sed -ri '/^\[base\]/,/^\[/s/^mirrorlist=/#mirrorlist=/' /etc/yum.repos.d/CentOS-Base.repo
+RUN sed -ri '/^\[base\]/,/^\[/s|^#?baseurl=https?://mirror\.centos\.org/(centos/)?(altarch/)?\$releasever/|baseurl=https://vault.centos.org/\2'"${CENTOS_VERSION}"'/|' /etc/yum.repos.d/CentOS-Base.repo
+RUN --mount=type=cache,id=apache-httpd-yum-${TARGETARCH},sharing=locked,target=/var/cache/yum \
+    yum -y --disablerepo='*' --enablerepo=base --setopt=base.gpgcheck=1 install file binutils strace
+COPY --from=verify ${TARGET_PREFIX} ${TARGET_PREFIX}
+# Use readelf for linkage because older file versions mislabel static PIE.
+RUN test -x "${TARGET_PREFIX}/bin/httpd"
+RUN test -x "${TARGET_PREFIX}/bin/rotatelogs"
+RUN file -b "${TARGET_PREFIX}/bin/httpd" | grep '^ELF '
+RUN readelf -l "${TARGET_PREFIX}/bin/httpd" | ( ! grep INTERP )
+RUN readelf -d "${TARGET_PREFIX}/bin/httpd" | ( ! grep '(NEEDED)' )
+RUN LC_ALL=C readelf -h "${TARGET_PREFIX}/bin/rotatelogs" | grep -E '^[[:space:]]*Type:[[:space:]]+(EXEC|DYN)([[:space:]]|$)'
+RUN readelf -l "${TARGET_PREFIX}/bin/rotatelogs" | ( ! grep INTERP )
+RUN readelf -d "${TARGET_PREFIX}/bin/rotatelogs" | ( ! grep '(NEEDED)' )
+RUN timeout --kill-after=5s 30s strace "${TARGET_PREFIX}/bin/httpd" -V
+RUN "${TARGET_PREFIX}/bin/httpd" -l
+RUN "${TARGET_PREFIX}/bin/httpd" -M
+
 FROM scratch
 
 ARG TARGET_PREFIX
 
-COPY --from=verify ${TARGET_PREFIX} .
+COPY --from=verify-centos ${TARGET_PREFIX} .
 COPY --from=verify /etc/passwd /etc/group /etc/
 EXPOSE 80 443
 ENTRYPOINT ["./bin/httpd"]

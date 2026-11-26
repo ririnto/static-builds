@@ -1,6 +1,7 @@
 # syntax=docker/dockerfile:1
 ARG GO_VERSION
 ARG UBI10_MINIMAL_VERSION
+ARG CENTOS_VERSION
 ARG TARGET_PREFIX=/out
 
 FROM golang:${GO_VERSION}-alpine AS build
@@ -31,16 +32,34 @@ ARG TARGET_PREFIX
 RUN --mount=type=cache,id=apache-exporter-dnf-${TARGETARCH},sharing=locked,target=/var/cache/dnf \
     microdnf -y install file binutils strace
 COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
+# Use readelf for linkage because older file versions mislabel static PIE.
 RUN test -x "${TARGET_PREFIX}/bin/apache-exporter"
-RUN file -b "${TARGET_PREFIX}/bin/apache-exporter" | grep -Eq '^ELF .* (statically linked|static-pie linked)(,|$)'
-RUN readelf -l "${TARGET_PREFIX}/bin/apache-exporter" | ( ! grep -q INTERP )
-RUN readelf -d "${TARGET_PREFIX}/bin/apache-exporter" | ( ! grep -q '(NEEDED)' )
+RUN file -b "${TARGET_PREFIX}/bin/apache-exporter" | grep '^ELF '
+RUN readelf -l "${TARGET_PREFIX}/bin/apache-exporter" | ( ! grep INTERP )
+RUN readelf -d "${TARGET_PREFIX}/bin/apache-exporter" | ( ! grep '(NEEDED)' )
+RUN timeout --kill-after=5s 30s strace "${TARGET_PREFIX}/bin/apache-exporter" --version
+
+FROM centos:${CENTOS_VERSION} AS verify-centos
+SHELL ["/bin/bash", "-eo", "pipefail", "-c"]
+ARG TARGETARCH
+ARG CENTOS_VERSION
+ARG TARGET_PREFIX
+RUN sed -ri '/^\[base\]/,/^\[/s/^mirrorlist=/#mirrorlist=/' /etc/yum.repos.d/CentOS-Base.repo
+RUN sed -ri '/^\[base\]/,/^\[/s|^#?baseurl=https?://mirror\.centos\.org/(centos/)?(altarch/)?\$releasever/|baseurl=https://vault.centos.org/\2'"${CENTOS_VERSION}"'/|' /etc/yum.repos.d/CentOS-Base.repo
+RUN --mount=type=cache,id=apache-exporter-yum-${TARGETARCH},sharing=locked,target=/var/cache/yum \
+    yum -y --disablerepo='*' --enablerepo=base --setopt=base.gpgcheck=1 install file binutils strace
+COPY --from=verify ${TARGET_PREFIX} ${TARGET_PREFIX}
+# Use readelf for linkage because older file versions mislabel static PIE.
+RUN test -x "${TARGET_PREFIX}/bin/apache-exporter"
+RUN file -b "${TARGET_PREFIX}/bin/apache-exporter" | grep '^ELF '
+RUN readelf -l "${TARGET_PREFIX}/bin/apache-exporter" | ( ! grep INTERP )
+RUN readelf -d "${TARGET_PREFIX}/bin/apache-exporter" | ( ! grep '(NEEDED)' )
 RUN timeout --kill-after=5s 30s strace "${TARGET_PREFIX}/bin/apache-exporter" --version
 
 FROM scratch
 
 ARG TARGET_PREFIX
 
-COPY --from=verify ${TARGET_PREFIX} .
+COPY --from=verify-centos ${TARGET_PREFIX} .
 EXPOSE 9117
 ENTRYPOINT ["./bin/apache-exporter"]

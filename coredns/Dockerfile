@@ -1,6 +1,7 @@
 # syntax=docker/dockerfile:1
 ARG GOLANG_IMAGE_TAG
 ARG UBI10_MINIMAL_VERSION
+ARG CENTOS_VERSION
 ARG TARGET_PREFIX=/home/nobody
 
 FROM golang:${GOLANG_IMAGE_TAG} AS build
@@ -32,10 +33,29 @@ ARG TARGET_PREFIX
 RUN --mount=type=cache,id=coredns-dnf-${TARGETARCH},sharing=locked,target=/var/cache/dnf \
     microdnf -y install file binutils strace
 COPY --from=build /build/coredns-${COREDNS_VERSION}/coredns ${TARGET_PREFIX}/coredns
+# Use readelf for linkage because older file versions mislabel static PIE.
 RUN test -x "${TARGET_PREFIX}/coredns"
-RUN file -b "${TARGET_PREFIX}/coredns" | grep -Eq '^ELF .* (statically linked|static-pie linked)(,|$)'
-RUN readelf -l "${TARGET_PREFIX}/coredns" | ( ! grep -q INTERP )
-RUN readelf -d "${TARGET_PREFIX}/coredns" | ( ! grep -q '(NEEDED)' )
+RUN file -b "${TARGET_PREFIX}/coredns" | grep '^ELF '
+RUN readelf -l "${TARGET_PREFIX}/coredns" | ( ! grep INTERP )
+RUN readelf -d "${TARGET_PREFIX}/coredns" | ( ! grep '(NEEDED)' )
+RUN timeout --kill-after=5s 30s strace "${TARGET_PREFIX}/coredns" -version
+RUN "${TARGET_PREFIX}/coredns" -plugins
+
+FROM centos:${CENTOS_VERSION} AS verify-centos
+SHELL ["/bin/bash", "-eo", "pipefail", "-c"]
+ARG TARGETARCH
+ARG CENTOS_VERSION
+ARG TARGET_PREFIX
+RUN sed -ri '/^\[base\]/,/^\[/s/^mirrorlist=/#mirrorlist=/' /etc/yum.repos.d/CentOS-Base.repo
+RUN sed -ri '/^\[base\]/,/^\[/s|^#?baseurl=https?://mirror\.centos\.org/(centos/)?(altarch/)?\$releasever/|baseurl=https://vault.centos.org/\2'"${CENTOS_VERSION}"'/|' /etc/yum.repos.d/CentOS-Base.repo
+RUN --mount=type=cache,id=coredns-yum-${TARGETARCH},sharing=locked,target=/var/cache/yum \
+    yum -y --disablerepo='*' --enablerepo=base --setopt=base.gpgcheck=1 install file binutils strace
+COPY --from=verify ${TARGET_PREFIX} ${TARGET_PREFIX}
+# Use readelf for linkage because older file versions mislabel static PIE.
+RUN test -x "${TARGET_PREFIX}/coredns"
+RUN file -b "${TARGET_PREFIX}/coredns" | grep '^ELF '
+RUN readelf -l "${TARGET_PREFIX}/coredns" | ( ! grep INTERP )
+RUN readelf -d "${TARGET_PREFIX}/coredns" | ( ! grep '(NEEDED)' )
 RUN timeout --kill-after=5s 30s strace "${TARGET_PREFIX}/coredns" -version
 RUN "${TARGET_PREFIX}/coredns" -plugins
 
@@ -43,6 +63,6 @@ FROM scratch
 
 ARG TARGET_PREFIX
 
-COPY --from=verify ${TARGET_PREFIX} .
+COPY --from=verify-centos ${TARGET_PREFIX} .
 EXPOSE 53 53/udp
 ENTRYPOINT ["./coredns"]
