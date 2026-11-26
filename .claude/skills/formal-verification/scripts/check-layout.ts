@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import path from "node:path";
 
 const skill = ".claude/skills/formal-verification";
@@ -9,15 +9,53 @@ if (extra.length > 0 || revision?.startsWith("-")) {
     "Usage: pnpm --filter @static-builds/formal-verification run check:layout [revision]"
   );
 }
+const gitOptions = {
+  cwd: new URL("../../../../", import.meta.url),
+  encoding: "utf-8" as const
+};
 const files = execFileSync(
   "git",
   revision === undefined
     ? ["ls-files", "--cached", "-z"]
     : ["ls-tree", "-rz", "--name-only", revision],
-  { cwd: new URL("../../../../", import.meta.url), encoding: "utf-8" }
+  gitOptions
 )
   .split("\0")
   .filter(Boolean);
+const formalToolPatterns = [
+  "[\"']tlc2[.]TLC[\"']|require[.]resolve[(][[:blank:]]*[\"'][^\"']*tla2tools[.]jar[\"']",
+  "^[[:blank:]]*import[[:blank:]]+[{][[:blank:]]*render([[:blank:]]+as[[:blank:]]+[$_[:alnum:]]+)?[[:blank:]]*[}][[:blank:]]+from[[:blank:]]+[\"']pele[\"']",
+  "^[[:blank:]]*import[[:blank:]]+[{][[:blank:]]*runStatechart[[:blank:]]*[}][[:blank:]]+from[[:blank:]]+[\"'][^\"']*/statechart[.][cm]?[jt]s[\"']"
+];
+const matches = spawnSync(
+  "git",
+  [
+    "grep",
+    "-IlzE",
+    ...formalToolPatterns.flatMap((pattern) => ["-e", pattern]),
+    revision ?? "--cached",
+    "--",
+    "*.ts",
+    "*.mts",
+    "*.cts",
+    "*.js",
+    "*.mjs",
+    "*.cjs",
+    `:(exclude,glob)${skill}/**`
+  ],
+  gitOptions
+);
+if (matches.error || (matches.status !== 0 && matches.status !== 1)) {
+  throw matches.error ?? new Error(matches.stderr.trim() || "git grep failed");
+}
+const formalScripts = new Set(
+  matches.stdout
+    .split("\0")
+    .filter(Boolean)
+    .map((file) =>
+      revision === undefined ? file : file.slice(revision.length + 1)
+    )
+);
 const modelFolders = new Set(
   files
     .filter((file) => file.endsWith(".tla"))
@@ -66,7 +104,9 @@ for (const file of files) {
       expected = "references/<model>/ with a .mmd or .svg filename";
     }
   } else if (
-    ((inSkill && script.test(name)) || legacyScript.test(name)) &&
+    ((inSkill && script.test(name)) ||
+      legacyScript.test(name) ||
+      formalScripts.has(file)) &&
     (section !== "scripts" ||
       extension !== ".ts" ||
       (leaf !== undefined && !topic.test(model ?? "")) ||
