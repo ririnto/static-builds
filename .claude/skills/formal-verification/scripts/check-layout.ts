@@ -1,5 +1,7 @@
-import { execFileSync, spawnSync } from "node:child_process";
-import path from "node:path";
+import { execFileSync } from "node:child_process";
+import { basename, dirname, extname } from "node:path/posix";
+
+import { isAlias, isScalar, parseDocument } from "yaml";
 
 const skill = ".claude/skills/formal-verification";
 const topic = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
@@ -22,61 +24,80 @@ const files = execFileSync(
 )
   .split("\0")
   .filter(Boolean);
-const formalToolPatterns = [
-  "[\"']tlc2[.]TLC[\"']|require[.]resolve[(][[:blank:]]*[\"'][^\"']*tla2tools[.]jar[\"']",
-  "^[[:blank:]]*import[[:blank:]]+[{][[:blank:]]*render([[:blank:]]+as[[:blank:]]+[$_[:alnum:]]+)?[[:blank:]]*[}][[:blank:]]+from[[:blank:]]+[\"']pele[\"']",
-  "^[[:blank:]]*import[[:blank:]]+[{][[:blank:]]*runStatechart[[:blank:]]*[}][[:blank:]]+from[[:blank:]]+[\"'][^\"']*/statechart[.][cm]?[jt]s[\"']"
-];
-const matches = spawnSync(
-  "git",
-  [
-    "grep",
-    "-IlzE",
-    ...formalToolPatterns.flatMap((pattern) => ["-e", pattern]),
-    revision ?? "--cached",
-    "--",
-    "*.ts",
-    "*.mts",
-    "*.cts",
-    "*.js",
-    "*.mjs",
-    "*.cjs",
-    `:(exclude,glob)${skill}/**`
-  ],
-  gitOptions
+const sourceOf = (file: string): string =>
+  execFileSync("git", ["show", `${revision ?? ""}:${file}`], gitOptions);
+const normalizeName = (name: string): string =>
+  name.toLowerCase().replaceAll(/[\s_-]/gu, "");
+const models = files.filter((file) => extname(file) === ".tla");
+const modelFolders = new Set(models.map((file) => dirname(file)));
+const modelNames = new Set(
+  models.map((file) => normalizeName(basename(file, ".tla")))
 );
-if (matches.error || (matches.status !== 0 && matches.status !== 1)) {
-  throw matches.error ?? new Error(matches.stderr.trim() || "git grep failed");
-}
-const formalScripts = new Set(
-  matches.stdout
-    .split("\0")
-    .filter(Boolean)
-    .map((file) =>
-      revision === undefined ? file : file.slice(revision.length + 1)
-    )
+const isInSkill = (file: string): boolean => file.startsWith(`${skill}/`);
+const belongsToModel = (file: string): boolean =>
+  modelFolders.has(dirname(file)) ||
+  modelNames.has(normalizeName(basename(file, extname(file))));
+const frontMatter =
+  /^(?:\uFEFF)?---[ \t]*\r?\n(?<fields>[\s\S]*?)(?<=\n)(?:---|\.\.\.)[ \t]*(?:\r?\n|$)/u;
+const chartTitle = (file: string): string | undefined => {
+  const fields = frontMatter.exec(sourceOf(file))?.groups?.fields;
+  if (fields === undefined) {
+    return undefined;
+  }
+  const document = parseDocument(fields);
+  if (document.errors.length > 0) {
+    return undefined;
+  }
+  const title = document.get("title", true);
+  const resolved = isAlias(title) ? title.resolve(document) : title;
+  return isScalar(resolved) && typeof resolved.value === "string"
+    ? normalizeName(resolved.value)
+    : undefined;
+};
+const chartSources = files.filter((file) => {
+  const extension = extname(file);
+  if (extension !== ".mmd" && extension !== ".mnd") {
+    return false;
+  }
+  if (isInSkill(file) || belongsToModel(file)) {
+    return true;
+  }
+  const title = chartTitle(file);
+  return title !== undefined && modelNames.has(title);
+});
+const formalCharts = new Set(chartSources);
+const chartSvgs = new Set(
+  chartSources.map((file) => `${file.slice(0, -4)}.svg`)
 );
-const modelFolders = new Set(
-  files
-    .filter((file) => file.endsWith(".tla"))
-    .map((file) => path.posix.dirname(file))
-);
-const legacyScript =
-  /^(?:statechart(?:-[a-z]+)?|render-statecharts)\.(?:[cm]?js|ts)$/u;
-const script = /\.(?:[cm]?js|[cm]?ts)$/u;
+const script = /\.[cm]?[jt]s$/u;
+const modelFile =
+  /(?<![\p{L}\p{N}_.-])[\p{L}\p{N}_-][\p{L}\p{N}_.-]*\.tla(?![\p{L}\p{N}_.-])/u;
+const tlcTool =
+  /(?<![\w.-])(?:tlc2\.TLC|tla2tools(?:-[\w.-]+)?\.jar)(?![\w.-])/u;
+const peleImport =
+  /^\s*import\b(?:[^"'();]*?\bfrom)?\s*(?<quote>["'])pele\k<quote>/mu;
+const peleImportCall =
+  /(?<![\w$.])(?:import|require)\s*\(\s*(?<quote>["'])pele\k<quote>\s*\)/u;
+const isFormalScript = (file: string): boolean => {
+  const source = sourceOf(file);
+  return (
+    modelFile.test(source) ||
+    tlcTool.test(source) ||
+    peleImport.test(source) ||
+    peleImportCall.test(source)
+  );
+};
 for (const file of files) {
-  const folder = path.posix.dirname(file);
-  const name = path.posix.basename(file);
-  const extension = path.posix.extname(file);
-  const inSkill = file.startsWith(`${skill}/`);
+  const folder = dirname(file);
+  const extension = extname(file);
+  const inSkill = isInSkill(file);
   const [section, model, leaf, ...nested] = inSkill
     ? file.slice(skill.length + 1).split("/")
     : [];
   let expected: string | undefined;
   if (
     extension === ".tla" ||
-    (extension === ".cfg" &&
-      (inSkill || modelFolders.has(folder) || name === "BranchLock.cfg"))
+    (extension === ".cfg" && (inSkill || belongsToModel(file)))
   ) {
     if (
       section !== "assets" ||
@@ -87,12 +108,9 @@ for (const file of files) {
       expected = "assets/<model>/";
     }
   } else if (
-    [".mmd", ".mnd", ".svg"].includes(extension) &&
-    (inSkill ||
-      modelFolders.has(folder) ||
-      name === "statechart.mmd" ||
-      name === "statechart.mnd" ||
-      name === "statechart.svg")
+    formalCharts.has(file) ||
+    (extension === ".svg" &&
+      (inSkill || modelFolders.has(folder) || chartSvgs.has(file)))
   ) {
     if (
       extension === ".mnd" ||
@@ -104,13 +122,16 @@ for (const file of files) {
       expected = "references/<model>/ with a .mmd or .svg filename";
     }
   } else if (
-    ((inSkill && script.test(name)) ||
-      legacyScript.test(name) ||
-      formalScripts.has(file)) &&
     (section !== "scripts" ||
       extension !== ".ts" ||
       (leaf !== undefined && !topic.test(model ?? "")) ||
-      nested.length > 0)
+      nested.length > 0) &&
+    (inSkill
+      ? script.test(extension)
+      : (script.test(extension) ||
+          extension === ".sh" ||
+          extension === ".py") &&
+        isFormalScript(file))
   ) {
     expected = "scripts/ or scripts/<model>/ with a .ts filename";
   }

@@ -20,6 +20,7 @@
     "npm-run-all2": "catalog:",
     "pele": "catalog:",
     "tla-chaos-loop": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "yaml": "catalog:"
   }
 }

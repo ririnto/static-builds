@@ -73,9 +73,6 @@ const parseGraph = (dot: string) => {
   return { states, edges };
 };
 
-/**
- * Runs TLC and checks or writes the statechart projected from its explored graph.
- */
 export const runStatechart = ({
   actions,
   config,
