@@ -35,9 +35,9 @@ RUN --mount=type=cache,id=coredns-dnf-${TARGETARCH},sharing=locked,target=/var/c
 COPY --from=build /build/coredns-${COREDNS_VERSION}/coredns ${TARGET_PREFIX}/coredns
 # Use readelf for linkage because older file versions mislabel static PIE.
 RUN test -x "${TARGET_PREFIX}/coredns"
-RUN file -b "${TARGET_PREFIX}/coredns" | grep -q '^ELF '
-RUN readelf -l "${TARGET_PREFIX}/coredns" | ( ! grep -q INTERP )
-RUN readelf -d "${TARGET_PREFIX}/coredns" | ( ! grep -q '(NEEDED)' )
+RUN file -b "${TARGET_PREFIX}/coredns" | grep '^ELF '
+RUN readelf -l "${TARGET_PREFIX}/coredns" | ( ! grep INTERP )
+RUN readelf -d "${TARGET_PREFIX}/coredns" | ( ! grep '(NEEDED)' )
 RUN timeout --kill-after=5s 30s strace "${TARGET_PREFIX}/coredns" -version
 RUN "${TARGET_PREFIX}/coredns" -plugins
 
@@ -58,9 +58,9 @@ RUN --mount=type=cache,id=coredns-yum-${TARGETARCH},sharing=locked,target=/var/c
 COPY --from=verify ${TARGET_PREFIX} ${TARGET_PREFIX}
 # Use readelf for linkage because older file versions mislabel static PIE.
 RUN test -x "${TARGET_PREFIX}/coredns"
-RUN file -b "${TARGET_PREFIX}/coredns" | grep -q '^ELF '
-RUN readelf -l "${TARGET_PREFIX}/coredns" | ( ! grep -q INTERP )
-RUN readelf -d "${TARGET_PREFIX}/coredns" | ( ! grep -q '(NEEDED)' )
+RUN file -b "${TARGET_PREFIX}/coredns" | grep '^ELF '
+RUN readelf -l "${TARGET_PREFIX}/coredns" | ( ! grep INTERP )
+RUN readelf -d "${TARGET_PREFIX}/coredns" | ( ! grep '(NEEDED)' )
 RUN timeout --kill-after=5s 30s strace "${TARGET_PREFIX}/coredns" -version
 RUN "${TARGET_PREFIX}/coredns" -plugins
 

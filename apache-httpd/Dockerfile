@@ -92,12 +92,12 @@ COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
 # Use readelf for linkage because older file versions mislabel static PIE.
 RUN test -x "${TARGET_PREFIX}/bin/httpd"
 RUN test -x "${TARGET_PREFIX}/bin/rotatelogs"
-RUN file -b "${TARGET_PREFIX}/bin/httpd" | grep -q '^ELF '
-RUN readelf -l "${TARGET_PREFIX}/bin/httpd" | ( ! grep -q INTERP )
-RUN readelf -d "${TARGET_PREFIX}/bin/httpd" | ( ! grep -q '(NEEDED)' )
-RUN file -b "${TARGET_PREFIX}/bin/rotatelogs" | grep -q '^ELF '
-RUN readelf -l "${TARGET_PREFIX}/bin/rotatelogs" | ( ! grep -q INTERP )
-RUN readelf -d "${TARGET_PREFIX}/bin/rotatelogs" | ( ! grep -q '(NEEDED)' )
+RUN file -b "${TARGET_PREFIX}/bin/httpd" | grep '^ELF '
+RUN readelf -l "${TARGET_PREFIX}/bin/httpd" | ( ! grep INTERP )
+RUN readelf -d "${TARGET_PREFIX}/bin/httpd" | ( ! grep '(NEEDED)' )
+RUN file -b "${TARGET_PREFIX}/bin/rotatelogs" | grep '^ELF '
+RUN readelf -l "${TARGET_PREFIX}/bin/rotatelogs" | ( ! grep INTERP )
+RUN readelf -d "${TARGET_PREFIX}/bin/rotatelogs" | ( ! grep '(NEEDED)' )
 RUN timeout --kill-after=5s 30s strace "${TARGET_PREFIX}/bin/httpd" -V
 RUN "${TARGET_PREFIX}/bin/httpd" -l
 RUN "${TARGET_PREFIX}/bin/httpd" -M
@@ -122,12 +122,12 @@ COPY --from=verify ${TARGET_PREFIX} ${TARGET_PREFIX}
 # Use readelf for linkage because older file versions mislabel static PIE.
 RUN test -x "${TARGET_PREFIX}/bin/httpd"
 RUN test -x "${TARGET_PREFIX}/bin/rotatelogs"
-RUN file -b "${TARGET_PREFIX}/bin/httpd" | grep -q '^ELF '
-RUN readelf -l "${TARGET_PREFIX}/bin/httpd" | ( ! grep -q INTERP )
-RUN readelf -d "${TARGET_PREFIX}/bin/httpd" | ( ! grep -q '(NEEDED)' )
-RUN file -b "${TARGET_PREFIX}/bin/rotatelogs" | grep -q '^ELF '
-RUN readelf -l "${TARGET_PREFIX}/bin/rotatelogs" | ( ! grep -q INTERP )
-RUN readelf -d "${TARGET_PREFIX}/bin/rotatelogs" | ( ! grep -q '(NEEDED)' )
+RUN file -b "${TARGET_PREFIX}/bin/httpd" | grep '^ELF '
+RUN readelf -l "${TARGET_PREFIX}/bin/httpd" | ( ! grep INTERP )
+RUN readelf -d "${TARGET_PREFIX}/bin/httpd" | ( ! grep '(NEEDED)' )
+RUN file -b "${TARGET_PREFIX}/bin/rotatelogs" | grep '^ELF '
+RUN readelf -l "${TARGET_PREFIX}/bin/rotatelogs" | ( ! grep INTERP )
+RUN readelf -d "${TARGET_PREFIX}/bin/rotatelogs" | ( ! grep '(NEEDED)' )
 RUN timeout --kill-after=5s 30s strace "${TARGET_PREFIX}/bin/httpd" -V
 RUN "${TARGET_PREFIX}/bin/httpd" -l
 RUN "${TARGET_PREFIX}/bin/httpd" -M

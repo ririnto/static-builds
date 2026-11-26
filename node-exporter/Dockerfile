@@ -30,9 +30,9 @@ RUN --mount=type=cache,id=node-exporter-dnf-${TARGETARCH},sharing=locked,target=
 COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
 # Use readelf for linkage because older file versions mislabel static PIE.
 RUN test -x "${TARGET_PREFIX}/bin/node_exporter"
-RUN file -b "${TARGET_PREFIX}/bin/node_exporter" | grep -q '^ELF '
-RUN readelf -l "${TARGET_PREFIX}/bin/node_exporter" | ( ! grep -q INTERP )
-RUN readelf -d "${TARGET_PREFIX}/bin/node_exporter" | ( ! grep -q '(NEEDED)' )
+RUN file -b "${TARGET_PREFIX}/bin/node_exporter" | grep '^ELF '
+RUN readelf -l "${TARGET_PREFIX}/bin/node_exporter" | ( ! grep INTERP )
+RUN readelf -d "${TARGET_PREFIX}/bin/node_exporter" | ( ! grep '(NEEDED)' )
 RUN timeout --kill-after=5s 30s strace -qq -e trace=execve "${TARGET_PREFIX}/bin/node_exporter" --version 2>&1 \
     | grep -F "node_exporter, version ${NODE_EXPORTER_VERSION} "
 
@@ -54,9 +54,9 @@ RUN --mount=type=cache,id=node-exporter-yum-${TARGETARCH},sharing=locked,target=
 COPY --from=verify ${TARGET_PREFIX} ${TARGET_PREFIX}
 # Use readelf for linkage because older file versions mislabel static PIE.
 RUN test -x "${TARGET_PREFIX}/bin/node_exporter"
-RUN file -b "${TARGET_PREFIX}/bin/node_exporter" | grep -q '^ELF '
-RUN readelf -l "${TARGET_PREFIX}/bin/node_exporter" | ( ! grep -q INTERP )
-RUN readelf -d "${TARGET_PREFIX}/bin/node_exporter" | ( ! grep -q '(NEEDED)' )
+RUN file -b "${TARGET_PREFIX}/bin/node_exporter" | grep '^ELF '
+RUN readelf -l "${TARGET_PREFIX}/bin/node_exporter" | ( ! grep INTERP )
+RUN readelf -d "${TARGET_PREFIX}/bin/node_exporter" | ( ! grep '(NEEDED)' )
 RUN timeout --kill-after=5s 30s strace -qq -e trace=execve "${TARGET_PREFIX}/bin/node_exporter" --version 2>&1 \
     | grep -F "node_exporter, version ${NODE_EXPORTER_VERSION} "
 

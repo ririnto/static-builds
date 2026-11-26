@@ -244,9 +244,9 @@ RUN --mount=type=cache,id=haproxy-dnf-${TARGETARCH},sharing=locked,target=/var/c
 COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
 # Use readelf for linkage because older file versions mislabel static PIE.
 RUN test -x "${TARGET_PREFIX}/sbin/haproxy"
-RUN file -b "${TARGET_PREFIX}/sbin/haproxy" | grep -q '^ELF '
-RUN readelf -l "${TARGET_PREFIX}/sbin/haproxy" | ( ! grep -q INTERP )
-RUN readelf -d "${TARGET_PREFIX}/sbin/haproxy" | ( ! grep -q '(NEEDED)' )
+RUN file -b "${TARGET_PREFIX}/sbin/haproxy" | grep '^ELF '
+RUN readelf -l "${TARGET_PREFIX}/sbin/haproxy" | ( ! grep INTERP )
+RUN readelf -d "${TARGET_PREFIX}/sbin/haproxy" | ( ! grep '(NEEDED)' )
 RUN timeout --kill-after=5s 30s strace "${TARGET_PREFIX}/sbin/haproxy" -vv
 
 FROM centos:${CENTOS_VERSION} AS verify-centos
@@ -266,9 +266,9 @@ RUN --mount=type=cache,id=haproxy-yum-${TARGETARCH},sharing=locked,target=/var/c
 COPY --from=verify ${TARGET_PREFIX} ${TARGET_PREFIX}
 # Use readelf for linkage because older file versions mislabel static PIE.
 RUN test -x "${TARGET_PREFIX}/sbin/haproxy"
-RUN file -b "${TARGET_PREFIX}/sbin/haproxy" | grep -q '^ELF '
-RUN readelf -l "${TARGET_PREFIX}/sbin/haproxy" | ( ! grep -q INTERP )
-RUN readelf -d "${TARGET_PREFIX}/sbin/haproxy" | ( ! grep -q '(NEEDED)' )
+RUN file -b "${TARGET_PREFIX}/sbin/haproxy" | grep '^ELF '
+RUN readelf -l "${TARGET_PREFIX}/sbin/haproxy" | ( ! grep INTERP )
+RUN readelf -d "${TARGET_PREFIX}/sbin/haproxy" | ( ! grep '(NEEDED)' )
 RUN timeout --kill-after=5s 30s strace "${TARGET_PREFIX}/sbin/haproxy" -vv
 
 FROM scratch

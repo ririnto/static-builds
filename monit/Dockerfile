@@ -46,9 +46,9 @@ RUN --mount=type=cache,id=monit-dnf-${TARGETARCH},sharing=locked,target=/var/cac
 COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
 # Use readelf for linkage because older file versions mislabel static PIE.
 RUN test -x "${TARGET_PREFIX}/bin/monit"
-RUN file -b "${TARGET_PREFIX}/bin/monit" | grep -q '^ELF '
-RUN readelf -l "${TARGET_PREFIX}/bin/monit" | ( ! grep -q INTERP )
-RUN readelf -d "${TARGET_PREFIX}/bin/monit" | ( ! grep -q '(NEEDED)' )
+RUN file -b "${TARGET_PREFIX}/bin/monit" | grep '^ELF '
+RUN readelf -l "${TARGET_PREFIX}/bin/monit" | ( ! grep INTERP )
+RUN readelf -d "${TARGET_PREFIX}/bin/monit" | ( ! grep '(NEEDED)' )
 RUN timeout --kill-after=5s 30s strace "${TARGET_PREFIX}/bin/monit" -V
 
 FROM centos:${CENTOS_VERSION} AS verify-centos
@@ -68,9 +68,9 @@ RUN --mount=type=cache,id=monit-yum-${TARGETARCH},sharing=locked,target=/var/cac
 COPY --from=verify ${TARGET_PREFIX} ${TARGET_PREFIX}
 # Use readelf for linkage because older file versions mislabel static PIE.
 RUN test -x "${TARGET_PREFIX}/bin/monit"
-RUN file -b "${TARGET_PREFIX}/bin/monit" | grep -q '^ELF '
-RUN readelf -l "${TARGET_PREFIX}/bin/monit" | ( ! grep -q INTERP )
-RUN readelf -d "${TARGET_PREFIX}/bin/monit" | ( ! grep -q '(NEEDED)' )
+RUN file -b "${TARGET_PREFIX}/bin/monit" | grep '^ELF '
+RUN readelf -l "${TARGET_PREFIX}/bin/monit" | ( ! grep INTERP )
+RUN readelf -d "${TARGET_PREFIX}/bin/monit" | ( ! grep '(NEEDED)' )
 RUN timeout --kill-after=5s 30s strace "${TARGET_PREFIX}/bin/monit" -V
 
 FROM scratch

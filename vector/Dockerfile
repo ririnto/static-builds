@@ -26,9 +26,9 @@ COPY --from=download ${TARGET_PREFIX} ${TARGET_PREFIX}
 # Use readelf for linkage because older file versions mislabel static PIE.
 RUN test "$TARGETARCH" = amd64
 RUN test -x "${TARGET_PREFIX}/bin/vector"
-RUN file -b "${TARGET_PREFIX}/bin/vector" | grep -q '^ELF '
-RUN readelf -l "${TARGET_PREFIX}/bin/vector" | ( ! grep -q INTERP )
-RUN readelf -d "${TARGET_PREFIX}/bin/vector" | ( ! grep -q '(NEEDED)' )
+RUN file -b "${TARGET_PREFIX}/bin/vector" | grep '^ELF '
+RUN readelf -l "${TARGET_PREFIX}/bin/vector" | ( ! grep INTERP )
+RUN readelf -d "${TARGET_PREFIX}/bin/vector" | ( ! grep '(NEEDED)' )
 RUN timeout --kill-after=5s 30s strace "${TARGET_PREFIX}/bin/vector" --version
 RUN "${TARGET_PREFIX}/bin/vector" list
 
@@ -50,9 +50,9 @@ COPY --from=verify ${TARGET_PREFIX} ${TARGET_PREFIX}
 # Use readelf for linkage because older file versions mislabel static PIE.
 RUN test "$TARGETARCH" = amd64
 RUN test -x "${TARGET_PREFIX}/bin/vector"
-RUN file -b "${TARGET_PREFIX}/bin/vector" | grep -q '^ELF '
-RUN readelf -l "${TARGET_PREFIX}/bin/vector" | ( ! grep -q INTERP )
-RUN readelf -d "${TARGET_PREFIX}/bin/vector" | ( ! grep -q '(NEEDED)' )
+RUN file -b "${TARGET_PREFIX}/bin/vector" | grep '^ELF '
+RUN readelf -l "${TARGET_PREFIX}/bin/vector" | ( ! grep INTERP )
+RUN readelf -d "${TARGET_PREFIX}/bin/vector" | ( ! grep '(NEEDED)' )
 RUN timeout --kill-after=5s 30s strace "${TARGET_PREFIX}/bin/vector" --version
 RUN "${TARGET_PREFIX}/bin/vector" list
 

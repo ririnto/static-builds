@@ -34,9 +34,9 @@ RUN --mount=type=cache,id=dnsmasq-dnf-${TARGETARCH},sharing=locked,target=/var/c
 COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
 # Use readelf for linkage because older file versions mislabel static PIE.
 RUN test -x "${TARGET_PREFIX}/sbin/dnsmasq"
-RUN file -b "${TARGET_PREFIX}/sbin/dnsmasq" | grep -q '^ELF '
-RUN readelf -l "${TARGET_PREFIX}/sbin/dnsmasq" | ( ! grep -q INTERP )
-RUN readelf -d "${TARGET_PREFIX}/sbin/dnsmasq" | ( ! grep -q '(NEEDED)' )
+RUN file -b "${TARGET_PREFIX}/sbin/dnsmasq" | grep '^ELF '
+RUN readelf -l "${TARGET_PREFIX}/sbin/dnsmasq" | ( ! grep INTERP )
+RUN readelf -d "${TARGET_PREFIX}/sbin/dnsmasq" | ( ! grep '(NEEDED)' )
 RUN timeout --kill-after=5s 30s strace "${TARGET_PREFIX}/sbin/dnsmasq" -v
 RUN echo "nobody:x:65534:" > /etc/group
 RUN echo "nobody:x:65534:65534:nobody:/home/nobody:/sbin/nologin" > /etc/passwd
@@ -58,9 +58,9 @@ RUN --mount=type=cache,id=dnsmasq-yum-${TARGETARCH},sharing=locked,target=/var/c
 COPY --from=verify ${TARGET_PREFIX} ${TARGET_PREFIX}
 # Use readelf for linkage because older file versions mislabel static PIE.
 RUN test -x "${TARGET_PREFIX}/sbin/dnsmasq"
-RUN file -b "${TARGET_PREFIX}/sbin/dnsmasq" | grep -q '^ELF '
-RUN readelf -l "${TARGET_PREFIX}/sbin/dnsmasq" | ( ! grep -q INTERP )
-RUN readelf -d "${TARGET_PREFIX}/sbin/dnsmasq" | ( ! grep -q '(NEEDED)' )
+RUN file -b "${TARGET_PREFIX}/sbin/dnsmasq" | grep '^ELF '
+RUN readelf -l "${TARGET_PREFIX}/sbin/dnsmasq" | ( ! grep INTERP )
+RUN readelf -d "${TARGET_PREFIX}/sbin/dnsmasq" | ( ! grep '(NEEDED)' )
 RUN timeout --kill-after=5s 30s strace "${TARGET_PREFIX}/sbin/dnsmasq" -v
 
 FROM scratch
