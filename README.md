@@ -324,6 +324,12 @@ The following policies guide version selection.
 | Red Hat UBI | Select a supported version of the UBI minimal image. |
 | Other dependencies | Select stable releases when upstream provides no LTS series. |
 
+Alpine builds use `3.23.x` to retain compatibility with older container hosts.
+Alpine 3.24 uses musl 1.2.6, which routes `pwrite()` through `pwritev2()`.
+Older kernels may lack that syscall, and older seccomp profiles may block it.
+On affected hosts, nginx can fail to write its PID file and exit at startup, as reported in [nginx/docker-nginx #1059](https://github.com/nginx/docker-nginx/issues/1059).
+The exact image tag is set in [metadata.json](metadata.json).
+
 GitHub jobs use `ubuntu-latest` for amd64 and `ubuntu-24.04-arm` for native arm64 builds.
 GitLab child pipelines select the release component through `CI_COMMIT_REF_NAME`, which names the current branch or tag.
 The parent job expands the complete component reference before generating the child pipeline.
@@ -359,7 +365,7 @@ Each target must follow this structure:
          "bin/your-target"
        ],
        "env": {
-         "ALPINE_VERSION": "3.23.8",
+         "ALPINE_VERSION": "3.23.x",
          "YOUR_TARGET_VERSION": "1.0.0"
        }
      }
