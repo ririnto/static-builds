@@ -31,20 +31,37 @@ ARG TARGET_PREFIX
 RUN --mount=type=cache,id=dnsmasq-dnf-${TARGETARCH},sharing=locked,target=/var/cache/dnf \
     microdnf -y install file binutils strace
 COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
-RUN test -x "${TARGET_PREFIX}/sbin/dnsmasq"
-RUN file -b "${TARGET_PREFIX}/sbin/dnsmasq" | grep -Eq '^ELF .* (statically linked|static-pie linked)(,|$)'
-RUN readelf -l "${TARGET_PREFIX}/sbin/dnsmasq" | ( ! grep -q INTERP )
-RUN readelf -d "${TARGET_PREFIX}/sbin/dnsmasq" | ( ! grep -q '(NEEDED)' )
-RUN timeout --kill-after=5s 30s strace "${TARGET_PREFIX}/sbin/dnsmasq" -v
+COPY <<'VERIFY' /tmp/verify-artifact
+set -eo pipefail
+# Use readelf for linkage because older file versions mislabel static PIE.
+test -x "${TARGET_PREFIX}/sbin/dnsmasq"
+file -b "${TARGET_PREFIX}/sbin/dnsmasq" | grep -q '^ELF '
+readelf -l "${TARGET_PREFIX}/sbin/dnsmasq" | ( ! grep -q INTERP )
+readelf -d "${TARGET_PREFIX}/sbin/dnsmasq" | ( ! grep -q '(NEEDED)' )
+timeout --kill-after=5s 30s strace "${TARGET_PREFIX}/sbin/dnsmasq" -v
+VERIFY
+RUN bash /tmp/verify-artifact
 RUN echo "nobody:x:65534:" > /etc/group
 RUN echo "nobody:x:65534:65534:nobody:/home/nobody:/sbin/nologin" > /etc/passwd
+
+FROM centos:7.9.2009 AS verify-centos
+SHELL ["/bin/bash", "-eo", "pipefail", "-c"]
+ARG TARGETARCH
+ARG TARGET_PREFIX
+COPY templates/centos7-vault.repo /etc/yum.repos.d/static-builds-vault.repo
+RUN --mount=type=cache,id=dnsmasq-yum-${TARGETARCH},sharing=locked,target=/var/cache/yum \
+    yum -y --disablerepo='*' --enablerepo="static-builds-vault-$(uname -m)" install file binutils strace
+COPY --from=verify ${TARGET_PREFIX} ${TARGET_PREFIX}
+COPY --from=verify /tmp/verify-artifact /tmp/verify-artifact
+RUN bash /tmp/verify-artifact
+COPY --from=verify /etc/passwd /etc/group /etc/
 
 FROM scratch
 
 ARG TARGET_PREFIX
 
-COPY --from=verify ${TARGET_PREFIX} .
-COPY --from=verify /etc/passwd /etc/group /etc/
+COPY --from=verify-centos ${TARGET_PREFIX} .
+COPY --from=verify-centos /etc/passwd /etc/group /etc/
 EXPOSE 53 53/udp 67/udp
 ENTRYPOINT ["./sbin/dnsmasq"]
 CMD ["-k"]

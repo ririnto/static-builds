@@ -88,26 +88,43 @@ ARG TARGET_PREFIX
 RUN --mount=type=cache,id=apache-httpd-dnf-${TARGETARCH},sharing=locked,target=/var/cache/dnf \
     microdnf -y install file binutils strace
 COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
-RUN test -x "${TARGET_PREFIX}/bin/httpd"
-RUN test -x "${TARGET_PREFIX}/bin/rotatelogs"
-RUN file -b "${TARGET_PREFIX}/bin/httpd" | grep -Eq '^ELF .* (statically linked|static-pie linked)(,|$)'
-RUN readelf -l "${TARGET_PREFIX}/bin/httpd" | ( ! grep -q INTERP )
-RUN readelf -d "${TARGET_PREFIX}/bin/httpd" | ( ! grep -q '(NEEDED)' )
-RUN file -b "${TARGET_PREFIX}/bin/rotatelogs" | grep -Eq '^ELF .* (statically linked|static-pie linked)(,|$)'
-RUN readelf -l "${TARGET_PREFIX}/bin/rotatelogs" | ( ! grep -q INTERP )
-RUN readelf -d "${TARGET_PREFIX}/bin/rotatelogs" | ( ! grep -q '(NEEDED)' )
-RUN timeout --kill-after=5s 30s strace "${TARGET_PREFIX}/bin/httpd" -V
-RUN "${TARGET_PREFIX}/bin/httpd" -l
-RUN "${TARGET_PREFIX}/bin/httpd" -M
+COPY <<'VERIFY' /tmp/verify-artifact
+set -eo pipefail
+# Use readelf for linkage because older file versions mislabel static PIE.
+test -x "${TARGET_PREFIX}/bin/httpd"
+test -x "${TARGET_PREFIX}/bin/rotatelogs"
+file -b "${TARGET_PREFIX}/bin/httpd" | grep -q '^ELF '
+readelf -l "${TARGET_PREFIX}/bin/httpd" | ( ! grep -q INTERP )
+readelf -d "${TARGET_PREFIX}/bin/httpd" | ( ! grep -q '(NEEDED)' )
+file -b "${TARGET_PREFIX}/bin/rotatelogs" | grep -q '^ELF '
+readelf -l "${TARGET_PREFIX}/bin/rotatelogs" | ( ! grep -q INTERP )
+readelf -d "${TARGET_PREFIX}/bin/rotatelogs" | ( ! grep -q '(NEEDED)' )
+timeout --kill-after=5s 30s strace "${TARGET_PREFIX}/bin/httpd" -V
+"${TARGET_PREFIX}/bin/httpd" -l
+"${TARGET_PREFIX}/bin/httpd" -M
+VERIFY
+RUN bash /tmp/verify-artifact
 RUN echo "daemon:x:2:" > /etc/group
 RUN echo "daemon:x:2:2:daemon:/home/nobody:/sbin/nologin" > /etc/passwd
+
+FROM centos:7.9.2009 AS verify-centos
+SHELL ["/bin/bash", "-eo", "pipefail", "-c"]
+ARG TARGETARCH
+ARG TARGET_PREFIX
+COPY templates/centos7-vault.repo /etc/yum.repos.d/static-builds-vault.repo
+RUN --mount=type=cache,id=apache-httpd-yum-${TARGETARCH},sharing=locked,target=/var/cache/yum \
+    yum -y --disablerepo='*' --enablerepo="static-builds-vault-$(uname -m)" install file binutils strace
+COPY --from=verify ${TARGET_PREFIX} ${TARGET_PREFIX}
+COPY --from=verify /tmp/verify-artifact /tmp/verify-artifact
+RUN bash /tmp/verify-artifact
+COPY --from=verify /etc/passwd /etc/group /etc/
 
 FROM scratch
 
 ARG TARGET_PREFIX
 
-COPY --from=verify ${TARGET_PREFIX} .
-COPY --from=verify /etc/passwd /etc/group /etc/
+COPY --from=verify-centos ${TARGET_PREFIX} .
+COPY --from=verify-centos /etc/passwd /etc/group /etc/
 EXPOSE 80 443
 ENTRYPOINT ["./bin/httpd"]
 CMD ["-D", "FOREGROUND"]

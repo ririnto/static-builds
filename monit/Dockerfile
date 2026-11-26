@@ -43,17 +43,33 @@ ARG TARGET_PREFIX
 RUN --mount=type=cache,id=monit-dnf-${TARGETARCH},sharing=locked,target=/var/cache/dnf \
     microdnf -y install file binutils strace
 COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
-RUN test -x "${TARGET_PREFIX}/bin/monit"
-RUN file -b "${TARGET_PREFIX}/bin/monit" | grep -Eq '^ELF .* (statically linked|static-pie linked)(,|$)'
-RUN readelf -l "${TARGET_PREFIX}/bin/monit" | ( ! grep -q INTERP )
-RUN readelf -d "${TARGET_PREFIX}/bin/monit" | ( ! grep -q '(NEEDED)' )
-RUN timeout --kill-after=5s 30s strace "${TARGET_PREFIX}/bin/monit" -V
+COPY <<'VERIFY' /tmp/verify-artifact
+set -eo pipefail
+# Use readelf for linkage because older file versions mislabel static PIE.
+test -x "${TARGET_PREFIX}/bin/monit"
+file -b "${TARGET_PREFIX}/bin/monit" | grep -q '^ELF '
+readelf -l "${TARGET_PREFIX}/bin/monit" | ( ! grep -q INTERP )
+readelf -d "${TARGET_PREFIX}/bin/monit" | ( ! grep -q '(NEEDED)' )
+timeout --kill-after=5s 30s strace "${TARGET_PREFIX}/bin/monit" -V
+VERIFY
+RUN bash /tmp/verify-artifact
+
+FROM centos:7.9.2009 AS verify-centos
+SHELL ["/bin/bash", "-eo", "pipefail", "-c"]
+ARG TARGETARCH
+ARG TARGET_PREFIX
+COPY templates/centos7-vault.repo /etc/yum.repos.d/static-builds-vault.repo
+RUN --mount=type=cache,id=monit-yum-${TARGETARCH},sharing=locked,target=/var/cache/yum \
+    yum -y --disablerepo='*' --enablerepo="static-builds-vault-$(uname -m)" install file binutils strace
+COPY --from=verify ${TARGET_PREFIX} ${TARGET_PREFIX}
+COPY --from=verify /tmp/verify-artifact /tmp/verify-artifact
+RUN bash /tmp/verify-artifact
 
 FROM scratch
 
 ARG TARGET_PREFIX
 
-COPY --from=verify ${TARGET_PREFIX} .
+COPY --from=verify-centos ${TARGET_PREFIX} .
 EXPOSE 2812
 ENTRYPOINT ["./bin/monit"]
 CMD ["-I"]
