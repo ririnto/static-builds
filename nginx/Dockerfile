@@ -1,6 +1,7 @@
 # syntax=docker/dockerfile:1
 ARG ALPINE_VERSION
 ARG UBI10_MINIMAL_VERSION
+ARG CENTOS_VERSION
 ARG TARGET_PREFIX=/home/nobody
 
 FROM alpine:${ALPINE_VERSION} AS build
@@ -79,36 +80,42 @@ ARG TARGET_PREFIX
 RUN --mount=type=cache,id=nginx-dnf-${TARGETARCH},sharing=locked,target=/var/cache/dnf \
     microdnf -y install file binutils strace
 COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
-COPY <<'VERIFY' /tmp/verify-artifact
-set -eo pipefail
 # Use readelf for linkage because older file versions mislabel static PIE.
-test -x "${TARGET_PREFIX}/sbin/nginx"
-file -b "${TARGET_PREFIX}/sbin/nginx" | grep -q '^ELF '
-readelf -l "${TARGET_PREFIX}/sbin/nginx" | ( ! grep -q INTERP )
-readelf -d "${TARGET_PREFIX}/sbin/nginx" | ( ! grep -q '(NEEDED)' )
-timeout --kill-after=5s 30s strace "${TARGET_PREFIX}/sbin/nginx" -V
-VERIFY
-RUN bash /tmp/verify-artifact
+RUN test -x "${TARGET_PREFIX}/sbin/nginx"
+RUN file -b "${TARGET_PREFIX}/sbin/nginx" | grep -q '^ELF '
+RUN readelf -l "${TARGET_PREFIX}/sbin/nginx" | ( ! grep -q INTERP )
+RUN readelf -d "${TARGET_PREFIX}/sbin/nginx" | ( ! grep -q '(NEEDED)' )
+RUN timeout --kill-after=5s 30s strace "${TARGET_PREFIX}/sbin/nginx" -V
 RUN echo "nobody:x:65534:" > /etc/group
 RUN echo "nobody:x:65534:65534:nobody:/home/nobody:/sbin/nologin" > /etc/passwd
 
-FROM centos:7.9.2009 AS verify-centos
+FROM centos:${CENTOS_VERSION} AS verify-centos
 SHELL ["/bin/bash", "-eo", "pipefail", "-c"]
 ARG TARGETARCH
+ARG CENTOS_VERSION
 ARG TARGET_PREFIX
-COPY templates/centos7-vault.repo /etc/yum.repos.d/static-builds-vault.repo
 RUN --mount=type=cache,id=nginx-yum-${TARGETARCH},sharing=locked,target=/var/cache/yum \
-    yum -y --disablerepo='*' --enablerepo="static-builds-vault-$(uname -m)" install file binutils strace
+    if [ "$TARGETARCH" = arm64 ]; then \
+        vault="https://vault.centos.org/altarch/${CENTOS_VERSION}/os/aarch64/"; \
+    else \
+        vault="https://vault.centos.org/${CENTOS_VERSION}/os/x86_64/"; \
+    fi; \
+    sed -i '/^\[base\]/,/^\[/s/^mirrorlist=/#mirrorlist=/' /etc/yum.repos.d/CentOS-Base.repo; \
+    sed -i "/^\\[base\\]/,/^\\[/s|^#\\?baseurl=.*|baseurl=$vault|" /etc/yum.repos.d/CentOS-Base.repo; \
+    yum -y --disablerepo='*' --enablerepo=base --setopt=base.gpgcheck=1 install file binutils strace
 COPY --from=verify ${TARGET_PREFIX} ${TARGET_PREFIX}
-COPY --from=verify /tmp/verify-artifact /tmp/verify-artifact
-RUN bash /tmp/verify-artifact
-COPY --from=verify /etc/passwd /etc/group /etc/
+# Use readelf for linkage because older file versions mislabel static PIE.
+RUN test -x "${TARGET_PREFIX}/sbin/nginx"
+RUN file -b "${TARGET_PREFIX}/sbin/nginx" | grep -q '^ELF '
+RUN readelf -l "${TARGET_PREFIX}/sbin/nginx" | ( ! grep -q INTERP )
+RUN readelf -d "${TARGET_PREFIX}/sbin/nginx" | ( ! grep -q '(NEEDED)' )
+RUN timeout --kill-after=5s 30s strace "${TARGET_PREFIX}/sbin/nginx" -V
 
 FROM scratch
 
 ARG TARGET_PREFIX
 
 COPY --from=verify-centos ${TARGET_PREFIX} /
-COPY --from=verify-centos /etc/passwd /etc/group /etc/
+COPY --from=verify /etc/passwd /etc/group /etc/
 EXPOSE 80 443
 ENTRYPOINT ["/sbin/nginx", "-p", "/", "-g", "daemon off;"]
