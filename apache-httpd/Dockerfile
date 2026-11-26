@@ -95,7 +95,7 @@ RUN test -x "${TARGET_PREFIX}/bin/rotatelogs"
 RUN file -b "${TARGET_PREFIX}/bin/httpd" | grep '^ELF '
 RUN readelf -l "${TARGET_PREFIX}/bin/httpd" | ( ! grep INTERP )
 RUN readelf -d "${TARGET_PREFIX}/bin/httpd" | ( ! grep '(NEEDED)' )
-RUN file -b "${TARGET_PREFIX}/bin/rotatelogs" | grep '^ELF '
+RUN LC_ALL=C readelf -h "${TARGET_PREFIX}/bin/rotatelogs" | grep -E '^[[:space:]]*Type:[[:space:]]+(EXEC|DYN)([[:space:]]|$)'
 RUN readelf -l "${TARGET_PREFIX}/bin/rotatelogs" | ( ! grep INTERP )
 RUN readelf -d "${TARGET_PREFIX}/bin/rotatelogs" | ( ! grep '(NEEDED)' )
 RUN timeout --kill-after=5s 30s strace "${TARGET_PREFIX}/bin/httpd" -V
@@ -120,7 +120,7 @@ RUN test -x "${TARGET_PREFIX}/bin/rotatelogs"
 RUN file -b "${TARGET_PREFIX}/bin/httpd" | grep '^ELF '
 RUN readelf -l "${TARGET_PREFIX}/bin/httpd" | ( ! grep INTERP )
 RUN readelf -d "${TARGET_PREFIX}/bin/httpd" | ( ! grep '(NEEDED)' )
-RUN file -b "${TARGET_PREFIX}/bin/rotatelogs" | grep '^ELF '
+RUN LC_ALL=C readelf -h "${TARGET_PREFIX}/bin/rotatelogs" | grep -E '^[[:space:]]*Type:[[:space:]]+(EXEC|DYN)([[:space:]]|$)'
 RUN readelf -l "${TARGET_PREFIX}/bin/rotatelogs" | ( ! grep INTERP )
 RUN readelf -d "${TARGET_PREFIX}/bin/rotatelogs" | ( ! grep '(NEEDED)' )
 RUN timeout --kill-after=5s 30s strace "${TARGET_PREFIX}/bin/httpd" -V
