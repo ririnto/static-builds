@@ -203,9 +203,6 @@ catalogs:
     oxlint-tsgolint:
       specifier: ^7.0.2008
       version: 7.0.2008
-    pele:
-      specifier: ^1.13.0
-      version: 1.13.0
     tla-chaos-loop:
       specifier: ^1.1.0
       version: 1.1.0
@@ -253,9 +250,6 @@ importers:
       oxlint-tsgolint:
         specifier: 'catalog:'
         version: 7.0.2008
-      pele:
-        specifier: 'catalog:'
-        version: 1.13.0
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
@@ -277,6 +271,9 @@ importers:
       npm-run-all2:
         specifier: 'catalog:'
         version: 9.1.0
+      pele:
+        specifier: ^1.13.0
+        version: 1.13.0
       tla-chaos-loop:
         specifier: 'catalog:'
         version: 1.1.0

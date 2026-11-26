@@ -7,7 +7,6 @@
     "build:compile": "go tool task build --",
     "build:package": "go tool task goreleaser --",
     "check": "run-p check:*",
-    "check:formal-layout": "node .claude/skills/formal-verification/scripts/check-layout.ts",
     "check:formal-verification": "pnpm --filter @static-builds/formal-verification run check",
     "check:go-mod": "go tool task tidy -- -diff",
     "check:golangci-lint": "go tool task golangci-lint -- run ./...",
@@ -15,7 +14,7 @@
     "check:markdownlint-cli2": "markdownlint-cli2",
     "check:nilaway": "go tool task nilaway -- ./...",
     "check:shfmt": "go tool task shfmt -- -d",
-    "check:statechart-svg": "node .claude/skills/formal-verification/scripts/statechart-svg.ts --check",
+    "check:statechart-svg": "pnpm --filter @static-builds/formal-verification run verify:statechart-svg",
     "check:test": "go tool task test",
     "check:test-workflow-input-defaults": "node --test tests/workflow-input-defaults.test.ts",
     "check:typescript": "tsc --noEmit",
@@ -33,7 +32,7 @@
     "pre-commit": "run-s check",
     "pre-push": "run-s check",
     "prepare": "husky",
-    "render:statecharts": "node .claude/skills/formal-verification/scripts/statechart-svg.ts --write",
+    "render:statecharts": "pnpm --filter @static-builds/formal-verification run render:statecharts",
     "tasks": "go tool task"
   },
   "devDependencies": {
@@ -47,7 +46,6 @@
     "oxfmt": "catalog:",
     "oxlint": "catalog:",
     "oxlint-tsgolint": "catalog:",
-    "pele": "catalog:",
     "typescript": "catalog:",
     "ultracite": "catalog:",
     "yaml": "catalog:"

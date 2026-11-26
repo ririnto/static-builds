@@ -23,6 +23,8 @@ Downloader 2 remains part of every invariant check.
 The projection hides only transitions that stay within the same displayed state, including downloader 2's activity.
 The [generation script](../../scripts/branch-download/statechart.ts) projects TLC's explored transitions into the Mermaid chart.
 
+![BranchLock statechart](statechart.svg)
+
 ## Verification results
 
 The canonical model passed both configured invariants and deadlock checking.

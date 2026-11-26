@@ -5,7 +5,9 @@ const skill = ".claude/skills/formal-verification";
 const topic = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
 const [revision, ...extra] = process.argv.slice(2);
 if (extra.length > 0 || revision?.startsWith("-")) {
-  throw new Error("Usage: pnpm run check:formal-layout [revision]");
+  throw new Error(
+    "Usage: pnpm --filter @static-builds/formal-verification run check:layout [revision]"
+  );
 }
 const files = execFileSync(
   "git",
