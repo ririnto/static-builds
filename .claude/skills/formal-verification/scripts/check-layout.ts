@@ -70,6 +70,19 @@ const chartSvgs = new Set(
   chartSources.map((file) => `${file.slice(0, -4)}.svg`)
 );
 const script = /\.[cm]?[jt]s$/u;
+const extraSkillScript = /\.(?:bash|fish|jsx|ksh|py[iw]?|sh|tsx|zsh)$/u;
+const skillScriptMetadata = new Set([".json", ".md", ".yaml", ".yml"]);
+const skillScriptHeader =
+  /^(?:#!|import[ \t]+(?:[*{"']|[\w.]+(?:[ \t]+(?:as|from)[ \t]+|[ \t]*(?:[,;\r\n]|$)))|export[ \t]+(?:async|class|const|default|function)\b|from[ \t]+[\w.]+[ \t]+import[ \t]+|(?:async[ \t]+)?def[ \t]+\w+[ \t]*\(|set[ \t]+-[a-z]|(?:print|console\.log)[ \t]*\(|printf[ \t]+["'])/u;
+const isSkillScript = (
+  file: string,
+  section: string | undefined,
+  extension: string
+): boolean =>
+  script.test(extension) ||
+  extraSkillScript.test(extension) ||
+  (section === "scripts" && !skillScriptMetadata.has(extension)) ||
+  skillScriptHeader.test(sourceOf(file).trimStart());
 const modelFile =
   /(?<![\p{L}\p{N}_.-])[\p{L}\p{N}_-][\p{L}\p{N}_.-]*\.tla(?![\p{L}\p{N}_.-])/u;
 const tlcTool =
@@ -127,7 +140,7 @@ for (const file of files) {
       (leaf !== undefined && !topic.test(model ?? "")) ||
       nested.length > 0) &&
     (inSkill
-      ? script.test(extension)
+      ? isSkillScript(file, section, extension)
       : (script.test(extension) ||
           extension === ".sh" ||
           extension === ".py") &&
