@@ -11,7 +11,15 @@ if (extra.length > 0 || revision?.startsWith("-")) {
     "Usage: pnpm --filter @static-builds/formal-verification run check:layout [revision]"
   );
 }
+const gitEnv = { ...process.env };
+delete gitEnv.GIT_DIR;
+delete gitEnv.GIT_WORK_TREE;
+delete gitEnv.GIT_INDEX_FILE;
+delete gitEnv.GIT_OBJECT_DIRECTORY;
+delete gitEnv.GIT_ALTERNATE_OBJECT_DIRECTORIES;
+delete gitEnv.GIT_COMMON_DIR;
 const gitOptions = {
+  env: gitEnv,
   cwd: new URL("../../../../", import.meta.url),
   encoding: "utf-8" as const
 };
