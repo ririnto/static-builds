@@ -80,7 +80,6 @@ ARG TARGET_PREFIX
 RUN --mount=type=cache,id=nginx-dnf-${TARGETARCH},sharing=locked,target=/var/cache/dnf \
     microdnf -y install file binutils strace
 COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
-# Use readelf for linkage because older file versions mislabel static PIE.
 RUN test -x "${TARGET_PREFIX}/sbin/nginx"
 RUN file -b "${TARGET_PREFIX}/sbin/nginx" | grep '^ELF '
 RUN readelf -l "${TARGET_PREFIX}/sbin/nginx" | ( ! grep INTERP )
@@ -99,9 +98,9 @@ RUN sed -ri '/^\[base\]/,/^\[/s|^#?baseurl=https?://mirror\.centos\.org/(centos/
 RUN --mount=type=cache,id=nginx-yum-${TARGETARCH},sharing=locked,target=/var/cache/yum \
     yum -y --disablerepo='*' --enablerepo=base --setopt=base.gpgcheck=1 install file binutils strace
 COPY --from=verify ${TARGET_PREFIX} ${TARGET_PREFIX}
-# Use readelf for linkage because older file versions mislabel static PIE.
 RUN test -x "${TARGET_PREFIX}/sbin/nginx"
 RUN file -b "${TARGET_PREFIX}/sbin/nginx" | grep '^ELF '
+RUN LC_ALL=C readelf -h "${TARGET_PREFIX}/sbin/nginx" | grep -E '^[[:space:]]*Type:[[:space:]]+(EXEC|DYN)([[:space:]]|$)'
 RUN readelf -l "${TARGET_PREFIX}/sbin/nginx" | ( ! grep INTERP )
 RUN readelf -d "${TARGET_PREFIX}/sbin/nginx" | ( ! grep '(NEEDED)' )
 RUN timeout --kill-after=5s 30s strace "${TARGET_PREFIX}/sbin/nginx" -V

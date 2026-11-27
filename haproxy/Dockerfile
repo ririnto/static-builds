@@ -242,7 +242,6 @@ ARG TARGET_PREFIX
 RUN --mount=type=cache,id=haproxy-dnf-${TARGETARCH},sharing=locked,target=/var/cache/dnf \
     microdnf -y install file binutils strace
 COPY --from=build ${TARGET_PREFIX} ${TARGET_PREFIX}
-# Use readelf for linkage because older file versions mislabel static PIE.
 RUN test -x "${TARGET_PREFIX}/sbin/haproxy"
 RUN file -b "${TARGET_PREFIX}/sbin/haproxy" | grep '^ELF '
 RUN readelf -l "${TARGET_PREFIX}/sbin/haproxy" | ( ! grep INTERP )
@@ -259,9 +258,9 @@ RUN sed -ri '/^\[base\]/,/^\[/s|^#?baseurl=https?://mirror\.centos\.org/(centos/
 RUN --mount=type=cache,id=haproxy-yum-${TARGETARCH},sharing=locked,target=/var/cache/yum \
     yum -y --disablerepo='*' --enablerepo=base --setopt=base.gpgcheck=1 install file binutils strace
 COPY --from=verify ${TARGET_PREFIX} ${TARGET_PREFIX}
-# Use readelf for linkage because older file versions mislabel static PIE.
 RUN test -x "${TARGET_PREFIX}/sbin/haproxy"
 RUN file -b "${TARGET_PREFIX}/sbin/haproxy" | grep '^ELF '
+RUN LC_ALL=C readelf -h "${TARGET_PREFIX}/sbin/haproxy" | grep -E '^[[:space:]]*Type:[[:space:]]+(EXEC|DYN)([[:space:]]|$)'
 RUN readelf -l "${TARGET_PREFIX}/sbin/haproxy" | ( ! grep INTERP )
 RUN readelf -d "${TARGET_PREFIX}/sbin/haproxy" | ( ! grep '(NEEDED)' )
 RUN timeout --kill-after=5s 30s strace "${TARGET_PREFIX}/sbin/haproxy" -vv
