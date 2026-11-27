@@ -35,7 +35,7 @@ const files = execFileSync(
 const sourceOf = (file: string): string =>
   execFileSync("git", ["show", `${revision ?? ""}:${file}`], gitOptions);
 const normalizeName = (name: string): string =>
-  name.toLowerCase().replaceAll(/[\s_-]/gu, "");
+  name.toLowerCase().replaceAll(/[-_]/gu, "");
 const models = files.filter((file) => extname(file) === ".tla");
 const modelFolders = new Set(models.map((file) => dirname(file)));
 const modelNames = new Set(
