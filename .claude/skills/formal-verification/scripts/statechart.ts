@@ -5,20 +5,28 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-/**
- * @typedef {{initial: boolean, values: Record<string, string>}} State
- * @typedef {{action: string, from: string, to: string}} Edge
- */
+interface State {
+  initial: boolean;
+  values: Record<string, string>;
+}
 
-/**
- * @param {string} dot DOT graph emitted by TLC with action labels.
- * @returns {{states: Map<string, State>, edges: Edge[]}} Explored states and transitions.
- */
-const parseGraph = (dot) => {
-  /** @type {Map<string, State>} */
-  const states = new Map();
-  /** @type {Edge[]} */
-  const edges = [];
+interface Edge {
+  action: string;
+  from: string;
+  to: string;
+}
+
+interface StatechartOptions {
+  actions: Record<string, string>;
+  config: URL;
+  model: URL;
+  output: URL;
+  stateLabel: (values: Record<string, string>) => string;
+}
+
+const parseGraph = (dot: string) => {
+  const states = new Map<string, State>();
+  const edges: Edge[] = [];
   for (const rawLine of dot.split("\n")) {
     const line = rawLine.trim();
     const edge =
@@ -65,18 +73,13 @@ const parseGraph = (dot) => {
   return { states, edges };
 };
 
-/**
- * Runs TLC and checks or writes the statechart projected from its explored graph.
- *
- * @param {{actions: Record<string, string>, config: URL, model: URL, output: URL, stateLabel: (values: Record<string, string>) => string}} options Model inputs, chart destination, and display labels.
- */
 export const runStatechart = ({
   actions,
   config,
   model,
   output,
   stateLabel
-}) => {
+}: StatechartOptions) => {
   const [mode] = process.argv.slice(2);
   if (!["--check", "--write"].includes(mode) || process.argv.length !== 3) {
     throw new Error(
@@ -143,8 +146,7 @@ export const runStatechart = ({
           return `  [*] --> ${ids.get(label)}`;
         })
     );
-    /** @type {Set<string>} */
-    const arrows = new Set();
+    const arrows = new Set<string>();
     let hidden = 0;
     for (const edge of edges) {
       const from = projected.get(edge.from);

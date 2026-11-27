@@ -1,20 +1,26 @@
 {
   "name": "@static-builds/formal-verification",
   "private": true,
+  "type": "module",
   "scripts": {
     "check": "run-p check:*",
-    "check:branch-download": "node scripts/branch-download/statechart.mjs --check",
+    "check:branch-download": "node scripts/branch-download/statechart.ts --check",
+    "check:layout": "node scripts/check-layout.ts",
     "check:typescript": "tsc --noEmit",
     "fix": "run-p fix:*",
     "fix:branch-download": "pnpm run generate:branch-download",
     "generate": "run-p generate:*",
-    "generate:branch-download": "node scripts/branch-download/statechart.mjs --write"
+    "generate:branch-download": "node scripts/branch-download/statechart.ts --write",
+    "render:statecharts": "node scripts/statechart-svg.ts --write",
+    "verify:statechart-svg": "node scripts/statechart-svg.ts --check"
   },
   "devDependencies": {
     "@tsconfig/node-lts": "catalog:",
     "@types/node": "catalog:",
     "npm-run-all2": "catalog:",
+    "pele": "catalog:",
     "tla-chaos-loop": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "yaml": "catalog:"
   }
 }

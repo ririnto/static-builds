@@ -3,7 +3,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { render } from "pele";
 
 const source = new URL(
-  "../.claude/skills/formal-verification/assets/branch-download/statechart.mmd",
+  "../references/branch-download/statechart.mmd",
   import.meta.url
 );
 const output = new URL("statechart.svg", source);

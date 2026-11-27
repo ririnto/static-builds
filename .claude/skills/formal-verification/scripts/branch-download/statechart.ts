@@ -1,7 +1,6 @@
-import { runStatechart } from "../statechart.mjs";
+import { runStatechart } from "../statechart.ts";
 
-/** @type {Record<string, string>} */
-const actions = {
+const actions: Record<string, string> = {
   Acquire: "Parent acquires the lock",
   Close: "Parent closes its descriptor",
   Done: "Both downloaders remain stopped",
@@ -10,19 +9,14 @@ const actions = {
   Stop: "Parent exits"
 };
 
-/**
- * @param {Record<string, string>} values TLC scalar fields.
- * @returns {string} First downloader's visible ownership.
- */
-const stateLabel = (values) => {
+const stateLabel = (values: Record<string, string>): string => {
   const phases = /^<<(?<items>.*)>>$/u.exec(values.phase);
   if (!phases) {
     throw new Error(`Unsupported downloader phases: ${values.phase}`);
   }
   const phase =
     /^"(?<phase>\w+)"/u.exec(phases.groups?.items ?? "")?.groups?.phase ?? "";
-  /** @type {Record<string, string>} */
-  const labels = {
+  const labels: Record<string, string> = {
     downloading: "Parent and transport hold the lock",
     owned: "Parent holds the lock",
     ready: "Transport stopped, parent holds the lock",
@@ -52,7 +46,7 @@ runStatechart({
     import.meta.url
   ),
   output: new URL(
-    "../../assets/branch-download/statechart.mmd",
+    "../../references/branch-download/statechart.mmd",
     import.meta.url
   ),
   stateLabel
