@@ -23,17 +23,91 @@ const gitOptions = {
   cwd: new URL("../../../../", import.meta.url),
   encoding: "utf-8" as const
 };
-const files = execFileSync(
-  "git",
+const tree =
   revision === undefined
-    ? ["ls-files", "--cached", "-z"]
-    : ["ls-tree", "-rz", "--name-only", revision],
-  gitOptions
-)
-  .split("\0")
-  .filter(Boolean);
-const sourceOf = (file: string): string =>
-  execFileSync("git", ["show", `${revision ?? ""}:${file}`], gitOptions);
+    ? undefined
+    : execFileSync(
+        "git",
+        ["rev-parse", "--verify", "--end-of-options", `${revision}^{tree}`],
+        gitOptions
+      ).trim();
+const modeAndPath = "--format=%(objectmode) %(path)";
+const tracked = new Map(
+  execFileSync(
+    "git",
+    tree === undefined
+      ? ["ls-files", "--cached", "-z", modeAndPath]
+      : ["ls-tree", "-rtz", modeAndPath, tree],
+    gitOptions
+  )
+    .split("\0")
+    .filter(Boolean)
+    .map((entry) => [entry.slice(7), entry.slice(0, 6)])
+);
+const files = [...tracked.keys()].filter(
+  (file) => tracked.get(file) !== "040000"
+);
+const indexDirectories = new Set<string>();
+if (tree === undefined) {
+  for (const file of files) {
+    for (let folder = dirname(file); folder !== "."; folder = dirname(folder)) {
+      indexDirectories.add(folder);
+    }
+  }
+}
+const readBlob = (file: string): string =>
+  execFileSync("git", ["show", `${tree ?? ""}:${file}`], gitOptions);
+const isRegular = (file: string): boolean =>
+  tracked.get(file) === "100644" || tracked.get(file) === "100755";
+const isDirectory = (folder: string): boolean =>
+  tree === undefined
+    ? indexDirectories.has(folder)
+    : tracked.get(folder) === "040000";
+const sourcePath = (file: string): string | undefined => {
+  if (isRegular(file)) {
+    return file;
+  }
+  if (tracked.get(file) !== "120000") {
+    return undefined;
+  }
+  const target = readBlob(file);
+  if (target.startsWith("/")) {
+    return undefined;
+  }
+  const parts = target.split("/");
+  const parent = file.split("/").slice(0, -1);
+  const leaf = parts.pop();
+  if (
+    leaf === undefined ||
+    leaf === "" ||
+    leaf === "." ||
+    leaf === ".." ||
+    leaf.toLowerCase() === ".git"
+  ) {
+    return undefined;
+  }
+  for (const part of parts) {
+    if (part === "..") {
+      if (parent.pop() === undefined) {
+        return undefined;
+      }
+    } else if (part !== "" && part !== ".") {
+      if (part.toLowerCase() === ".git") {
+        return undefined;
+      }
+      parent.push(part);
+      if (!isDirectory(parent.join("/"))) {
+        return undefined;
+      }
+    }
+  }
+  const resolved = [...parent, leaf].join("/");
+  return isRegular(resolved) ? resolved : undefined;
+};
+const sourceOf = (file: string): string => {
+  const resolved = sourcePath(file);
+  return resolved === undefined ? "" : readBlob(resolved);
+};
 const normalizeName = (name: string): string =>
   name.toLowerCase().replaceAll(/[-_]/gu, "");
 const models = files.filter((file) => extname(file) === ".tla");
@@ -98,7 +172,7 @@ const tlcTool =
 const peleImport =
   /^\s*import\b(?:[^"'();]*?\bfrom)?\s*(?<quote>["'])pele\k<quote>/mu;
 const peleImportCall =
-  /(?<![\w$.])(?:import|require)\s*\(\s*(?<quote>["'])pele\k<quote>\s*\)/u;
+  /(?<![\w$.])(?:import|require)\s*\(\s*(?:\/\*[\s\S]*?\*\/\s*)*(?<quote>["'`])pele\k<quote>\s*(?:\/\*[\s\S]*?\*\/\s*)*\)/u;
 const outsideScriptExtension =
   /^\.(?:sh|bash|zsh|ksh|fish|py|rb|pl|php|lua|ps1|bat|cmd|r|jl|kts|gradle|groovy|js|mjs|cjs|jsx|ts|mts|cts|tsx)$/u;
 const shebangMatches = spawnSync(
@@ -112,7 +186,7 @@ const shebangMatches = spawnSync(
     "--max-count=1",
     "-e",
     "^#!",
-    revision ?? "--cached",
+    tree ?? "--cached",
     "--"
   ],
   gitOptions
@@ -127,12 +201,15 @@ const shebangFiles = new Set(
   shebangMatches.stdout.split("\0#!\n").flatMap((match) => {
     const [file, line] = match.split("\0");
     return line === "1"
-      ? [revision === undefined ? file : file.slice(revision.length + 1)]
+      ? [tree === undefined ? file : file.slice(tree.length + 1)]
       : [];
   })
 );
 const isFormalScript = (file: string, extension: string): boolean => {
-  if (!outsideScriptExtension.test(extension) && !shebangFiles.has(file)) {
+  if (
+    !outsideScriptExtension.test(extension) &&
+    !shebangFiles.has(sourcePath(file) ?? "")
+  ) {
     return false;
   }
   const source = sourceOf(file);
