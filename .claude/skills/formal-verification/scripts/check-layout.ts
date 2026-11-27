@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { basename, dirname, extname } from "node:path/posix";
 
 import { isAlias, isScalar, parseDocument } from "yaml";
@@ -91,21 +91,50 @@ const peleImport =
   /^\s*import\b(?:[^"'();]*?\bfrom)?\s*(?<quote>["'])pele\k<quote>/mu;
 const peleImportCall =
   /(?<![\w$.])(?:import|require)\s*\(\s*(?<quote>["'])pele\k<quote>\s*\)/u;
+const outsideScriptExtension =
+  /^\.(?:sh|bash|zsh|ksh|fish|py|rb|pl|php|lua|ps1|bat|cmd|r|jl|kts|gradle|groovy|js|mjs|cjs|jsx|ts|mts|cts|tsx)$/u;
+const shebangMatches = spawnSync(
+  "git",
+  [
+    "grep",
+    "--text",
+    "--line-number",
+    "--null",
+    "--only-matching",
+    "--max-count=1",
+    "-e",
+    "^#!",
+    revision ?? "--cached",
+    "--"
+  ],
+  gitOptions
+);
+if (
+  shebangMatches.error ||
+  (shebangMatches.status !== 0 && shebangMatches.status !== 1)
+) {
+  throw shebangMatches.error ?? new Error(shebangMatches.stderr.trim());
+}
+const shebangFiles = new Set(
+  shebangMatches.stdout.split("\0#!\n").flatMap((match) => {
+    const [file, line] = match.split("\0");
+    return line === "1"
+      ? [revision === undefined ? file : file.slice(revision.length + 1)]
+      : [];
+  })
+);
 const isFormalScript = (file: string, extension: string): boolean => {
-  const hasScriptExtension =
-    script.test(extension) || extraScript.test(extension);
-  if (!hasScriptExtension && extension !== "") {
+  if (!outsideScriptExtension.test(extension) && !shebangFiles.has(file)) {
     return false;
   }
   const source = sourceOf(file);
   return (
-    (hasScriptExtension || source.startsWith("#!")) &&
-    ([...source.matchAll(modelFile)].some(({ groups }) =>
+    [...source.matchAll(modelFile)].some(({ groups }) =>
       modelNames.has(normalizeName(groups?.stem ?? ""))
     ) ||
-      tlcTool.test(source) ||
-      peleImport.test(source) ||
-      peleImportCall.test(source))
+    tlcTool.test(source) ||
+    peleImport.test(source) ||
+    peleImportCall.test(source)
   );
 };
 for (const file of files) {
