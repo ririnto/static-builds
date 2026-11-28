@@ -14,7 +14,7 @@
     "check:markdownlint-cli2": "markdownlint-cli2",
     "check:nilaway": "go tool task nilaway -- ./...",
     "check:shfmt": "go tool task shfmt -- -d",
-    "check:statechart-svg": "pnpm --filter @static-builds/formal-verification run verify:statechart-svg",
+    "check:statechart-svg": "pnpm --filter @static-builds/formal-verification run check:statechart-svg",
     "check:test": "go tool task test",
     "check:test-workflow-input-defaults": "node --test tests/workflow-input-defaults.test.ts",
     "check:typescript": "tsc --noEmit",
