@@ -12,7 +12,7 @@
     "generate": "run-p generate:*",
     "generate:branch-download": "node scripts/branch-download/statechart.ts --write",
     "render:statecharts": "node scripts/statechart-svg.ts --write",
-    "verify:statechart-svg": "node scripts/statechart-svg.ts --check"
+    "check:statechart-svg": "node scripts/statechart-svg.ts --check"
   },
   "devDependencies": {
     "@tsconfig/node-lts": "catalog:",
